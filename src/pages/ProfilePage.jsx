@@ -4,18 +4,15 @@ import { useSelector, useDispatch } from "react-redux";
 import {
   User,
   Mail,
-  Shield,
   BookOpen,
   Award,
   LogOut,
-  CheckCircle,
   Calendar,
   Sparkles,
 } from "lucide-react";
 import { logout } from "../store/authSlice";
 import { useGetEnrollmentsQuery, useGetTestAttemptsQuery } from "../store/apiSlice";
 import Card from "../components/ui/Card";
-import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 
 export default function ProfilePage() {
@@ -52,24 +49,11 @@ export default function ProfilePage() {
             <div className="space-y-1.5">
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
                 <h1 className="text-xl sm:text-2xl font-black text-slate-900">{user.name || "Learner"}</h1>
-                <Badge variant={user.role === "admin" ? "rose" : user.role === "instructor" ? "amber" : "indigo"} size="sm">
-                  {user.role || "student"}
-                </Badge>
-                {user.is_verified && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
-                    <CheckCircle className="w-3 h-3" /> Verified
-                  </span>
-                )}
               </div>
 
               <p className="text-xs text-slate-500 font-medium flex items-center justify-center sm:justify-start gap-1.5">
                 <Mail className="w-3.5 h-3.5 text-slate-400" />
                 {user.email}
-              </p>
-
-              <p className="text-[11px] text-slate-400 font-medium flex items-center justify-center sm:justify-start gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-slate-400" />
-                Auth Provider: <span className="font-semibold text-slate-600 capitalize">{user.auth_provider || "local"}</span>
               </p>
             </div>
           </div>

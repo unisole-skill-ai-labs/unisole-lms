@@ -5,17 +5,11 @@ import {
   Compass,
   BookOpen,
   Award,
-  User,
   LogOut,
-  GraduationCap,
-  Sparkles,
-  Menu,
-  X,
   LogIn,
   UserPlus,
 } from "lucide-react";
 import { logout } from "../../store/authSlice";
-import Badge from "../ui/Badge";
 import Button from "../ui/Button";
 
 export default function Header() {
@@ -48,15 +42,17 @@ export default function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Brand Logo */}
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-indigo-200 group-hover:scale-105 transition-transform">
-              <GraduationCap className="w-6 h-6" />
-            </div>
+            <img
+              src="/unisole-logo.jpg"
+              alt="Unisole Logo"
+              className="w-10 h-10 rounded-full object-cover shadow-sm ring-1 ring-slate-200 group-hover:scale-105 transition-transform"
+            />
             <div className="flex flex-col">
-              <span className="font-extrabold text-lg text-slate-900 tracking-tight flex items-center gap-1.5">
-                UniSole <span className="text-indigo-600 font-bold text-xs bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">LMS</span>
+              <span className="font-extrabold text-lg text-slate-900 tracking-tight">
+                Unisole
               </span>
               <span className="text-[10px] font-medium text-slate-400 -mt-1 hidden xs:block">
-                Learn • Practice • Master
+                Flowers of the Sky
               </span>
             </div>
           </Link>
@@ -98,9 +94,6 @@ export default function Header() {
                   <div className="hidden sm:flex flex-col text-left">
                     <span className="text-xs font-bold text-slate-800 leading-tight">
                       {user.name || user.email.split("@")[0]}
-                    </span>
-                    <span className="text-[10px] font-semibold text-indigo-600 capitalize">
-                      {user.role || "student"}
                     </span>
                   </div>
                 </Link>

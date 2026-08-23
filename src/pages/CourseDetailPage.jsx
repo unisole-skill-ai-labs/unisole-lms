@@ -2,17 +2,14 @@ import React, { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
-  Users,
   CheckCircle2,
   BookOpen,
-  Clock,
   Award,
   ArrowLeft,
   GraduationCap,
   Play,
   FileText,
   AlertCircle,
-  Share2,
   ShieldCheck,
 } from "lucide-react";
 import {
@@ -96,7 +93,6 @@ export default function CourseDetailPage() {
   }
 
   const modules = treeData?.modules || [];
-  const enrollmentsCount = course.total_enrollments || 120;
   const price = parseFloat(course.price) || 49.99;
 
   return (
@@ -118,7 +114,7 @@ export default function CourseDetailPage() {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Badge variant="indigo" size="md">
-                Certified Curriculum
+                Curriculum
               </Badge>
             </div>
 
@@ -133,16 +129,8 @@ export default function CourseDetailPage() {
 
             <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 font-medium pt-2">
               <div className="flex items-center gap-1.5">
-                <Users className="w-4 h-4 text-slate-400" />
-                <span>{enrollmentsCount} active students</span>
-              </div>
-              <div className="flex items-center gap-1.5">
                 <BookOpen className="w-4 h-4 text-slate-400" />
                 <span>{modules.length} detailed modules</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Award className="w-4 h-4 text-slate-400" />
-                <span>Verifiable Completion Certificate</span>
               </div>
             </div>
           </div>
