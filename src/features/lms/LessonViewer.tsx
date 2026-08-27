@@ -88,7 +88,7 @@ export default function LessonViewer({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-slate-200">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <Badge variant="indigo" size="sm">
+            <Badge variant="brand" size="sm">
               Lesson
             </Badge>
             {lesson.durationMinutes && (

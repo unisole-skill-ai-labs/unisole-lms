@@ -92,7 +92,7 @@ export default function EnrolledCoursesPage() {
             if (!pathway) return null;
 
             return (
-              <Card key={item.enrollmentId || pathway.id} hover className="p-6 flex flex-col justify-between h-full group bg-white border-slate-200/80">
+              <Card key={item.enrollmentId || pathway.id} className="p-6 flex flex-col justify-between h-full group bg-white border-slate-200/80">
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <Badge variant="emerald" size="sm">

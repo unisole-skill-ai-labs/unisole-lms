@@ -3,14 +3,14 @@ import { cn } from "../../lib/utils";
 
 export interface BadgeProps {
   children: React.ReactNode;
-  variant?: "indigo" | "emerald" | "amber" | "rose" | "purple" | "slate" | "white";
+  variant?: "default" | "brand" | "emerald" | "amber" | "rose";
   size?: "sm" | "md" | "lg";
   className?: string;
 }
 
 export default function Badge({
   children,
-  variant = "indigo",
+  variant = "default",
   size = "md",
   className = "",
 }: BadgeProps) {
@@ -21,21 +21,19 @@ export default function Badge({
   };
 
   const variantStyles = {
-    indigo: "bg-indigo-50 text-indigo-700 border border-indigo-100",
-    emerald: "bg-emerald-50 text-emerald-700 border border-emerald-100",
-    amber: "bg-amber-50 text-amber-700 border border-amber-100",
-    rose: "bg-rose-50 text-rose-700 border border-rose-100",
-    purple: "bg-purple-50 text-purple-700 border border-purple-100",
-    slate: "bg-slate-100 text-slate-700 border border-slate-200",
-    white: "bg-white text-slate-900 border border-slate-200 shadow-xs",
+    default: "bg-slate-100 text-slate-800 border border-slate-200/50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700/50",
+    brand: "bg-indigo-50 text-indigo-700 border border-indigo-200/50 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-800/40",
+    emerald: "bg-emerald-50 text-emerald-700 border border-emerald-200/50 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40",
+    amber: "bg-amber-50 text-amber-700 border border-amber-200/50 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800/40",
+    rose: "bg-rose-50 text-rose-700 border border-rose-200/50 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800/40",
   };
 
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 font-medium tracking-wide",
+        "inline-flex items-center gap-1 font-semibold tracking-wide border transition-colors",
         sizeStyles[size] || sizeStyles.md,
-        variantStyles[variant] || variantStyles.indigo,
+        variantStyles[variant] || variantStyles.default,
         className
       )}
     >

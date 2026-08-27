@@ -20,6 +20,6 @@ export default function StatusBadge({ status, className = "" }) {
     case "expired":
       return <Badge variant="rose" className={className}>{status || "Inactive"}</Badge>;
     default:
-      return <Badge variant="indigo" className={className}>{status || "Standard"}</Badge>;
+      return <Badge variant="brand" className={className}>{status || "Standard"}</Badge>;
   }
 }

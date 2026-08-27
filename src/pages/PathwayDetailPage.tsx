@@ -126,13 +126,13 @@ export default function PathwayDetailPage() {
         <div className="lg:col-span-2 space-y-6">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              {categories.map((cat) => (
-                <Badge key={cat.id || cat} variant="indigo" size="md">
+              {categories.map((cat: any) => (
+                <Badge key={cat.id || cat} variant="brand" size="md">
                   {cat.name || cat}
                 </Badge>
               ))}
-              {colleges.map((col) => (
-                <Badge key={col.id || col} variant="purple" size="md">
+              {colleges.map((col: any) => (
+                <Badge key={col.id || col} variant="brand" size="md">
                   {col.shortName || col.name}
                 </Badge>
               ))}

@@ -12,13 +12,13 @@ export default function PathwayCard({ pathway, isEnrolled }) {
   const courseCount = pathway.courseCount ?? (pathway.courses ? pathway.courses.length : 0);
 
   return (
-    <Card hover className="p-6 flex flex-col justify-between h-full group border-slate-200/80 bg-white transition-all duration-300 hover:shadow-xl hover:border-indigo-200">
+    <Card className="p-6 flex flex-col justify-between h-full group border-slate-200/80 bg-white transition-all duration-300 hover:shadow-xl hover:border-indigo-200">
       <div>
         {/* Top Badges */}
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <div className="flex flex-wrap items-center gap-1.5">
-            {categories.slice(0, 2).map((cat) => (
-              <Badge key={cat.id || cat} variant="indigo" size="sm">
+            {categories.slice(0, 2).map((cat: any) => (
+              <Badge key={cat.id || cat} variant="brand" size="sm">
                 {cat.name || cat}
               </Badge>
             ))}
