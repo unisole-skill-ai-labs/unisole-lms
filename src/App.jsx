@@ -4,14 +4,13 @@ import Layout from "./components/layout/Layout";
 import ProtectedRoute from "./components/guards/ProtectedRoute";
 
 import DashboardPage from "./pages/DashboardPage";
-import CourseDetailPage from "./pages/CourseDetailPage";
+import PathwayDetailPage from "./pages/PathwayDetailPage";
 import EnrolledCoursesPage from "./pages/EnrolledCoursesPage";
-import TestsPage from "./pages/TestsPage";
-import QuizActivePage from "./pages/QuizActivePage";
+import LmsPlayerPage from "./pages/LmsPlayerPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ProfilePage from "./pages/ProfilePage";
+import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 export default function App() {
@@ -20,35 +19,30 @@ export default function App() {
       <Route path="/" element={<Layout />}>
         {/* Public Catalog Routes */}
         <Route index element={<DashboardPage />} />
-        <Route path="courses/:courseId" element={<CourseDetailPage />} />
+        <Route path="pathways/:slug" element={<PathwayDetailPage />} />
+        <Route path="courses/:slug" element={<PathwayDetailPage />} />
+        <Route path="payment-success" element={<PaymentSuccessPage />} />
+        <Route path="payment/success" element={<PaymentSuccessPage />} />
+        <Route path="thank-you" element={<PaymentSuccessPage />} />
 
         {/* Auth Routes */}
         <Route path="login" element={<LoginPage />} />
         <Route path="signup" element={<SignupPage />} />
-        <Route path="forgot-password" element={<ForgotPasswordPage />} />
 
         {/* Protected Student Routes */}
-        <Route
-          path="tests"
-          element={
-            <ProtectedRoute>
-              <TestsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="tests/:testId"
-          element={
-            <ProtectedRoute>
-              <QuizActivePage />
-            </ProtectedRoute>
-          }
-        />
         <Route
           path="enrolled"
           element={
             <ProtectedRoute>
               <EnrolledCoursesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="learn/:pathwayId"
+          element={
+            <ProtectedRoute>
+              <LmsPlayerPage />
             </ProtectedRoute>
           }
         />

@@ -7,7 +7,7 @@ const API_BASE_URL = (
   window.location.hostname !== "localhost" &&
   window.location.hostname !== "127.0.0.1"
     ? "https://api.unisole.org"
-    : "")
+    : "http://localhost:3000")
 ).replace(/\/+$/, "");
 
 const rawBaseQuery = fetchBaseQuery({
@@ -57,170 +57,107 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
 export const apiSlice = createApi({
   reducerPath: "api",
   baseQuery: baseQueryWithReauth,
-  tagTypes: ["Course", "Category", "Enrollment", "Test", "TestAttempt", "User", "Review"],
+  tagTypes: ["Pathway", "Category", "College", "Enrollment", "Lesson", "User", "Payment"],
   endpoints: (builder) => ({
     // ─── Auth Endpoints ──────────────────────────────────────────────────────────
-    login: builder.mutation({
-      query: (credentials) => ({
-        url: "/api/auth/login",
-        method: "POST",
-        body: credentials,
-      }),
-      invalidatesTags: ["User", "Enrollment", "TestAttempt"],
-    }),
-    register: builder.mutation({
-      query: (userData) => ({
-        url: "/api/auth/register",
-        method: "POST",
-        body: userData,
-      }),
-      invalidatesTags: ["User", "Enrollment"],
-    }),
-    googleLogin: builder.mutation({
-      query: (payload) => ({
-        url: "/api/auth/google",
-        method: "POST",
-        body: payload,
-      }),
-      invalidatesTags: ["User", "Enrollment"],
-    }),
-    forgotPassword: builder.mutation({
+    sendOtp: builder.mutation({
       query: (body) => ({
-        url: "/api/auth/forgot-password",
+        url: "/api/auth/send-otp",
         method: "POST",
         body,
       }),
+    }),
+    verifyOtp: builder.mutation({
+      query: (body) => ({
+        url: "/api/auth/verify-otp",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["User", "Enrollment", "Pathway"],
     }),
     getMe: builder.query({
       query: () => "/api/auth/me",
       providesTags: ["User"],
     }),
 
-    // ─── Courses Endpoints ───────────────────────────────────────────────────────
-    getCourses: builder.query({
-      query: (params = {}) => {
-        const searchParams = new URLSearchParams();
-        if (params.category) searchParams.append("category_id", params.category);
-        if (params.search) searchParams.append("search", params.search);
-        const qs = searchParams.toString();
-        return `/api/courses${qs ? `?${qs}` : ""}`;
-      },
+    // ─── Public Catalog Endpoints ────────────────────────────────────────────────
+    getPublicPathways: builder.query({
+      query: () => "/api/public/pathways",
       providesTags: (result) =>
         result
           ? [
-              ...result.map(({ id }) => ({ type: "Course", id })),
-              { type: "Course", id: "LIST" },
+              ...result.map(({ id }) => ({ type: "Pathway", id })),
+              { type: "Pathway", id: "LIST" },
             ]
-          : [{ type: "Course", id: "LIST" }],
+          : [{ type: "Pathway", id: "LIST" }],
     }),
-    getCourseById: builder.query({
-      query: (id) => `/api/courses/${id}`,
-      providesTags: (_result, _error, id) => [{ type: "Course", id }],
+    getPublicPathwayBySlug: builder.query({
+      query: (slug) => `/api/public/pathways/${slug}`,
+      providesTags: (_result, _error, slug) => [{ type: "Pathway", id: slug }],
     }),
-    getCourseTree: builder.query({
-      query: (id) => `/api/courses/${id}/tree`,
-      providesTags: (_result, _error, id) => [{ type: "Course", id: `${id}-TREE` }],
-    }),
-
-    // ─── Categories Endpoints ────────────────────────────────────────────────────
     getCategories: builder.query({
-      query: () => "/api/categories",
+      query: () => "/api/public/categories",
       providesTags: [{ type: "Category", id: "LIST" }],
     }),
+    getColleges: builder.query({
+      query: () => "/api/public/colleges",
+      providesTags: [{ type: "College", id: "LIST" }],
+    }),
 
-    // ─── Enrollments Endpoints ───────────────────────────────────────────────────
-    getEnrollments: builder.query({
-      query: (params = {}) => {
-        const searchParams = new URLSearchParams({ include: "course" });
-        if (params.user_id) searchParams.append("user_id", params.user_id);
-        return `/api/enrollments?${searchParams.toString()}`;
-      },
+    // ─── Student LMS Endpoints (Authenticated) ───────────────────────────────────
+    getMyPathways: builder.query({
+      query: () => "/api/lms/pathways",
+      providesTags: [{ type: "Pathway", id: "MY_LIST" }, { type: "Enrollment", id: "LIST" }],
+    }),
+    getPathwayContent: builder.query({
+      query: (pathwayId) => `/api/lms/pathways/${pathwayId}`,
+      providesTags: (_result, _error, id) => [{ type: "Pathway", id: `${id}-CONTENT` }],
+    }),
+    getLessonContent: builder.query({
+      query: (lessonId) => `/api/lms/lessons/${lessonId}`,
+      providesTags: (_result, _error, id) => [{ type: "Lesson", id }],
+    }),
+    getMyEnrollments: builder.query({
+      query: () => "/api/lms/enrollments",
       providesTags: [{ type: "Enrollment", id: "LIST" }],
     }),
-    enrollCourse: builder.mutation({
-      query: ({ course_id, user_id }) => ({
-        url: "/api/enrollments",
-        method: "POST",
-        body: { course_id, ...(user_id ? { user_id } : {}) },
-      }),
-      invalidatesTags: [
-        { type: "Enrollment", id: "LIST" },
-        { type: "Course", id: "LIST" },
-      ],
-    }),
-    updateEnrollmentProgress: builder.mutation({
-      query: ({ id, progress_percent, status }) => ({
-        url: `/api/enrollments/${id}`,
-        method: "PUT",
-        body: { progress_percent, status },
-      }),
-      invalidatesTags: [{ type: "Enrollment", id: "LIST" }],
-    }),
 
-    // ─── Tests & Quiz Endpoints ──────────────────────────────────────────────────
-    getTests: builder.query({
-      query: () => "/api/tests?details=true",
-      providesTags: [{ type: "Test", id: "LIST" }],
-    }),
-    getTestById: builder.query({
-      query: (id) => `/api/tests/${id}?details=true`,
-      providesTags: (_result, _error, id) => [{ type: "Test", id }],
-    }),
-    getTestAttempts: builder.query({
-      query: (params = {}) => {
-        const searchParams = new URLSearchParams();
-        if (params.test_id) searchParams.append("test_id", params.test_id);
-        if (params.user_id) searchParams.append("user_id", params.user_id);
-        const qs = searchParams.toString();
-        return `/api/test-attempts${qs ? `?${qs}` : ""}`;
-      },
-      providesTags: [{ type: "TestAttempt", id: "LIST" }],
-    }),
-    submitTestAttempt: builder.mutation({
+    // ─── Payments & Commerce Endpoints ───────────────────────────────────────────
+    createPaymentOrder: builder.mutation({
       query: (body) => ({
-        url: "/api/test-attempts",
+        url: "/api/lms/payments/create-order",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Payment"],
+    }),
+    verifyPayment: builder.mutation({
+      query: (body) => ({
+        url: "/api/lms/payments/verify",
         method: "POST",
         body,
       }),
       invalidatesTags: [
-        { type: "TestAttempt", id: "LIST" },
         { type: "Enrollment", id: "LIST" },
+        { type: "Pathway", id: "MY_LIST" },
+        "Payment",
       ],
-    }),
-
-    // ─── Reviews Endpoints ───────────────────────────────────────────────────────
-    getReviews: builder.query({
-      query: () => "/api/reviews",
-      providesTags: [{ type: "Review", id: "LIST" }],
-    }),
-    createReview: builder.mutation({
-      query: (body) => ({
-        url: "/api/reviews",
-        method: "POST",
-        body,
-      }),
-      invalidatesTags: [{ type: "Review", id: "LIST" }],
     }),
   }),
 });
 
 export const {
-  useLoginMutation,
-  useRegisterMutation,
-  useGoogleLoginMutation,
-  useForgotPasswordMutation,
+  useSendOtpMutation,
+  useVerifyOtpMutation,
   useGetMeQuery,
-  useGetCoursesQuery,
-  useGetCourseByIdQuery,
-  useGetCourseTreeQuery,
+  useGetPublicPathwaysQuery,
+  useGetPublicPathwayBySlugQuery,
   useGetCategoriesQuery,
-  useGetEnrollmentsQuery,
-  useEnrollCourseMutation,
-  useUpdateEnrollmentProgressMutation,
-  useGetTestsQuery,
-  useGetTestByIdQuery,
-  useGetTestAttemptsQuery,
-  useSubmitTestAttemptMutation,
-  useGetReviewsQuery,
-  useCreateReviewMutation,
+  useGetCollegesQuery,
+  useGetMyPathwaysQuery,
+  useGetPathwayContentQuery,
+  useGetLessonContentQuery,
+  useGetMyEnrollmentsQuery,
+  useCreatePaymentOrderMutation,
+  useVerifyPaymentMutation,
 } = apiSlice;
