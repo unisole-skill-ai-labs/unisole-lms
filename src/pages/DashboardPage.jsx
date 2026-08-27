@@ -56,7 +56,7 @@ export default function DashboardPage() {
             Curated College Pathways
           </div>
           <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">
-            Divyank bhai Job-Ready Skills with Structured Learning Pathways
+            Ajay bhai Job-Ready Skills with Structured Learning Pathways
           </h1>
           <p className="text-xs sm:text-sm text-indigo-200 leading-relaxed">
             Explore industry-crafted curriculums featuring reusable courses, modules, and hands-on lessons tailored for college learners.
