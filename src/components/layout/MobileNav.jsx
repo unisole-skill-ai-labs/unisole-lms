@@ -1,16 +1,15 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { Compass, BookOpen, Award, User, LogIn } from "lucide-react";
+import { Compass, BookOpen, User, LogIn } from "lucide-react";
 
 export default function MobileNav() {
   const { isAuthenticated } = useSelector((state) => state.auth);
   const location = useLocation();
 
   const tabs = [
-    { name: "Explore", path: "/", icon: Compass },
-    { name: "Enrolled", path: "/enrolled", icon: BookOpen, authOnly: true },
-    { name: "Tests", path: "/tests", icon: Award, authOnly: true },
+    { name: "Catalog", path: "/", icon: Compass },
+    { name: "My Learning", path: "/enrolled", icon: BookOpen, authOnly: true },
     {
       name: isAuthenticated ? "Profile" : "Sign In",
       path: isAuthenticated ? "/profile" : "/login",
