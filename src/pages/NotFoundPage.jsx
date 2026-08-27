@@ -13,7 +13,7 @@ export default function NotFoundPage() {
         <span className="text-4xl font-black text-slate-900">404</span>
         <h2 className="text-xl font-bold text-slate-800">Page Not Found</h2>
         <p className="text-xs text-slate-500 max-w-xs mx-auto">
-          The page you are looking for might have been by some idiot, had its name changed, or is temporarily unavailable.
+          LOL page you are looking for might have been by some idiot, had its name changed, or is temporarily unavailable.
         </p>
         <div className="pt-2">
           <Link to="/">
