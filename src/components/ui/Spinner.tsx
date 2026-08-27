@@ -1,11 +1,17 @@
 import React from "react";
 import { Loader2 } from "lucide-react";
 
+export interface SpinnerProps {
+  size?: "sm" | "md" | "lg";
+  className?: string;
+  label?: string;
+}
+
 export default function Spinner({
   size = "md",
   className = "",
   label = "Loading...",
-}) {
+}: SpinnerProps) {
   const sizeStyles = {
     sm: "w-4 h-4",
     md: "w-7 h-7",

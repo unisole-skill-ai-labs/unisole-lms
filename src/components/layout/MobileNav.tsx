@@ -4,7 +4,7 @@ import { useSelector } from "react-redux";
 import { Compass, BookOpen, User, LogIn } from "lucide-react";
 
 export default function MobileNav() {
-  const { isAuthenticated } = useSelector((state) => state.auth);
+  const { isAuthenticated } = useSelector((state: any) => state.auth);
   const location = useLocation();
 
   const tabs = [

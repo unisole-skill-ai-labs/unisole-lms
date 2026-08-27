@@ -90,7 +90,7 @@ export default function LmsPlayerPage() {
   }
 
   if (pathwayError) {
-    const isForbidden = pathwayError.status === 403;
+    const isForbidden = (pathwayError as any)?.status === 403;
     return (
       <div className="max-w-md mx-auto my-20 p-8 bg-white rounded-3xl border border-slate-200 text-center space-y-4 shadow-sm">
         <AlertCircle className="w-12 h-12 text-rose-500 mx-auto" />

@@ -9,8 +9,8 @@ import Spinner from "../components/ui/Spinner";
 import Button from "../components/ui/Button";
 
 export default function EnrolledCoursesPage() {
-  const { user } = useSelector((state) => state.auth);
-  const { data: myPathways = [], isLoading } = useGetMyPathwaysQuery();
+  const { user } = useSelector((state: any) => state.auth);
+  const { data: myPathways = [], isLoading } = useGetMyPathwaysQuery(undefined);
 
   const totalEnrolled = myPathways.length;
 

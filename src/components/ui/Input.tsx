@@ -1,7 +1,16 @@
-import React from "react";
-import { cn } from "../../utils/cn";
+import React, { forwardRef } from "react";
+import { cn } from "../../lib/utils";
 
-export default function Input({
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label?: string;
+  error?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  helperText?: string;
+  className?: string;
+  id?: string;
+}
+
+const Input = forwardRef<HTMLInputElement, InputProps>(({
   label,
   error,
   icon: Icon,
@@ -9,7 +18,7 @@ export default function Input({
   className = "",
   id,
   ...props
-}) {
+}, ref) => {
   const inputId = id || (label ? `input-${label.toLowerCase().replace(/\s+/g, "-")}` : undefined);
 
   return (
@@ -26,6 +35,7 @@ export default function Input({
           </div>
         )}
         <input
+          ref={ref}
           id={inputId}
           className={cn(
             "w-full bg-white text-sm text-slate-900 border rounded-xl px-3.5 py-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 disabled:bg-slate-50 disabled:text-slate-400 placeholder:text-slate-400",
@@ -41,5 +51,7 @@ export default function Input({
       {helperText && !error && <p className="text-xs text-slate-500">{helperText}</p>}
     </div>
   );
-}
+});
 
+Input.displayName = "Input";
+export default Input;

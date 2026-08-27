@@ -13,7 +13,7 @@ import { logout } from "../../store/authSlice";
 import Button from "../ui/Button";
 
 export default function Header() {
-  const { isAuthenticated, user } = useSelector((state) => state.auth);
+  const { isAuthenticated, user } = useSelector((state: any) => state.auth);
   const dispatch = useDispatch();
   const location = useLocation();
   const navigate = useNavigate();

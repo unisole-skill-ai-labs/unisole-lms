@@ -1,5 +1,13 @@
 import React from "react";
-import { cn } from "../../utils/cn";
+import { cn } from "../../lib/utils";
+
+export interface ProgressBarProps {
+  progress?: number;
+  size?: "sm" | "md" | "lg";
+  showLabel?: boolean;
+  color?: "indigo" | "emerald" | "amber";
+  className?: string;
+}
 
 export default function ProgressBar({
   progress = 0,
@@ -7,7 +15,7 @@ export default function ProgressBar({
   showLabel = true,
   color = "indigo",
   className = "",
-}) {
+}: ProgressBarProps) {
   const clamped = Math.min(100, Math.max(0, Math.round(progress)));
 
   const heightStyles = {
@@ -43,4 +51,3 @@ export default function ProgressBar({
     </div>
   );
 }
-

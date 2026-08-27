@@ -15,11 +15,11 @@ import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 
 export default function ProfilePage() {
-  const { user } = useSelector((state) => state.auth);
+  const { user } = useSelector((state: any) => state.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { data: myPathways = [] } = useGetMyPathwaysQuery();
+  const { data: myPathways = [] } = useGetMyPathwaysQuery(undefined);
 
   const handleLogout = () => {
     dispatch(logout());

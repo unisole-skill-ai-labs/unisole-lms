@@ -1,16 +1,23 @@
 import React from "react";
-import { cn } from "../../utils/cn";
+import { cn } from "../../lib/utils";
+
+export interface BadgeProps {
+  children: React.ReactNode;
+  variant?: "indigo" | "emerald" | "amber" | "rose" | "purple" | "slate" | "white";
+  size?: "sm" | "md" | "lg";
+  className?: string;
+}
 
 export default function Badge({
   children,
   variant = "indigo",
   size = "md",
   className = "",
-}) {
+}: BadgeProps) {
   const sizeStyles = {
-    sm: "px-2 py-0.5 text-[11px] font-medium rounded-md",
-    md: "px-2.5 py-1 text-xs font-semibold rounded-lg",
-    lg: "px-3 py-1.5 text-sm font-semibold rounded-lg",
+    sm: "px-2 py-0.5 text-[10px] rounded-md",
+    md: "px-2.5 py-1 text-xs rounded-lg",
+    lg: "px-3.5 py-1.5 text-sm rounded-xl",
   };
 
   const variantStyles = {
@@ -18,11 +25,8 @@ export default function Badge({
     emerald: "bg-emerald-50 text-emerald-700 border border-emerald-100",
     amber: "bg-amber-50 text-amber-700 border border-amber-100",
     rose: "bg-rose-50 text-rose-700 border border-rose-100",
-    slate: "bg-slate-100 text-slate-700 border border-slate-200",
     purple: "bg-purple-50 text-purple-700 border border-purple-100",
-    sky: "bg-sky-50 text-sky-700 border border-sky-100",
-    glass: "bg-black/35 backdrop-blur-md text-white border border-white/20 shadow-xs",
-    dark: "bg-slate-900/60 backdrop-blur-md text-white border border-white/20 shadow-xs",
+    slate: "bg-slate-100 text-slate-700 border border-slate-200",
     white: "bg-white text-slate-900 border border-slate-200 shadow-xs",
   };
 
@@ -39,4 +43,3 @@ export default function Badge({
     </span>
   );
 }
-

@@ -1,6 +1,17 @@
 import React from "react";
 import { Loader2 } from "lucide-react";
-import { cn } from "../../utils/cn";
+import { cn } from "../../lib/utils";
+
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  children?: React.ReactNode;
+  variant?: "primary" | "secondary" | "outline" | "ghost" | "glass" | "white" | "danger" | "success";
+  size?: "sm" | "md" | "lg" | "icon";
+  loading?: boolean;
+  disabled?: boolean;
+  icon?: React.ComponentType<{ className?: string }>;
+  className?: string;
+  type?: "button" | "submit" | "reset";
+}
 
 export default function Button({
   children,
@@ -12,7 +23,7 @@ export default function Button({
   className = "",
   type = "button",
   ...props
-}) {
+}: ButtonProps) {
   const baseStyles =
     "inline-flex items-center justify-center font-medium rounded-xl transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100";
 
@@ -55,12 +66,16 @@ export default function Button({
       {...props}
     >
       {loading ? (
-        <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-      ) : Icon ? (
-        <Icon className="w-4 h-4 shrink-0" />
-      ) : null}
-      {children}
+        <>
+          <Loader2 className="w-4 h-4 animate-spin text-current" />
+          {children && <span>{children}</span>}
+        </>
+      ) : (
+        <>
+          {Icon && <Icon className="w-4 h-4" />}
+          {children}
+        </>
+      )}
     </button>
   );
 }
-

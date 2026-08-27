@@ -13,7 +13,7 @@ const API_BASE_URL = (
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: API_BASE_URL,
   prepareHeaders: (headers, { getState }) => {
-    const token = getState().auth.token;
+    const token = (getState() as any)?.auth?.token;
     if (token) {
       headers.set("Authorization", `Bearer ${token}`);
     }
@@ -21,11 +21,11 @@ const rawBaseQuery = fetchBaseQuery({
   },
 });
 
-const baseQueryWithReauth = async (args, api, extraOptions) => {
+const baseQueryWithReauth = async (args: any, api: any, extraOptions: any) => {
   let result = await rawBaseQuery(args, api, extraOptions);
 
   if (result.error && result.error.status === 401) {
-    const refreshToken = api.getState().auth.refreshToken;
+    const refreshToken = (api.getState() as any)?.auth?.refreshToken;
     if (refreshToken) {
       // Try to get a new access token
       const refreshResult = await rawBaseQuery(

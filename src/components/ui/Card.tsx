@@ -1,5 +1,12 @@
 import React from "react";
-import { cn } from "../../utils/cn";
+import { cn } from "../../lib/utils";
+
+export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  children: React.ReactNode;
+  className?: string;
+  hover?: boolean;
+  onClick?: () => void;
+}
 
 export default function Card({
   children,
@@ -7,7 +14,7 @@ export default function Card({
   hover = false,
   onClick,
   ...props
-}) {
+}: CardProps) {
   return (
     <div
       onClick={onClick}
@@ -22,4 +29,3 @@ export default function Card({
     </div>
   );
 }
-

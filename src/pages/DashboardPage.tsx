@@ -12,13 +12,13 @@ import Spinner from "../components/ui/Spinner";
 import Button from "../components/ui/Button";
 
 export default function DashboardPage() {
-  const { isAuthenticated } = useSelector((state) => state.auth);
+  const { isAuthenticated } = useSelector((state: any) => state.auth);
 
   const [selectedCategory, setSelectedCategory] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: pathways = [], isLoading: isPathwaysLoading } = useGetPublicPathwaysQuery();
-  const { data: categories = [] } = useGetCategoriesQuery();
+  const { data: pathways = [], isLoading: isPathwaysLoading } = useGetPublicPathwaysQuery(undefined);
+  const { data: categories = [] } = useGetCategoriesQuery(undefined);
   const { data: myPathways = [] } = useGetMyPathwaysQuery(undefined, {
     skip: !isAuthenticated,
   });

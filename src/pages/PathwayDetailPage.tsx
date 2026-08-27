@@ -29,7 +29,7 @@ import Modal from "../components/ui/Modal";
 export default function PathwayDetailPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useSelector((state) => state.auth);
+  const { isAuthenticated, user } = useSelector((state: any) => state.auth);
 
   const { data: pathway, isLoading } = useGetPublicPathwayBySlugQuery(slug);
   const { data: myPathways = [] } = useGetMyPathwaysQuery(undefined, {
