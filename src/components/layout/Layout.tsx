@@ -11,17 +11,16 @@ export default function Layout() {
     window.scrollTo(0, 0);
   }, [pathname]);
 
-  // Hide header and mobile nav on active quiz taking screen for full immersion
-  const isQuizActive = pathname.startsWith("/tests/") && pathname.split("/").length > 2;
+  const isPlayer = pathname.startsWith("/learn/");
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
-      {!isQuizActive && <Header />}
-      <main className="flex-1 pb-16 md:pb-0">
+    <div className="min-h-screen flex flex-col bg-background text-foreground antialiased transition-colors duration-200">
+      <Header />
+      <main className={`flex-1 ${isPlayer ? "" : "pb-16 md:pb-0"}`}>
         <Outlet />
       </main>
-      {!isQuizActive && <Footer />}
-      {!isQuizActive && <MobileNav />}
+      {!isPlayer && <Footer />}
+      {!isPlayer && <MobileNav />}
     </div>
   );
 }

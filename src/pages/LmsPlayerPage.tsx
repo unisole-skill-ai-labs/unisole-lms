@@ -25,10 +25,10 @@ export default function LmsPlayerPage() {
 
   // Flatten all lessons into an ordered array for linear next/previous navigation
   const allLessons = useMemo(() => {
-    const list = [];
-    courses.forEach((course) => {
-      (course.modules || []).forEach((mod) => {
-        (mod.lessons || []).forEach((lesson) => {
+    const list: any[] = [];
+    courses.forEach((course: any) => {
+      (course.modules || []).forEach((mod: any) => {
+        (mod.lessons || []).forEach((lesson: any) => {
           list.push({
             ...lesson,
             courseTitle: course.title,
@@ -40,7 +40,7 @@ export default function LmsPlayerPage() {
     return list;
   }, [courses]);
 
-  const [activeLessonId, setActiveLessonId] = useState(null);
+  const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Set the first lesson as default when pathway loads
@@ -75,7 +75,7 @@ export default function LmsPlayerPage() {
     }
   };
 
-  const handleSelectLesson = (lesson) => {
+  const handleSelectLesson = (lesson: any) => {
     setActiveLessonId(lesson.id);
     setSidebarOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -83,7 +83,7 @@ export default function LmsPlayerPage() {
 
   if (isPathwayLoading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-slate-50">
+      <div className="h-[calc(100vh-4rem)] flex items-center justify-center bg-background">
         <Spinner label="Loading learning workspace..." size="lg" />
       </div>
     );
@@ -92,12 +92,12 @@ export default function LmsPlayerPage() {
   if (pathwayError) {
     const isForbidden = (pathwayError as any)?.status === 403;
     return (
-      <div className="max-w-md mx-auto my-20 p-8 bg-white rounded-3xl border border-slate-200 text-center space-y-4 shadow-sm">
+      <div className="max-w-md mx-auto my-20 p-8 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/80 dark:border-zinc-800 text-center space-y-4 shadow-xl">
         <AlertCircle className="w-12 h-12 text-rose-500 mx-auto" />
-        <h2 className="text-lg font-bold text-slate-800">
+        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
           {isForbidden ? "Enrollment Required" : "Unable to Load Pathway"}
         </h2>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
           {isForbidden
             ? "You do not have an active enrollment in this pathway. Please enroll to access the lessons and videos."
             : "An unexpected error occurred while loading this pathway content."}
@@ -114,23 +114,23 @@ export default function LmsPlayerPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-slate-50">
-      {/* Mobile Sidebar Toggle Header */}
-      <div className="lg:hidden fixed bottom-4 right-4 z-50">
+    <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
+      {/* Mobile Sidebar Toggle Button */}
+      <div className="lg:hidden fixed bottom-5 right-5 z-50">
         <Button
           variant="primary"
           size="md"
           icon={sidebarOpen ? X : Menu}
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="shadow-xl rounded-full px-4"
+          className="shadow-2xl rounded-full px-5 py-3 shadow-indigo-500/30"
         >
-          {sidebarOpen ? "Close Menu" : "Curriculum"}
+          {sidebarOpen ? "Close Menu" : "Curriculum Outline"}
         </Button>
       </div>
 
       {/* Desktop & Mobile Drawer Sidebar */}
       <div
-        className={`fixed inset-y-16 left-0 z-40 w-80 lg:static lg:block transition-transform duration-300 ease-in-out ${
+        className={`fixed inset-y-16 left-0 z-40 w-80 lg:static lg:block transition-transform duration-300 ease-in-out bg-white dark:bg-zinc-900 border-r border-zinc-200/80 dark:border-zinc-800 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
@@ -142,7 +142,7 @@ export default function LmsPlayerPage() {
         />
       </div>
 
-      {/* Main Content Area */}
+      {/* Main Lesson Content Area */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 sm:p-6 lg:p-8">
           <LessonViewer

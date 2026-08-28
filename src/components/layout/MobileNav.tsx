@@ -17,14 +17,14 @@ export default function MobileNav() {
     },
   ];
 
-  const isActive = (path) => {
+  const isActive = (path: string) => {
     if (path === "/" && location.pathname === "/") return true;
     if (path !== "/" && location.pathname.startsWith(path)) return true;
     return false;
   };
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200/90 px-3 py-1.5 shadow-lg safe-area-bottom">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-lg border-t border-zinc-200/90 dark:border-zinc-800/90 px-3 py-1.5 shadow-lg safe-area-bottom">
       <div className="flex items-center justify-around">
         {tabs.map((tab) => {
           if (tab.authOnly && !isAuthenticated) return null;
@@ -37,13 +37,13 @@ export default function MobileNav() {
               to={tab.path}
               className={`flex flex-col items-center justify-center py-1 px-3 min-w-[64px] min-h-[48px] rounded-xl transition-all ${
                 active
-                  ? "text-indigo-600 font-bold scale-105"
-                  : "text-slate-500 hover:text-slate-800 font-medium"
+                  ? "text-indigo-600 dark:text-indigo-400 font-bold scale-105"
+                  : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 font-medium"
               }`}
             >
               <div
                 className={`p-1 rounded-lg transition-colors ${
-                  active ? "bg-indigo-50" : "bg-transparent"
+                  active ? "bg-indigo-50 dark:bg-indigo-950/60" : "bg-transparent"
                 }`}
               >
                 <Icon className={`w-5 h-5 ${active ? "stroke-[2.5]" : "stroke-[1.75]"}`} />
