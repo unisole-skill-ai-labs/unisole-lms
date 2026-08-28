@@ -8,7 +8,7 @@ ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 COPY package.json package-lock.json ./
 RUN npm ci
 
-COPY index.html vite.config.js postcss.config.js tailwind.config.js ./
+COPY index.html vite.config.js postcss.config.js tailwind.config.js tsconfig.json ./
 COPY src ./src
 COPY public ./public
 
