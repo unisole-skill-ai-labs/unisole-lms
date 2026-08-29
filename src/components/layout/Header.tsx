@@ -6,7 +6,6 @@ import {
   BookOpen,
   LogOut,
   LogIn,
-  UserPlus,
   User,
   Sun,
   Moon,
@@ -228,15 +227,10 @@ export default function Header() {
                   )}
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center">
                   <Link to="/login">
-                    <Button variant="ghost" size="sm" icon={LogIn}>
-                      Login
-                    </Button>
-                  </Link>
-                  <Link to="/register">
-                    <Button variant="primary" size="sm" icon={UserPlus}>
-                      Register
+                    <Button variant="primary" size="sm" icon={LogIn}>
+                      Login / Register
                     </Button>
                   </Link>
                 </div>
