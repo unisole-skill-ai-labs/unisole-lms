@@ -119,7 +119,8 @@ export const apiSlice = createApi({
       providesTags: [{ type: "College", id: "LIST" }],
     }),
     getBranches: builder.query({
-      query: () => "/api/public/branches",
+      query: (collegeId) =>
+        collegeId ? `/api/public/branches?collegeId=${collegeId}` : "/api/public/branches",
       providesTags: [{ type: "Branch", id: "LIST" }],
     }),
 
