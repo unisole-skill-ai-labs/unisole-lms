@@ -67,16 +67,6 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
 
   const from = new URLSearchParams(location.search).get("redirect") || "/enrolled";
 
-  // Data queries for dropdowns
-  const { data: serverColleges = [] } = useGetCollegesQuery(undefined);
-  const selectedCollegeObj = serverColleges.find(
-    (c: any) => c.name === selectedCollege || c.id === selectedCollege
-  );
-  const { data: serverBranches = [] } = useGetBranchesQuery(selectedCollegeObj?.id);
-
-  const collegeOptions = serverColleges.length > 0 ? serverColleges : DEFAULT_COLLEGES;
-  const branchOptions = serverBranches.length > 0 ? serverBranches : DEFAULT_BRANCHES;
-
   // Form states
   const [step, setStep] = useState<AuthStep>("PHONE");
   const [phone, setPhone] = useState("");
@@ -89,6 +79,16 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
   const [otp, setOtp] = useState("");
   const [isExistingUser, setIsExistingUser] = useState(false);
   const [existingUserName, setExistingUserName] = useState("");
+
+  // Data queries for dropdowns
+  const { data: serverColleges = [] } = useGetCollegesQuery(undefined);
+  const selectedCollegeObj = serverColleges.find(
+    (c: any) => c.name === selectedCollege || c.id === selectedCollege
+  );
+  const { data: serverBranches = [] } = useGetBranchesQuery(selectedCollegeObj?.id);
+
+  const collegeOptions = serverColleges.length > 0 ? serverColleges : DEFAULT_COLLEGES;
+  const branchOptions = serverBranches.length > 0 ? serverBranches : DEFAULT_BRANCHES;
 
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
