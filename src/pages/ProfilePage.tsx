@@ -10,6 +10,7 @@ import {
   Compass,
   Mail,
   ShieldCheck,
+  GraduationCap,
 } from "lucide-react";
 import { logout } from "../store/authSlice";
 import { useGetMyPathwaysQuery } from "../store/apiSlice";
@@ -31,6 +32,9 @@ export default function ProfilePage() {
     return null;
   }
 
+  const college = user.collegeName || user.college || "";
+  const branch = user.branch || "";
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-8 animate-fade-in">
       {/* Profile Header Card */}
@@ -49,19 +53,35 @@ export default function ProfilePage() {
                 </span>
               </div>
 
-              {user.phone && (
-                <p className="text-xs text-zinc-600 dark:text-zinc-400 font-semibold flex items-center justify-center sm:justify-start gap-1.5 font-mono">
-                  <Phone className="w-3.5 h-3.5 text-indigo-500" />
-                  +91 {user.phone}
-                </p>
-              )}
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                {user.phone && (
+                  <p className="flex items-center gap-1.5 font-mono">
+                    <Phone className="w-3.5 h-3.5 text-indigo-500" />
+                    +91 {user.phone}
+                  </p>
+                )}
 
-              {user.email && (
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 font-semibold flex items-center justify-center sm:justify-start gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-indigo-500" />
-                  {user.email}
-                </p>
-              )}
+                {user.email && (
+                  <p className="flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-indigo-500" />
+                    {user.email}
+                  </p>
+                )}
+
+                {college && (
+                  <p className="flex items-center gap-1.5">
+                    <GraduationCap className="w-3.5 h-3.5 text-indigo-500" />
+                    {college}
+                  </p>
+                )}
+
+                {branch && (
+                  <p className="flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-emerald-500" />
+                    {branch}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 

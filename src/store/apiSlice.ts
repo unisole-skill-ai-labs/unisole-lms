@@ -60,6 +60,13 @@ export const apiSlice = createApi({
   tagTypes: ["Pathway", "Category", "College", "Enrollment", "Lesson", "User", "Payment"],
   endpoints: (builder) => ({
     // ─── Auth Endpoints ──────────────────────────────────────────────────────────
+    checkUser: builder.mutation({
+      query: (body) => ({
+        url: "/api/auth/check-user",
+        method: "POST",
+        body,
+      }),
+    }),
     sendOtp: builder.mutation({
       query: (body) => ({
         url: "/api/auth/send-otp",
@@ -147,6 +154,7 @@ export const apiSlice = createApi({
 });
 
 export const {
+  useCheckUserMutation,
   useSendOtpMutation,
   useVerifyOtpMutation,
   useGetMeQuery,

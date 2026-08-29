@@ -1,12 +1,32 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { Phone, User, KeyRound, ArrowRight, ArrowLeft, AlertCircle, CheckCircle2, Sparkles, RefreshCw, MessageSquare } from "lucide-react";
+import {
+  Phone,
+  User,
+  GraduationCap,
+  BookOpen,
+  KeyRound,
+  ArrowRight,
+  ArrowLeft,
+  AlertCircle,
+  CheckCircle2,
+  Sparkles,
+  RefreshCw,
+  MessageSquare,
+  ShieldCheck,
+} from "lucide-react";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
-import { useSendOtpMutation, useVerifyOtpMutation } from "../../store/apiSlice";
+import {
+  useCheckUserMutation,
+  useSendOtpMutation,
+  useVerifyOtpMutation,
+} from "../../store/apiSlice";
 import { setCredentials } from "../../store/authSlice";
 import { extractErrorMessage } from "../../utils/error";
+
+type AuthStep = "PHONE" | "PROFILE_SETUP" | "OTP";
 
 export default function MobileOtpForm() {
   const navigate = useNavigate();
@@ -16,17 +36,24 @@ export default function MobileOtpForm() {
   const from = new URLSearchParams(location.search).get("redirect") || "/enrolled";
 
   // Form states
-  const [step, setStep] = useState(1); // 1: Enter Phone & Name, 2: Enter OTP
-  const [name, setName] = useState("");
+  const [step, setStep] = useState<AuthStep>("PHONE");
   const [phone, setPhone] = useState("");
-  const [channel, setChannel] = useState("SMS"); // "SMS" | "WHATSAPP"
+  const [channel, setChannel] = useState<"SMS" | "WHATSAPP">("SMS");
+  const [name, setName] = useState("");
+  const [college, setCollege] = useState("");
+  const [branch, setBranch] = useState("");
   const [otp, setOtp] = useState("");
+  const [isExistingUser, setIsExistingUser] = useState(false);
+  const [existingUserName, setExistingUserName] = useState("");
+
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [countdown, setCountdown] = useState(0);
 
   const otpInputRef = useRef<HTMLInputElement>(null);
+  const otpTimerRef = useRef<any>(null);
 
+  const [checkUserMutation, { isLoading: isCheckingUser }] = useCheckUserMutation();
   const [sendOtpMutation, { isLoading: isSendingOtp }] = useSendOtpMutation();
   const [verifyOtpMutation, { isLoading: isVerifyingOtp }] = useVerifyOtpMutation();
 
@@ -38,44 +65,144 @@ export default function MobileOtpForm() {
     }
   }, [countdown]);
 
-  // Focus OTP input when transitioning to step 2
   useEffect(() => {
-    if (step === 2 && otpInputRef.current) {
+    return () => {
+      if (otpTimerRef.current) {
+        clearTimeout(otpTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Focus OTP input when transitioning to OTP step
+  useEffect(() => {
+    if (step === "OTP" && otpInputRef.current) {
       otpInputRef.current.focus();
     }
   }, [step]);
 
-  const handleSendOtp = async (e?: React.FormEvent) => {
+  // Step 1: User enters phone number and clicks continue
+  const handlePhoneSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setErrorMsg("");
     setSuccessMsg("");
 
     const cleanPhone = phone.replace(/\D/g, "");
-    if (!cleanPhone || cleanPhone.length < 10) {
+    if (!cleanPhone || cleanPhone.length !== 10) {
       setErrorMsg("Please enter a valid 10-digit mobile number");
       return;
     }
 
     try {
-      const result = await sendOtpMutation({
+      const checkRes = await checkUserMutation({ phone: cleanPhone }).unwrap();
+
+      if (checkRes.exists && checkRes.user) {
+        // User exists: send OTP immediately and move to OTP screen
+        setIsExistingUser(true);
+        setExistingUserName(checkRes.user.name || "");
+
+        const otpRes = await sendOtpMutation({
+          phone: cleanPhone,
+          channel,
+        }).unwrap();
+
+        const code = otpRes.dummyOtp || "1234";
+        setSuccessMsg(
+          `Welcome back${checkRes.user.name ? `, ${checkRes.user.name}` : ""}! OTP sent via ${channel}.`
+        );
+        setStep("OTP");
+        setCountdown(30);
+
+        if (otpTimerRef.current) clearTimeout(otpTimerRef.current);
+        otpTimerRef.current = setTimeout(() => {
+          setOtp(code);
+        }, 1000);
+      } else {
+        // New user: ask for Name, College, Branch
+        setIsExistingUser(false);
+        setStep("PROFILE_SETUP");
+      }
+    } catch (err) {
+      // Fallback: ask for profile details
+      setIsExistingUser(false);
+      setStep("PROFILE_SETUP");
+    }
+  };
+
+  // Step 1b: New user fills profile and requests OTP
+  const handleProfileSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    const cleanPhone = phone.replace(/\D/g, "");
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      setErrorMsg("Please enter a valid 10-digit mobile number");
+      setStep("PHONE");
+      return;
+    }
+
+    if (!name.trim()) {
+      setErrorMsg("Please enter your full name");
+      return;
+    }
+    if (!college.trim()) {
+      setErrorMsg("Please enter your college / university");
+      return;
+    }
+    if (!branch.trim()) {
+      setErrorMsg("Please enter your branch / stream");
+      return;
+    }
+
+    try {
+      const otpRes = await sendOtpMutation({
         phone: cleanPhone,
         channel,
+        name: name.trim(),
       }).unwrap();
 
-      if (result.dummyOtp) {
-        setOtp(result.dummyOtp);
-        setSuccessMsg(`OTP sent via ${channel}! (Dev Code: ${result.dummyOtp})`);
-      } else {
-        setSuccessMsg(`Verification code sent to +91 ${cleanPhone} via ${channel}`);
-      }
-
-      setStep(2);
+      const code = otpRes.dummyOtp || "1234";
+      setSuccessMsg(`Verification code sent to +91 ${cleanPhone} via ${channel}`);
+      setStep("OTP");
       setCountdown(30);
+
+      if (otpTimerRef.current) clearTimeout(otpTimerRef.current);
+      otpTimerRef.current = setTimeout(() => {
+        setOtp(code);
+      }, 1000);
     } catch (err) {
       setErrorMsg(extractErrorMessage(err, "Failed to send OTP. Please try again."));
     }
   };
 
+  // Resend OTP helper
+  const handleResendOtp = async () => {
+    setErrorMsg("");
+    setOtp("");
+    const cleanPhone = phone.replace(/\D/g, "");
+    if (!cleanPhone) return;
+
+    try {
+      const otpRes = await sendOtpMutation({
+        phone: cleanPhone,
+        channel,
+        name: name.trim() || undefined,
+      }).unwrap();
+
+      const code = otpRes.dummyOtp || "1234";
+      setSuccessMsg(`New code sent via ${channel}!`);
+      setCountdown(30);
+
+      if (otpTimerRef.current) clearTimeout(otpTimerRef.current);
+      otpTimerRef.current = setTimeout(() => {
+        setOtp(code);
+      }, 1000);
+    } catch (err) {
+      setErrorMsg(extractErrorMessage(err, "Failed to resend OTP."));
+    }
+  };
+
+  // Step 2: Verify OTP
   const handleVerifyOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setErrorMsg("");
@@ -83,6 +210,7 @@ export default function MobileOtpForm() {
     const cleanPhone = phone.replace(/\D/g, "");
     if (!cleanPhone) {
       setErrorMsg("Please provide a valid phone number");
+      setStep("PHONE");
       return;
     }
 
@@ -96,6 +224,8 @@ export default function MobileOtpForm() {
         phone: cleanPhone,
         otp: otp.trim(),
         name: name.trim() || undefined,
+        collegeName: college.trim() || undefined,
+        branch: branch.trim() || undefined,
       }).unwrap();
 
       dispatch(setCredentials(response));
@@ -112,12 +242,18 @@ export default function MobileOtpForm() {
           <Phone className="w-6 h-6" />
         </div>
         <h2 className="text-xl sm:text-2xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight">
-          {step === 1 ? "Sign In to Unisole LMS" : "Verify Mobile OTP"}
+          {step === "OTP"
+            ? "Verify Mobile OTP"
+            : step === "PROFILE_SETUP"
+            ? "Complete Profile"
+            : "Sign In or Register"}
         </h2>
         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-          {step === 1
-            ? "Enter your 10-digit mobile number to access your pathways and courses"
-            : `We sent a 4-digit verification code to +91 ${phone.replace(/\D/g, "")}`}
+          {step === "OTP"
+            ? `We sent a 4-digit code to +91 ${phone.replace(/\D/g, "")}`
+            : step === "PROFILE_SETUP"
+            ? "Enter your details to create your Unisole LMS student account"
+            : "Enter your 10-digit mobile number to access your pathways and courses"}
         </p>
       </div>
 
@@ -135,17 +271,9 @@ export default function MobileOtpForm() {
         </div>
       )}
 
-      {step === 1 ? (
-        <form onSubmit={handleSendOtp} className="space-y-4">
-          <Input
-            label="Full Name (Optional for new learners)"
-            type="text"
-            placeholder="e.g. Alex Sharma"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            icon={User}
-          />
-
+      {step === "PHONE" && (
+        /* STEP 1: Phone & Delivery Channel */
+        <form onSubmit={handlePhoneSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
               Mobile Number <span className="text-rose-500">*</span>
@@ -158,12 +286,16 @@ export default function MobileOtpForm() {
                 type="tel"
                 placeholder="9876543210"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                 maxLength={10}
                 required
-                className="w-full pl-20 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-hidden focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono font-medium"
+                autoFocus
+                className="w-full pl-20 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-hidden focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono font-bold"
               />
             </div>
+            <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">
+              New or existing learner — we'll detect your account automatically.
+            </p>
           </div>
 
           {/* OTP Channel Selector */}
@@ -175,7 +307,7 @@ export default function MobileOtpForm() {
               <button
                 type="button"
                 onClick={() => setChannel("SMS")}
-                className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   channel === "SMS"
                     ? "bg-indigo-50 dark:bg-indigo-950/60 border-indigo-500 text-indigo-700 dark:text-indigo-400 shadow-xs"
                     : "bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"
@@ -186,7 +318,7 @@ export default function MobileOtpForm() {
               <button
                 type="button"
                 onClick={() => setChannel("WHATSAPP")}
-                className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   channel === "WHATSAPP"
                     ? "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 text-emerald-700 dark:text-emerald-400 shadow-xs"
                     : "bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"
@@ -202,29 +334,96 @@ export default function MobileOtpForm() {
             variant="primary"
             size="lg"
             className="w-full"
+            loading={isCheckingUser || isSendingOtp}
+            icon={ArrowRight}
+          >
+            Continue
+          </Button>
+
+          <p className="text-[11px] text-center text-zinc-400 dark:text-zinc-500 pt-1">
+            Passwordless instant login with 4-digit verification code.
+          </p>
+        </form>
+      )}
+
+      {step === "PROFILE_SETUP" && (
+        /* STEP 1b: New User Profile Details */
+        <form onSubmit={handleProfileSubmit} className="space-y-3.5 animate-fade-in">
+          <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/40 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-200 font-medium">
+              <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
+              <span>Learner Mobile: <strong>+91 {phone}</strong></span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setStep("PHONE");
+                setErrorMsg("");
+              }}
+              className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline font-semibold cursor-pointer"
+            >
+              Change
+            </button>
+          </div>
+
+          <Input
+            label="Full Name *"
+            type="text"
+            required
+            autoFocus
+            placeholder="e.g. Alex Sharma"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            icon={User}
+          />
+
+          <Input
+            label="College / University *"
+            type="text"
+            required
+            placeholder="e.g. IIT Bombay / DTU / Anna Univ"
+            value={college}
+            onChange={(e) => setCollege(e.target.value)}
+            icon={GraduationCap}
+          />
+
+          <Input
+            label="Branch / Stream *"
+            type="text"
+            required
+            placeholder="e.g. Computer Science, AI, Mechanical"
+            value={branch}
+            onChange={(e) => setBranch(e.target.value)}
+            icon={BookOpen}
+          />
+
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            className="w-full mt-2"
             loading={isSendingOtp}
             icon={ArrowRight}
           >
-            Send Verification Code
+            Send OTP & Register
           </Button>
-
-          <p className="text-[11px] text-center text-zinc-400 dark:text-zinc-500 pt-2">
-            By signing in, you agree to Unisole's Terms of Service and Privacy Policy.
-          </p>
         </form>
-      ) : (
-        <form onSubmit={handleVerifyOtp} className="space-y-4">
+      )}
+
+      {step === "OTP" && (
+        /* STEP 2: OTP Verification */
+        <form onSubmit={handleVerifyOtp} className="space-y-4 animate-fade-in">
           <Input
             ref={otpInputRef}
             label="4-Digit Verification Code"
             type="text"
             placeholder="1234"
             value={otp}
-            onChange={(e) => setOtp(e.target.value)}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 4))}
             maxLength={4}
             required
             icon={KeyRound}
-            className="text-center font-mono text-lg tracking-widest"
+            className="text-center font-mono text-xl tracking-[0.4em] font-bold"
           />
 
           <Button
@@ -233,27 +432,35 @@ export default function MobileOtpForm() {
             size="lg"
             className="w-full"
             loading={isVerifyingOtp}
+            icon={ShieldCheck}
           >
-            Verify & Sign In
+            Verify & Continue
           </Button>
 
           <div className="pt-2 flex items-center justify-between text-xs">
             <button
               type="button"
-              onClick={() => setStep(1)}
-              className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 font-semibold flex items-center gap-1"
+              onClick={() => {
+                if (otpTimerRef.current) clearTimeout(otpTimerRef.current);
+                setStep("PHONE");
+                setOtp("");
+                setErrorMsg("");
+              }}
+              className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 font-semibold flex items-center gap-1 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" /> Change Number
             </button>
 
             {countdown > 0 ? (
-              <span className="text-zinc-400 dark:text-zinc-500 font-medium font-mono">Resend in {countdown}s</span>
+              <span className="text-zinc-400 dark:text-zinc-500 font-medium font-mono">
+                Resend in {countdown}s
+              </span>
             ) : (
               <button
                 type="button"
-                onClick={handleSendOtp}
+                onClick={handleResendOtp}
                 disabled={isSendingOtp}
-                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-bold flex items-center gap-1"
+                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-bold flex items-center gap-1 cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" /> Resend OTP
               </button>
