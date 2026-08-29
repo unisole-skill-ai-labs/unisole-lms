@@ -15,6 +15,7 @@ import {
   RefreshCw,
   MessageSquare,
   ShieldCheck,
+  ChevronDown,
 } from "lucide-react";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
@@ -22,26 +23,66 @@ import {
   useCheckUserMutation,
   useSendOtpMutation,
   useVerifyOtpMutation,
+  useGetCollegesQuery,
+  useGetBranchesQuery,
 } from "../../store/apiSlice";
 import { setCredentials } from "../../store/authSlice";
 import { extractErrorMessage } from "../../utils/error";
 
 type AuthStep = "PHONE" | "PROFILE_SETUP" | "OTP";
 
-export default function MobileOtpForm() {
+interface MobileOtpFormProps {
+  initialMode?: "login" | "register";
+}
+
+const DEFAULT_COLLEGES = [
+  { id: "dtu", name: "Delhi Technological University (DTU)" },
+  { id: "iitd", name: "Indian Institute of Technology Delhi (IITD)" },
+  { id: "nsut", name: "Netaji Subhas University of Technology (NSUT)" },
+  { id: "iiitd", name: "Indraprastha Institute of Information Technology Delhi (IIITD)" },
+  { id: "nit", name: "National Institute of Technology (NIT)" },
+  { id: "au", name: "Anna University" },
+  { id: "other", name: "Other University / College" },
+];
+
+const DEFAULT_BRANCHES = [
+  { id: "cse", name: "Computer Science & Engineering (CSE)" },
+  { id: "it", name: "Information Technology (IT)" },
+  { id: "aiml", name: "Artificial Intelligence & Machine Learning (AIML)" },
+  { id: "ds", name: "Data Science & Big Data Analytics" },
+  { id: "ece", name: "Electronics & Communication Engineering (ECE)" },
+  { id: "eee", name: "Electrical & Electronics Engineering (EEE)" },
+  { id: "mech", name: "Mechanical Engineering (MECH)" },
+  { id: "civil", name: "Civil Engineering (CIVIL)" },
+  { id: "cs", name: "Cyber Security & Digital Forensics" },
+  { id: "bca_mca", name: "Computer Applications (BCA / MCA)" },
+  { id: "bba_mba", name: "Management & Business Studies (BBA / MBA)" },
+  { id: "other", name: "Other / Multidisciplinary" },
+];
+
+export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
 
   const from = new URLSearchParams(location.search).get("redirect") || "/enrolled";
 
+  // Data queries for dropdowns
+  const { data: serverColleges = [] } = useGetCollegesQuery(undefined);
+  const { data: serverBranches = [] } = useGetBranchesQuery(undefined);
+
+  const collegeOptions = serverColleges.length > 0 ? serverColleges : DEFAULT_COLLEGES;
+  const branchOptions = serverBranches.length > 0 ? serverBranches : DEFAULT_BRANCHES;
+
   // Form states
   const [step, setStep] = useState<AuthStep>("PHONE");
   const [phone, setPhone] = useState("");
   const [channel, setChannel] = useState<"SMS" | "WHATSAPP">("SMS");
   const [name, setName] = useState("");
-  const [college, setCollege] = useState("");
-  const [branch, setBranch] = useState("");
+  const [selectedCollege, setSelectedCollege] = useState("");
+  const [customCollege, setCustomCollege] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState("");
+  const [customBranch, setCustomBranch] = useState("");
   const [otp, setOtp] = useState("");
   const [isExistingUser, setIsExistingUser] = useState(false);
   const [existingUserName, setExistingUserName] = useState("");
@@ -107,7 +148,7 @@ export default function MobileOtpForm() {
 
         const code = otpRes.dummyOtp || "1234";
         setSuccessMsg(
-          `Welcome back${checkRes.user.name ? `, ${checkRes.user.name}` : ""}! OTP sent via ${channel}.`
+          `Welcome back${checkRes.user.name ? `, ${checkRes.user.name}` : ""}! Verification code sent via ${channel}.`
         );
         setStep("OTP");
         setCountdown(30);
@@ -121,7 +162,7 @@ export default function MobileOtpForm() {
         setIsExistingUser(false);
         setStep("PROFILE_SETUP");
       }
-    } catch (err) {
+    } catch {
       // Fallback: ask for profile details
       setIsExistingUser(false);
       setStep("PROFILE_SETUP");
@@ -145,12 +186,24 @@ export default function MobileOtpForm() {
       setErrorMsg("Please enter your full name");
       return;
     }
-    if (!college.trim()) {
-      setErrorMsg("Please enter your college / university");
+
+    const effectiveCollege =
+      selectedCollege === "other" || selectedCollege === "Other University / College"
+        ? customCollege.trim()
+        : selectedCollege.trim();
+
+    if (!effectiveCollege) {
+      setErrorMsg("Please select or enter your college / university");
       return;
     }
-    if (!branch.trim()) {
-      setErrorMsg("Please enter your branch / stream");
+
+    const effectiveBranch =
+      selectedBranch === "other" || selectedBranch === "Other / Multidisciplinary"
+        ? customBranch.trim()
+        : selectedBranch.trim();
+
+    if (!effectiveBranch) {
+      setErrorMsg("Please select or enter your branch / field of study");
       return;
     }
 
@@ -215,17 +268,27 @@ export default function MobileOtpForm() {
     }
 
     if (!otp || otp.trim().length === 0) {
-      setErrorMsg("Please enter the 4-digit OTP");
+      setErrorMsg("Please enter the 4-digit verification code");
       return;
     }
+
+    const effectiveCollege =
+      selectedCollege === "other" || selectedCollege === "Other University / College"
+        ? customCollege.trim()
+        : selectedCollege.trim();
+
+    const effectiveBranch =
+      selectedBranch === "other" || selectedBranch === "Other / Multidisciplinary"
+        ? customBranch.trim()
+        : selectedBranch.trim();
 
     try {
       const response = await verifyOtpMutation({
         phone: cleanPhone,
         otp: otp.trim(),
         name: name.trim() || undefined,
-        collegeName: college.trim() || undefined,
-        branch: branch.trim() || undefined,
+        collegeName: effectiveCollege || undefined,
+        branch: effectiveBranch || undefined,
       }).unwrap();
 
       dispatch(setCredentials(response));
@@ -245,8 +308,8 @@ export default function MobileOtpForm() {
           {step === "OTP"
             ? "Verify Mobile OTP"
             : step === "PROFILE_SETUP"
-            ? "Complete Profile"
-            : "Sign In or Register"}
+            ? "Complete Registration"
+            : "Login / Register"}
         </h2>
         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
           {step === "OTP"
@@ -264,7 +327,7 @@ export default function MobileOtpForm() {
         </div>
       )}
 
-      {successMsg && (
+      {successMsg && step === "OTP" && (
         <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <span>{successMsg}</span>
@@ -337,7 +400,7 @@ export default function MobileOtpForm() {
             loading={isCheckingUser || isSendingOtp}
             icon={ArrowRight}
           >
-            Continue
+            Continue to Login / Register
           </Button>
 
           <p className="text-[11px] text-center text-zinc-400 dark:text-zinc-500 pt-1">
@@ -377,25 +440,83 @@ export default function MobileOtpForm() {
             icon={User}
           />
 
-          <Input
-            label="College / University *"
-            type="text"
-            required
-            placeholder="e.g. IIT Bombay / DTU / Anna Univ"
-            value={college}
-            onChange={(e) => setCollege(e.target.value)}
-            icon={GraduationCap}
-          />
+          {/* College Name Dropdown */}
+          <div className="space-y-1">
+            <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300">
+              College / University <span className="text-rose-500">*</span>
+            </label>
+            <div className="relative">
+              <GraduationCap className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <select
+                value={selectedCollege}
+                onChange={(e) => setSelectedCollege(e.target.value)}
+                required
+                className="w-full pl-10 pr-9 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer"
+              >
+                <option value="">-- Select Your College / University --</option>
+                {collegeOptions.map((c: any) => (
+                  <option key={c.id || c.slug || c.name} value={c.name}>
+                    {c.name} {c.shortName ? `(${c.shortName})` : ""}
+                  </option>
+                ))}
+                <option value="other">Other University / College (Specify below)</option>
+              </select>
+              <ChevronDown className="w-4 h-4 text-zinc-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
 
-          <Input
-            label="Branch / Stream *"
-            type="text"
-            required
-            placeholder="e.g. Computer Science, AI, Mechanical"
-            value={branch}
-            onChange={(e) => setBranch(e.target.value)}
-            icon={BookOpen}
-          />
+            {(selectedCollege === "other" || selectedCollege === "Other University / College") && (
+              <div className="pt-2 animate-fade-in">
+                <Input
+                  label="Specify College / University Name *"
+                  type="text"
+                  required
+                  placeholder="Enter your college name"
+                  value={customCollege}
+                  onChange={(e) => setCustomCollege(e.target.value)}
+                  icon={GraduationCap}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Academic Branch Dropdown */}
+          <div className="space-y-1">
+            <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300">
+              Branch / Specialization <span className="text-rose-500">*</span>
+            </label>
+            <div className="relative">
+              <BookOpen className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <select
+                value={selectedBranch}
+                onChange={(e) => setSelectedBranch(e.target.value)}
+                required
+                className="w-full pl-10 pr-9 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer"
+              >
+                <option value="">-- Select Your Academic Branch --</option>
+                {branchOptions.map((b: any) => (
+                  <option key={b.id || b.code || b.name} value={b.name}>
+                    {b.name} {b.code ? `(${b.code})` : ""}
+                  </option>
+                ))}
+                <option value="other">Other / Multidisciplinary (Specify below)</option>
+              </select>
+              <ChevronDown className="w-4 h-4 text-zinc-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+
+            {(selectedBranch === "other" || selectedBranch === "Other / Multidisciplinary") && (
+              <div className="pt-2 animate-fade-in">
+                <Input
+                  label="Specify Branch / Stream Name *"
+                  type="text"
+                  required
+                  placeholder="e.g. Chemical, Biotechnology, etc."
+                  value={customBranch}
+                  onChange={(e) => setCustomBranch(e.target.value)}
+                  icon={BookOpen}
+                />
+              </div>
+            )}
+          </div>
 
           <Button
             type="submit"
@@ -434,7 +555,7 @@ export default function MobileOtpForm() {
             loading={isVerifyingOtp}
             icon={ShieldCheck}
           >
-            Verify & Continue
+            Verify & Login
           </Button>
 
           <div className="pt-2 flex items-center justify-between text-xs">

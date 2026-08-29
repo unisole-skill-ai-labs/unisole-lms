@@ -218,10 +218,10 @@ export default function Header() {
                       <div className="pt-1 border-t border-zinc-100 dark:border-zinc-800">
                         <button
                           onClick={handleLogout}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors text-left"
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors text-left cursor-pointer"
                         >
                           <LogOut className="w-4 h-4" />
-                          <span>Sign Out</span>
+                          <span>Logout</span>
                         </button>
                       </div>
                     </div>
@@ -231,12 +231,12 @@ export default function Header() {
                 <div className="flex items-center gap-2">
                   <Link to="/login">
                     <Button variant="ghost" size="sm" icon={LogIn}>
-                      Sign In
+                      Login
                     </Button>
                   </Link>
-                  <Link to="/signup">
+                  <Link to="/register">
                     <Button variant="primary" size="sm" icon={UserPlus}>
-                      Sign Up
+                      Register
                     </Button>
                   </Link>
                 </div>

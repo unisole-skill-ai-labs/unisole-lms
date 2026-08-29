@@ -92,7 +92,7 @@ export default function ProfilePage() {
             onClick={handleLogout}
             className="text-rose-600 border-rose-200 dark:border-rose-800 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30"
           >
-            Sign Out
+            Logout
           </Button>
         </div>
 

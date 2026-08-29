@@ -11,7 +11,7 @@ export default function MobileNav() {
     { name: "Catalog", path: "/", icon: Compass },
     { name: "My Learning", path: "/enrolled", icon: BookOpen, authOnly: true },
     {
-      name: isAuthenticated ? "Profile" : "Sign In",
+      name: isAuthenticated ? "Profile" : "Login",
       path: isAuthenticated ? "/profile" : "/login",
       icon: isAuthenticated ? User : LogIn,
     },

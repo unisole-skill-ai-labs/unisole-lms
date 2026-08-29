@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/layout/Layout";
 import ProtectedRoute from "./components/guards/ProtectedRoute";
 
@@ -8,7 +8,7 @@ import PathwayDetailPage from "./pages/PathwayDetailPage";
 import EnrolledCoursesPage from "./pages/EnrolledCoursesPage";
 import LmsPlayerPage from "./pages/LmsPlayerPage";
 import LoginPage from "./pages/LoginPage";
-import SignupPage from "./pages/SignupPage";
+import RegisterPage from "./pages/RegisterPage";
 import ProfilePage from "./pages/ProfilePage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import NotFoundPage from "./pages/NotFoundPage";
@@ -17,19 +17,36 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
-        {/* Public Catalog Routes */}
-        <Route index element={<DashboardPage />} />
-        <Route path="pathways/:slug" element={<PathwayDetailPage />} />
-        <Route path="courses/:slug" element={<PathwayDetailPage />} />
-        <Route path="payment-success" element={<PaymentSuccessPage />} />
-        <Route path="payment/success" element={<PaymentSuccessPage />} />
-        <Route path="thank-you" element={<PaymentSuccessPage />} />
-
-        {/* Auth Routes */}
+        {/* Public Auth Entrypoints */}
         <Route path="login" element={<LoginPage />} />
-        <Route path="signup" element={<SignupPage />} />
+        <Route path="register" element={<RegisterPage />} />
+        <Route path="signup" element={<Navigate to="/register" replace />} />
 
-        {/* Protected Student Routes */}
+        {/* Protected LMS Routes - Full LMS Wall behind Login / Register */}
+        <Route
+          index
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="pathways/:slug"
+          element={
+            <ProtectedRoute>
+              <PathwayDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="courses/:slug"
+          element={
+            <ProtectedRoute>
+              <PathwayDetailPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="enrolled"
           element={
@@ -51,6 +68,30 @@ export default function App() {
           element={
             <ProtectedRoute>
               <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="payment-success"
+          element={
+            <ProtectedRoute>
+              <PaymentSuccessPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="payment/success"
+          element={
+            <ProtectedRoute>
+              <PaymentSuccessPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="thank-you"
+          element={
+            <ProtectedRoute>
+              <PaymentSuccessPage />
             </ProtectedRoute>
           }
         />

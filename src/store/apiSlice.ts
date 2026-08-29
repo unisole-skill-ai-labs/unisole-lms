@@ -57,7 +57,7 @@ const baseQueryWithReauth = async (args: any, api: any, extraOptions: any) => {
 export const apiSlice = createApi({
   reducerPath: "api",
   baseQuery: baseQueryWithReauth,
-  tagTypes: ["Pathway", "Category", "College", "Enrollment", "Lesson", "User", "Payment"],
+  tagTypes: ["Pathway", "Category", "College", "Branch", "Enrollment", "Lesson", "User", "Payment"],
   endpoints: (builder) => ({
     // ─── Auth Endpoints ──────────────────────────────────────────────────────────
     checkUser: builder.mutation({
@@ -80,6 +80,14 @@ export const apiSlice = createApi({
         method: "POST",
         body,
       }),
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(setCredentials(data));
+        } catch {
+          // Handled in component
+        }
+      },
       invalidatesTags: ["User", "Enrollment", "Pathway"],
     }),
     getMe: builder.query({
@@ -93,7 +101,7 @@ export const apiSlice = createApi({
       providesTags: (result) =>
         result
           ? [
-              ...result.map(({ id }) => ({ type: "Pathway", id })),
+              ...result.map(({ id }: { id: string }) => ({ type: "Pathway" as const, id })),
               { type: "Pathway", id: "LIST" },
             ]
           : [{ type: "Pathway", id: "LIST" }],
@@ -109,6 +117,10 @@ export const apiSlice = createApi({
     getColleges: builder.query({
       query: () => "/api/public/colleges",
       providesTags: [{ type: "College", id: "LIST" }],
+    }),
+    getBranches: builder.query({
+      query: () => "/api/public/branches",
+      providesTags: [{ type: "Branch", id: "LIST" }],
     }),
 
     // ─── Student LMS Endpoints (Authenticated) ───────────────────────────────────
@@ -162,6 +174,7 @@ export const {
   useGetPublicPathwayBySlugQuery,
   useGetCategoriesQuery,
   useGetCollegesQuery,
+  useGetBranchesQuery,
   useGetMyPathwaysQuery,
   useGetPathwayContentQuery,
   useGetLessonContentQuery,
