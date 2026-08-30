@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import {
@@ -6,30 +6,23 @@ import {
   User,
   GraduationCap,
   BookOpen,
-  KeyRound,
   ArrowRight,
-  ArrowLeft,
   AlertCircle,
-  CheckCircle2,
   Sparkles,
-  RefreshCw,
-  MessageSquare,
-  ShieldCheck,
   ChevronDown,
 } from "lucide-react";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import {
   useCheckUserMutation,
-  useSendOtpMutation,
-  useVerifyOtpMutation,
+  useLoginMutation,
   useGetCollegesQuery,
   useGetBranchesQuery,
 } from "../../store/apiSlice";
 import { setCredentials } from "../../store/authSlice";
 import { extractErrorMessage } from "../../utils/error";
 
-type AuthStep = "PHONE" | "PROFILE_SETUP" | "OTP";
+type AuthStep = "PHONE" | "PROFILE_SETUP";
 
 interface MobileOtpFormProps {
   initialMode?: "login" | "register";
@@ -70,15 +63,11 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
   // Form states
   const [step, setStep] = useState<AuthStep>("PHONE");
   const [phone, setPhone] = useState("");
-  const [channel, setChannel] = useState<"SMS" | "WHATSAPP">("SMS");
   const [name, setName] = useState("");
   const [selectedCollege, setSelectedCollege] = useState("");
   const [customCollege, setCustomCollege] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("");
   const [customBranch, setCustomBranch] = useState("");
-  const [otp, setOtp] = useState("");
-  const [isExistingUser, setIsExistingUser] = useState(false);
-  const [existingUserName, setExistingUserName] = useState("");
 
   // Data queries for dropdowns
   const { data: serverColleges = [] } = useGetCollegesQuery(undefined);
@@ -91,44 +80,14 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
   const branchOptions = serverBranches.length > 0 ? serverBranches : DEFAULT_BRANCHES;
 
   const [errorMsg, setErrorMsg] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
-  const [countdown, setCountdown] = useState(0);
-
-  const otpInputRef = useRef<HTMLInputElement>(null);
-  const otpTimerRef = useRef<any>(null);
 
   const [checkUserMutation, { isLoading: isCheckingUser }] = useCheckUserMutation();
-  const [sendOtpMutation, { isLoading: isSendingOtp }] = useSendOtpMutation();
-  const [verifyOtpMutation, { isLoading: isVerifyingOtp }] = useVerifyOtpMutation();
-
-  // Resend OTP countdown timer
-  useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [countdown]);
-
-  useEffect(() => {
-    return () => {
-      if (otpTimerRef.current) {
-        clearTimeout(otpTimerRef.current);
-      }
-    };
-  }, []);
-
-  // Focus OTP input when transitioning to OTP step
-  useEffect(() => {
-    if (step === "OTP" && otpInputRef.current) {
-      otpInputRef.current.focus();
-    }
-  }, [step]);
+  const [loginMutation, { isLoading: isLoggingIn }] = useLoginMutation();
 
   // Step 1: User enters phone number and clicks continue
   const handlePhoneSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setErrorMsg("");
-    setSuccessMsg("");
 
     const cleanPhone = phone.replace(/\D/g, "");
     if (!cleanPhone || cleanPhone.length !== 10) {
@@ -140,43 +99,24 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
       const checkRes = await checkUserMutation({ phone: cleanPhone }).unwrap();
 
       if (checkRes.exists && checkRes.user) {
-        // User exists: send OTP immediately and move to OTP screen
-        setIsExistingUser(true);
-        setExistingUserName(checkRes.user.name || "");
-
-        const otpRes = await sendOtpMutation({
-          phone: cleanPhone,
-          channel,
-        }).unwrap();
-
-        const code = otpRes.dummyOtp || "1234";
-        setSuccessMsg(
-          `Welcome back${checkRes.user.name ? `, ${checkRes.user.name}` : ""}! Verification code sent via ${channel}.`
-        );
-        setStep("OTP");
-        setCountdown(30);
-
-        if (otpTimerRef.current) clearTimeout(otpTimerRef.current);
-        otpTimerRef.current = setTimeout(() => {
-          setOtp(code);
-        }, 1000);
+        // User exists: login directly and redirect
+        const response = await loginMutation({ phone: cleanPhone }).unwrap();
+        dispatch(setCredentials(response));
+        navigate(from, { replace: true });
       } else {
         // New user: ask for Name, College, Branch
-        setIsExistingUser(false);
         setStep("PROFILE_SETUP");
       }
     } catch {
       // Fallback: ask for profile details
-      setIsExistingUser(false);
       setStep("PROFILE_SETUP");
     }
   };
 
-  // Step 1b: New user fills profile and requests OTP
+  // Step 2: New user fills profile and completes registration directly
   const handleProfileSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setErrorMsg("");
-    setSuccessMsg("");
 
     const cleanPhone = phone.replace(/\D/g, "");
     if (!cleanPhone || cleanPhone.length !== 10) {
@@ -211,93 +151,18 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
     }
 
     try {
-      const otpRes = await sendOtpMutation({
+      const response = await loginMutation({
         phone: cleanPhone,
-        channel,
         name: name.trim(),
-      }).unwrap();
-
-      const code = otpRes.dummyOtp || "1234";
-      setSuccessMsg(`Verification code sent to +91 ${cleanPhone} via ${channel}`);
-      setStep("OTP");
-      setCountdown(30);
-
-      if (otpTimerRef.current) clearTimeout(otpTimerRef.current);
-      otpTimerRef.current = setTimeout(() => {
-        setOtp(code);
-      }, 1000);
-    } catch (err) {
-      setErrorMsg(extractErrorMessage(err, "Failed to send OTP. Please try again."));
-    }
-  };
-
-  // Resend OTP helper
-  const handleResendOtp = async () => {
-    setErrorMsg("");
-    setOtp("");
-    const cleanPhone = phone.replace(/\D/g, "");
-    if (!cleanPhone) return;
-
-    try {
-      const otpRes = await sendOtpMutation({
-        phone: cleanPhone,
-        channel,
-        name: name.trim() || undefined,
-      }).unwrap();
-
-      const code = otpRes.dummyOtp || "1234";
-      setSuccessMsg(`New code sent via ${channel}!`);
-      setCountdown(30);
-
-      if (otpTimerRef.current) clearTimeout(otpTimerRef.current);
-      otpTimerRef.current = setTimeout(() => {
-        setOtp(code);
-      }, 1000);
-    } catch (err) {
-      setErrorMsg(extractErrorMessage(err, "Failed to resend OTP."));
-    }
-  };
-
-  // Step 2: Verify OTP
-  const handleVerifyOtp = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setErrorMsg("");
-
-    const cleanPhone = phone.replace(/\D/g, "");
-    if (!cleanPhone) {
-      setErrorMsg("Please provide a valid phone number");
-      setStep("PHONE");
-      return;
-    }
-
-    if (!otp || otp.trim().length === 0) {
-      setErrorMsg("Please enter the 4-digit verification code");
-      return;
-    }
-
-    const effectiveCollege =
-      selectedCollege === "other" || selectedCollege === "Other University / College"
-        ? customCollege.trim()
-        : selectedCollege.trim();
-
-    const effectiveBranch =
-      selectedBranch === "other" || selectedBranch === "Other / Multidisciplinary"
-        ? customBranch.trim()
-        : selectedBranch.trim();
-
-    try {
-      const response = await verifyOtpMutation({
-        phone: cleanPhone,
-        otp: otp.trim(),
-        name: name.trim() || undefined,
-        collegeName: effectiveCollege || undefined,
-        branch: effectiveBranch || undefined,
+        collegeName: effectiveCollege,
+        collegeId: selectedCollegeObj?.id || undefined,
+        branch: effectiveBranch,
       }).unwrap();
 
       dispatch(setCredentials(response));
       navigate(from, { replace: true });
     } catch (err) {
-      setErrorMsg(extractErrorMessage(err, "Invalid or expired OTP code. Please try again."));
+      setErrorMsg(extractErrorMessage(err, "Failed to complete registration. Please try again."));
     }
   };
 
@@ -308,16 +173,10 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
           <Phone className="w-6 h-6" />
         </div>
         <h2 className="text-xl sm:text-2xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight">
-          {step === "OTP"
-            ? "Verify Mobile OTP"
-            : step === "PROFILE_SETUP"
-            ? "Complete Registration"
-            : "Login / Register"}
+          {step === "PROFILE_SETUP" ? "Complete Registration" : "Login / Register"}
         </h2>
         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-          {step === "OTP"
-            ? `We sent a 4-digit code to +91 ${phone.replace(/\D/g, "")}`
-            : step === "PROFILE_SETUP"
+          {step === "PROFILE_SETUP"
             ? "Enter your details to create your Unisole LMS student account"
             : "Enter your 10-digit mobile number to access your pathways and courses"}
         </p>
@@ -330,15 +189,8 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
         </div>
       )}
 
-      {successMsg && step === "OTP" && (
-        <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-          <span>{successMsg}</span>
-        </div>
-      )}
-
       {step === "PHONE" && (
-        /* STEP 1: Phone & Delivery Channel */
+        /* STEP 1: Phone */
         <form onSubmit={handlePhoneSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
@@ -360,39 +212,8 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
               />
             </div>
             <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">
-              New or existing learner — we'll detect your account automatically.
+              New or existing learner — enter mobile number to start instantly.
             </p>
-          </div>
-
-          {/* OTP Channel Selector */}
-          <div>
-            <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
-              OTP Delivery Channel
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setChannel("SMS")}
-                className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  channel === "SMS"
-                    ? "bg-indigo-50 dark:bg-indigo-950/60 border-indigo-500 text-indigo-700 dark:text-indigo-400 shadow-xs"
-                    : "bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"
-                }`}
-              >
-                <Phone className="w-3.5 h-3.5" /> SMS
-              </button>
-              <button
-                type="button"
-                onClick={() => setChannel("WHATSAPP")}
-                className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  channel === "WHATSAPP"
-                    ? "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 text-emerald-700 dark:text-emerald-400 shadow-xs"
-                    : "bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"
-                }`}
-              >
-                <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
-              </button>
-            </div>
           </div>
 
           <Button
@@ -400,20 +221,20 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
             variant="primary"
             size="lg"
             className="w-full"
-            loading={isCheckingUser || isSendingOtp}
+            loading={isCheckingUser || isLoggingIn}
             icon={ArrowRight}
           >
-            Continue to Login / Register
+            Continue to Start
           </Button>
 
           <p className="text-[11px] text-center text-zinc-400 dark:text-zinc-500 pt-1">
-            Passwordless instant login with 4-digit verification code.
+            Direct instant authentication.
           </p>
         </form>
       )}
 
       {step === "PROFILE_SETUP" && (
-        /* STEP 1b: New User Profile Details */
+        /* STEP 2: New User Profile Details */
         <form onSubmit={handleProfileSubmit} className="space-y-3.5 animate-fade-in">
           <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/40 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-200 font-medium">
@@ -526,70 +347,11 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
             variant="primary"
             size="lg"
             className="w-full mt-2"
-            loading={isSendingOtp}
+            loading={isLoggingIn}
             icon={ArrowRight}
           >
-            Send OTP & Register
+            Start Learning Now
           </Button>
-        </form>
-      )}
-
-      {step === "OTP" && (
-        /* STEP 2: OTP Verification */
-        <form onSubmit={handleVerifyOtp} className="space-y-4 animate-fade-in">
-          <Input
-            ref={otpInputRef}
-            label="4-Digit Verification Code"
-            type="text"
-            placeholder="1234"
-            value={otp}
-            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 4))}
-            maxLength={4}
-            required
-            icon={KeyRound}
-            className="text-center font-mono text-xl tracking-[0.4em] font-bold"
-          />
-
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            className="w-full"
-            loading={isVerifyingOtp}
-            icon={ShieldCheck}
-          >
-            Verify & Login
-          </Button>
-
-          <div className="pt-2 flex items-center justify-between text-xs">
-            <button
-              type="button"
-              onClick={() => {
-                if (otpTimerRef.current) clearTimeout(otpTimerRef.current);
-                setStep("PHONE");
-                setOtp("");
-                setErrorMsg("");
-              }}
-              className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 font-semibold flex items-center gap-1 cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" /> Change Number
-            </button>
-
-            {countdown > 0 ? (
-              <span className="text-zinc-400 dark:text-zinc-500 font-medium font-mono">
-                Resend in {countdown}s
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={handleResendOtp}
-                disabled={isSendingOtp}
-                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-bold flex items-center gap-1 cursor-pointer"
-              >
-                <RefreshCw className="w-3.5 h-3.5" /> Resend OTP
-              </button>
-            )}
-          </div>
         </form>
       )}
     </div>
