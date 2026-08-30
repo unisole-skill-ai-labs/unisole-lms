@@ -17,7 +17,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
-        {/* Public Auth Entrypoints */}
+        {/* sargam - Public Auth Entrypoints */}
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />
         <Route path="signup" element={<Navigate to="/register" replace />} />
