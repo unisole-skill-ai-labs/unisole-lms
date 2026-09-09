@@ -1,5 +1,7 @@
-import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import React, { useEffect } from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { setCredentials } from "./store/authSlice";
 import Layout from "./components/layout/Layout";
 import ProtectedRoute from "./components/guards/ProtectedRoute";
 
@@ -14,6 +16,20 @@ import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 export default function App() {
+  const dispatch = useDispatch();
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const token = params.get("token") || params.get("auth_token");
+    if (token) {
+      dispatch(setCredentials({ token }));
+      params.delete("token");
+      params.delete("auth_token");
+      const newSearch = params.toString() ? `?${params.toString()}` : "";
+      window.history.replaceState({}, "", `${location.pathname}${newSearch}`);
+    }
+  }, [location, dispatch]);
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
