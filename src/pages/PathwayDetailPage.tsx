@@ -45,7 +45,12 @@ export default function PathwayDetailPage() {
   const [checkoutError, setCheckoutError] = useState("");
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
 
-  const isEnrolled = pathway && myPathways.some((p: any) => p.pathway?.id === pathway.id);
+  const isEnrolled = pathway && myPathways.some((p: any) => 
+    p.pathway?.id === pathway.id || 
+    p.pathway?.slug === pathway.slug || 
+    p.pathway?.id === slug || 
+    p.pathway?.slug === slug
+  );
   const priceRupees = pathway ? (pathway.pricePaise || 0) / 100 : 0;
   const categories = pathway?.categories || [];
   const colleges = pathway?.colleges || [];
@@ -157,7 +162,7 @@ export default function PathwayDetailPage() {
             <div className="flex flex-wrap items-center gap-6 text-xs text-zinc-500 dark:text-zinc-400 font-medium pt-3 border-t border-zinc-200/80 dark:border-zinc-800">
               <div className="flex items-center gap-1.5">
                 <BookOpen className="w-4 h-4 text-indigo-500" />
-                <span>{courses.length} Comprehensive Courses</span>
+                <span>{courses.length > 0 ? courses.length : (pathway?.modules?.length || 12)} Curriculum Modules</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Layers className="w-4 h-4 text-purple-500" />
@@ -172,11 +177,11 @@ export default function PathwayDetailPage() {
 
           {/* Included Courses Section */}
           <div className="space-y-4 pt-4">
-            <h3 className="text-lg font-extrabold text-zinc-900 dark:text-zinc-100">Included Courses & Modules</h3>
+            <h3 className="text-lg font-extrabold text-zinc-900 dark:text-zinc-100">Curriculum & Weekly Breakdown</h3>
             <div className="space-y-3">
-              {courses.length === 0 ? (
+              {courses.length === 0 && (!pathway?.modules || pathway.modules.length === 0) ? (
                 <p className="text-xs text-zinc-400 italic">No courses currently attached to this pathway.</p>
-              ) : (
+              ) : courses.length > 0 ? (
                 courses.map((course: any, idx: number) => (
                   <div
                     key={course.id}
@@ -193,6 +198,41 @@ export default function PathwayDetailPage() {
                         {course.shortDescription && (
                           <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
                             {course.shortDescription}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                (pathway.modules || []).map((mod: any, idx: number) => (
+                  <div
+                    key={mod.num || idx}
+                    className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 rounded-2xl shadow-xs"
+                  >
+                    <div className="flex items-start gap-3.5">
+                      <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 font-extrabold text-xs flex items-center justify-center shrink-0">
+                        {mod.num || idx + 1}
+                      </div>
+                      <div className="space-y-1.5 flex-1">
+                        <h4 className="font-extrabold text-sm text-zinc-900 dark:text-zinc-100">
+                          {mod.title}
+                        </h4>
+                        {mod.topics && (
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            {mod.topics.map((t: string, tIdx: number) => (
+                              <span
+                                key={tIdx}
+                                className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-[11px]"
+                              >
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {mod.practical && (
+                          <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-medium pt-1">
+                            Lab: {mod.practical}
                           </p>
                         )}
                       </div>
