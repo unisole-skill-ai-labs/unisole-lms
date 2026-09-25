@@ -59,7 +59,20 @@ const baseQueryWithReauth = async (args: any, api: any, extraOptions: any) => {
 export const apiSlice = createApi({
   reducerPath: "api",
   baseQuery: baseQueryWithReauth,
-  tagTypes: ["Pathway", "Category", "College", "Branch", "Enrollment", "Lesson", "User", "Payment"],
+  tagTypes: [
+    "Pathway",
+    "Category",
+    "College",
+    "Branch",
+    "Enrollment",
+    "Lesson",
+    "User",
+    "Payment",
+    "AdminCourses",
+    "AdminModules",
+    "AdminLessons",
+    "AdminStudents",
+  ],
   endpoints: (builder) => ({
     // ─── Auth Endpoints ──────────────────────────────────────────────────────────
     checkUser: builder.mutation({
@@ -181,6 +194,140 @@ export const apiSlice = createApi({
         "Payment",
       ],
     }),
+
+    // ─── Admin & Mentor CMS Studio Endpoints ─────────────────────────────────────
+    getAdminCourses: builder.query({
+      query: () => "/api/admin/courses",
+      providesTags: ["AdminCourses"],
+    }),
+    getAdminCourseById: builder.query({
+      query: (id) => `/api/admin/courses/${id}`,
+      providesTags: (_res, _err, id) => [{ type: "AdminCourses", id }],
+    }),
+    createAdminCourse: builder.mutation({
+      query: (body) => ({
+        url: "/api/admin/courses",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["AdminCourses"],
+    }),
+    updateAdminCourse: builder.mutation({
+      query: ({ id, body }) => ({
+        url: `/api/admin/courses/${id}`,
+        method: "PUT",
+        body,
+      }),
+      invalidatesTags: (_res, _err, { id }) => ["AdminCourses", { type: "AdminCourses", id }],
+    }),
+    getAdminCourseModules: builder.query({
+      query: (id) => `/api/admin/courses/${id}/modules`,
+      providesTags: (_res, _err, id) => [{ type: "AdminModules", id: `${id}-modules` }],
+    }),
+    attachAdminCourseModule: builder.mutation({
+      query: ({ courseId, moduleId, position }) => ({
+        url: `/api/admin/courses/${courseId}/modules`,
+        method: "POST",
+        body: { moduleId, position },
+      }),
+      invalidatesTags: (_res, _err, { courseId }) => [
+        "AdminCourses",
+        { type: "AdminModules", id: `${courseId}-modules` },
+      ],
+    }),
+    detachAdminCourseModule: builder.mutation({
+      query: ({ courseId, moduleId }) => ({
+        url: `/api/admin/courses/${courseId}/modules/${moduleId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_res, _err, { courseId }) => [
+        "AdminCourses",
+        { type: "AdminModules", id: `${courseId}-modules` },
+      ],
+    }),
+
+    // Modules
+    getAdminModules: builder.query({
+      query: () => "/api/admin/modules",
+      providesTags: ["AdminModules"],
+    }),
+    createAdminModule: builder.mutation({
+      query: (body) => ({
+        url: "/api/admin/modules",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["AdminModules"],
+    }),
+    updateAdminModule: builder.mutation({
+      query: ({ id, body }) => ({
+        url: `/api/admin/modules/${id}`,
+        method: "PUT",
+        body,
+      }),
+      invalidatesTags: ["AdminModules"],
+    }),
+    getAdminModuleLessons: builder.query({
+      query: (id) => `/api/admin/modules/${id}/lessons`,
+      providesTags: (_res, _err, id) => [{ type: "AdminLessons", id: `${id}-lessons` }],
+    }),
+    attachAdminModuleLesson: builder.mutation({
+      query: ({ moduleId, lessonId, position }) => ({
+        url: `/api/admin/modules/${moduleId}/lessons`,
+        method: "POST",
+        body: { lessonId, position },
+      }),
+      invalidatesTags: (_res, _err, { moduleId }) => [
+        "AdminModules",
+        { type: "AdminLessons", id: `${moduleId}-lessons` },
+      ],
+    }),
+    detachAdminModuleLesson: builder.mutation({
+      query: ({ moduleId, lessonId }) => ({
+        url: `/api/admin/modules/${moduleId}/lessons/${lessonId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_res, _err, { moduleId }) => [
+        "AdminModules",
+        { type: "AdminLessons", id: `${moduleId}-lessons` },
+      ],
+    }),
+
+    // Lessons
+    getAdminLessons: builder.query({
+      query: () => "/api/admin/lessons",
+      providesTags: ["AdminLessons"],
+    }),
+    getAdminLessonById: builder.query({
+      query: (id) => `/api/admin/lessons/${id}`,
+      providesTags: (_res, _err, id) => [{ type: "AdminLessons", id }],
+    }),
+    createAdminLesson: builder.mutation({
+      query: (body) => ({
+        url: "/api/admin/lessons",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["AdminLessons"],
+    }),
+    updateAdminLesson: builder.mutation({
+      query: ({ id, body }) => ({
+        url: `/api/admin/lessons/${id}`,
+        method: "PUT",
+        body,
+      }),
+      invalidatesTags: (_res, _err, { id }) => ["AdminLessons", { type: "AdminLessons", id }],
+    }),
+
+    // Students & Roster
+    getAdminStudents: builder.query({
+      query: () => "/api/admin/students",
+      providesTags: ["AdminStudents"],
+    }),
+    getAdminEnrollments: builder.query({
+      query: () => "/api/admin/enrollments",
+      providesTags: ["AdminStudents"],
+    }),
   }),
 });
 
@@ -201,4 +348,25 @@ export const {
   useGetMyEnrollmentsQuery,
   useCreatePaymentOrderMutation,
   useVerifyPaymentMutation,
+
+  // Admin & Mentor hooks
+  useGetAdminCoursesQuery,
+  useGetAdminCourseByIdQuery,
+  useCreateAdminCourseMutation,
+  useUpdateAdminCourseMutation,
+  useGetAdminCourseModulesQuery,
+  useAttachAdminCourseModuleMutation,
+  useDetachAdminCourseModuleMutation,
+  useGetAdminModulesQuery,
+  useCreateAdminModuleMutation,
+  useUpdateAdminModuleMutation,
+  useGetAdminModuleLessonsQuery,
+  useAttachAdminModuleLessonMutation,
+  useDetachAdminModuleLessonMutation,
+  useGetAdminLessonsQuery,
+  useGetAdminLessonByIdQuery,
+  useCreateAdminLessonMutation,
+  useUpdateAdminLessonMutation,
+  useGetAdminStudentsQuery,
+  useGetAdminEnrollmentsQuery,
 } = apiSlice;

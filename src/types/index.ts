@@ -1,4 +1,4 @@
-export type Role = "STUDENT" | "ADMIN" | "INSTRUCTOR";
+export type Role = "STUDENT" | "ADMIN" | "SUPER_ADMIN" | "MENTOR" | "MEMBER" | "SALES";
 
 export interface User {
   id: string;
@@ -23,16 +23,53 @@ export interface College {
   description?: string;
 }
 
+export type LessonType = "READING" | "QUIZ" | "ASSIGNMENT";
+export type ContentStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
+
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctOptionIndex: number;
+  explanation?: string;
+}
+
+export interface LessonQuiz {
+  passingScorePercent: number;
+  questions: QuizQuestion[];
+}
+
+export interface LessonAssignment {
+  instructions: string;
+  allowedTypes: ("GITHUB" | "FILE" | "TEXT")[];
+  maxPoints?: number;
+}
+
+export interface LessonAttachment {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  fileSizeBytes?: number;
+  fileType?: string;
+}
+
 export interface Lesson {
   id: string;
   title: string;
   slug?: string;
   description?: string;
-  moduleId?: string;
+  content?: string;
+  contentMarkdown?: string;
   videoUrl?: string;
-  durationSeconds?: number;
+  durationMinutes?: number;
   position?: number;
+  type?: LessonType;
+  status?: ContentStatus;
   isFreePreview?: boolean;
+  quiz?: LessonQuiz;
+  assignment?: LessonAssignment;
+  attachments?: LessonAttachment[];
+  updatedAt?: string;
 }
 
 export interface Module {
@@ -40,17 +77,42 @@ export interface Module {
   title: string;
   slug?: string;
   description?: string;
-  courseId?: string;
   position?: number;
+  status?: ContentStatus;
   lessons?: Lesson[];
 }
 
 export interface Course {
   id: string;
   title: string;
-  slug?: string;
+  slug: string;
+  shortDescription?: string;
   description?: string;
+  pricePaise?: number;
+  mrpPaise?: number;
+  status?: ContentStatus;
+  isActive?: boolean;
   modules?: Module[];
+  instructors?: { id: string; name?: string; isLead?: boolean }[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface StudentSubmission {
+  id: string;
+  assignmentId: string;
+  studentId: string;
+  studentName?: string;
+  studentEmail?: string;
+  courseTitle?: string;
+  lessonTitle?: string;
+  submissionUrl?: string;
+  submissionText?: string;
+  status: "PENDING" | "APPROVED" | "CHANGES_REQUESTED";
+  mentorFeedback?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  createdAt: string;
 }
 
 export interface Pathway {
@@ -75,3 +137,4 @@ export interface Enrollment {
   status: string;
   enrolledAt?: string;
 }
+

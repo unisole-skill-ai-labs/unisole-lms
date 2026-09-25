@@ -15,6 +15,16 @@ import ProfilePage from "./pages/ProfilePage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
+// Admin & Mentor Portal
+import AdminGuard from "./components/guards/AdminGuard";
+import AdminLayout from "./components/layout/AdminLayout";
+import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
+import AdminCoursesPage from "./pages/admin/AdminCoursesPage";
+import EditCoursePage from "./pages/admin/EditCoursePage";
+import SubmissionsPage from "./pages/admin/SubmissionsPage";
+import FilesPage from "./pages/admin/FilesPage";
+import StudentsPage from "./pages/admin/StudentsPage";
+
 export default function App() {
   const dispatch = useDispatch();
   const location = useLocation();
@@ -32,6 +42,22 @@ export default function App() {
   }, [location, dispatch]);
   return (
     <Routes>
+      {/* Admin & Mentor Portal */}
+      <Route
+        path="/admin"
+        element={
+          <AdminGuard>
+            <AdminLayout />
+          </AdminGuard>
+        }
+      >
+        <Route index element={<AdminDashboardPage />} />
+        <Route path="courses" element={<AdminCoursesPage />} />
+        <Route path="courses/:courseId" element={<EditCoursePage />} />
+        <Route path="submissions" element={<SubmissionsPage />} />
+        <Route path="files" element={<FilesPage />} />
+        <Route path="students" element={<StudentsPage />} />
+      </Route>
       <Route path="/" element={<Layout />}>
         {/* sargam - Public Auth Entrypoints */}
         <Route path="login" element={<LoginPage />} />

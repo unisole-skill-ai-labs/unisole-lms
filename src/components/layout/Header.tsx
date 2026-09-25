@@ -196,6 +196,16 @@ export default function Header() {
                       </div>
 
                       <div className="py-1 space-y-0.5">
+                        {["ADMIN", "SUPER_ADMIN", "MENTOR", "MEMBER"].includes(user.role) && (
+                          <Link
+                            to="/admin"
+                            onClick={() => setProfileOpen(false)}
+                            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50/80 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors border border-indigo-200/50 dark:border-indigo-800/50"
+                          >
+                            <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                            <span>Course Studio & CMS</span>
+                          </Link>
+                        )}
                         <Link
                           to="/enrolled"
                           onClick={() => setProfileOpen(false)}
