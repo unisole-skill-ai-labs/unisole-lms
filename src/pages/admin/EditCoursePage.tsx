@@ -36,6 +36,8 @@ import {
 } from "../../store/apiSlice";
 import { useAutosave } from "../../utils/useAutosave";
 import { LessonType, ContentStatus, QuizQuestion } from "../../types";
+import RichEditor from "../../components/ui/RichEditor";
+import { renderMarkdownToHtml } from "../../utils/formatContent";
 
 export default function EditCoursePage() {
   const { courseId = "" } = useParams();
@@ -70,6 +72,7 @@ export default function EditCoursePage() {
   const [isFreePreview, setIsFreePreview] = useState(false);
   const [lessonType, setLessonType] = useState<LessonType>("READING");
   const [contentMarkdown, setContentMarkdown] = useState("");
+  const [contentHtml, setContentHtml] = useState("");
   const [durationMinutes, setDurationMinutes] = useState(15);
   const [videoUrl, setVideoUrl] = useState("");
 
@@ -124,7 +127,10 @@ export default function EditCoursePage() {
           const parsed = JSON.parse(activeLessonData.content);
           setLessonType(parsed.type || "READING");
           setIsFreePreview(!!parsed.isFreePreview);
-          setContentMarkdown(parsed.contentMarkdown || "");
+          const rawMd = parsed.contentMarkdown || "";
+          const rawHtml = parsed.contentHtml || renderMarkdownToHtml(rawMd);
+          setContentMarkdown(rawMd || rawHtml);
+          setContentHtml(rawHtml);
           setCodeLanguage(parsed.codeLanguage || "typescript");
           setCodeSnippet(parsed.codeSnippet || "");
           if (parsed.quiz) {
@@ -140,11 +146,15 @@ export default function EditCoursePage() {
             setAttachments(parsed.attachments);
           }
         } else {
-          setContentMarkdown(activeLessonData.content || activeLessonData.description || "");
+          const raw = activeLessonData.content || activeLessonData.description || "";
+          setContentMarkdown(raw);
+          setContentHtml(renderMarkdownToHtml(raw));
           setLessonType("READING");
         }
       } catch {
-        setContentMarkdown(activeLessonData.content || "");
+        const raw = activeLessonData.content || "";
+        setContentMarkdown(raw);
+        setContentHtml(renderMarkdownToHtml(raw));
       }
     }
   }, [activeLessonData]);
@@ -158,6 +168,7 @@ export default function EditCoursePage() {
     type: lessonType,
     isFreePreview,
     contentMarkdown,
+    contentHtml,
     codeLanguage,
     codeSnippet,
     quiz: {
@@ -180,6 +191,7 @@ export default function EditCoursePage() {
       type: currentData.type,
       isFreePreview: currentData.isFreePreview,
       contentMarkdown: currentData.contentMarkdown,
+      contentHtml: currentData.contentHtml,
       codeLanguage: currentData.codeLanguage,
       codeSnippet: currentData.codeSnippet,
       quiz: currentData.quiz,
@@ -195,7 +207,7 @@ export default function EditCoursePage() {
         durationMinutes: currentData.durationMinutes,
         videoUrl: currentData.videoUrl,
         content: payloadContent,
-        description: currentData.contentMarkdown.slice(0, 200),
+        description: currentData.contentMarkdown ? currentData.contentMarkdown.replace(/<[^>]*>/g, "").slice(0, 200) : "",
       },
     }).unwrap();
   };
@@ -272,26 +284,7 @@ export default function EditCoursePage() {
     }
   };
 
-  // Helper formatting for Notes textarea
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const insertFormatting = (prefix: string, suffix = "") => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const current = textarea.value;
-    const selected = current.slice(start, end);
-    const replacement = `${prefix}${selected || "text"}${suffix}`;
-    const nextVal = current.slice(0, start) + replacement + current.slice(end);
-    setContentMarkdown(nextVal);
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(
-        start + prefix.length,
-        start + prefix.length + (selected.length || 4)
-      );
-    }, 10);
-  };
+
 
   // Quiz question management
   const addQuestion = () => {
@@ -640,64 +633,18 @@ export default function EditCoursePage() {
               {/* ──────────────── TYPE === NOTES ──────────────── */}
               {lessonType === "READING" && (
                 <div className="space-y-6">
-                  {/* Clean Formatting Toolbar */}
-                  <div className="flex flex-wrap items-center gap-1 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
-                    <button
-                      onClick={() => insertFormatting("**", "**")}
-                      className="p-1.5 rounded hover:bg-white dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 text-xs font-bold"
-                      title="Bold (Ctrl+B)"
-                    >
-                      <Bold className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => insertFormatting("*", "*")}
-                      className="p-1.5 rounded hover:bg-white dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 text-xs"
-                      title="Italic (Ctrl+I)"
-                    >
-                      <Italic className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => insertFormatting("### ")}
-                      className="p-1.5 rounded hover:bg-white dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 text-xs font-semibold"
-                      title="Heading"
-                    >
-                      <Heading className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => insertFormatting("- ")}
-                      className="p-1.5 rounded hover:bg-white dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 text-xs"
-                      title="Bullet List"
-                    >
-                      <List className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => insertFormatting("`", "`")}
-                      className="p-1.5 rounded hover:bg-white dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 text-xs"
-                      title="Inline Code"
-                    >
-                      <Code className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => insertFormatting("[", "](https://)")}
-                      className="p-1.5 rounded hover:bg-white dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 text-xs"
-                      title="Add Link"
-                    >
-                      <LinkIcon className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  {/* Main Notes Editor Textarea */}
+                  {/* Visual WYSIWYG Notes Editor */}
                   <div>
-                    <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                    <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
                       Lesson Notes & Explanation
                     </label>
-                    <textarea
-                      ref={textareaRef}
-                      rows={12}
-                      value={contentMarkdown}
-                      onChange={(e) => setContentMarkdown(e.target.value)}
+                    <RichEditor
+                      initialValue={contentHtml || contentMarkdown}
+                      onChange={(html) => {
+                        setContentHtml(html);
+                        setContentMarkdown(html);
+                      }}
                       placeholder="Write your study notes, breakdown of concepts, architecture points, and instructions..."
-                      className="w-full p-4 text-xs font-mono rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-800 dark:focus:ring-zinc-200 leading-relaxed"
                     />
                   </div>
 

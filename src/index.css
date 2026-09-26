@@ -175,3 +175,116 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(161, 161, 170, 0.5);
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Rich Content Typography for LMS Student View & CMS Studio
+   Ensures bold is bold, italic is italic, headings look like headings,
+   and lists render bullets/numbers cleanly.
+───────────────────────────────────────────────────────────── */
+.rich-content {
+  color: inherit;
+  line-height: 1.7;
+}
+
+.rich-content b,
+.rich-content strong {
+  font-weight: 700 !important;
+  color: inherit;
+}
+
+.rich-content i,
+.rich-content em {
+  font-style: italic !important;
+  color: inherit;
+}
+
+.rich-content u {
+  text-decoration: underline !important;
+}
+
+.rich-content h1 {
+  font-size: 1.5rem !important;
+  font-weight: 800 !important;
+  margin-top: 1.5rem !important;
+  margin-bottom: 0.5rem !important;
+  line-height: 1.25 !important;
+  color: inherit;
+}
+
+.rich-content h2 {
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  margin-top: 1.25rem !important;
+  margin-bottom: 0.4rem !important;
+  line-height: 1.3 !important;
+  color: inherit;
+}
+
+.rich-content h3 {
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  margin-top: 1rem !important;
+  margin-bottom: 0.35rem !important;
+  line-height: 1.35 !important;
+  color: inherit;
+}
+
+.rich-content p {
+  margin-top: 0.35rem !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.rich-content ul {
+  list-style-type: disc !important;
+  padding-left: 1.5rem !important;
+  margin: 0.5rem 0 0.75rem 0 !important;
+}
+
+.rich-content ol {
+  list-style-type: decimal !important;
+  padding-left: 1.5rem !important;
+  margin: 0.5rem 0 0.75rem 0 !important;
+}
+
+.rich-content li {
+  margin-top: 0.25rem !important;
+  margin-bottom: 0.25rem !important;
+  padding-left: 0.25rem !important;
+}
+
+.rich-content a {
+  color: #6366f1 !important;
+  text-decoration: underline !important;
+  font-weight: 500 !important;
+}
+
+.rich-content a:hover {
+  color: #4f46e5 !important;
+}
+
+.rich-content code {
+  background: rgba(120, 120, 120, 0.15) !important;
+  padding: 0.15rem 0.4rem !important;
+  border-radius: 0.3rem !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 0.875em !important;
+}
+
+.rich-content pre {
+  background: #09090b !important;
+  color: #f4f4f5 !important;
+  padding: 0.85rem 1.15rem !important;
+  border-radius: 0.6rem !important;
+  overflow-x: auto !important;
+  margin: 0.85rem 0 !important;
+  font-size: 0.85rem !important;
+}
+
+.rich-content blockquote {
+  border-left: 3px solid #6366f1 !important;
+  padding-left: 1rem !important;
+  margin: 0.75rem 0 !important;
+  color: #a1a1aa !important;
+  font-style: italic !important;
+}
+
