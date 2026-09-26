@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import {
@@ -35,12 +35,26 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
   const { theme, toggleTheme } = useTheme();
 
   const [cohortDropdownOpen, setCohortDropdownOpen] = useState(false);
-  const [selectedCohort, setSelectedCohort] = useState("Learner Experience - Beta");
+  const [selectedCohort, setSelectedCohort] = useState<string>("");
   const [activeModal, setActiveModal] = useState<"support" | "notifications" | null>(null);
 
   const { data: myPathways = [] } = useGetMyPathwaysQuery(undefined, {
     skip: !isAuthenticated,
   });
+
+  const enrolledCourses = useMemo(() => {
+    return myPathways
+      .map((item: any) => item.pathway || item)
+      .filter((p: any) => p && (p.title || p.name));
+  }, [myPathways]);
+
+  useEffect(() => {
+    if (enrolledCourses.length > 0 && !selectedCohort) {
+      setSelectedCohort(enrolledCourses[0].title || enrolledCourses[0].name);
+    }
+  }, [enrolledCourses, selectedCohort]);
+
+  const activeCohortTitle = selectedCohort || (enrolledCourses[0]?.title || enrolledCourses[0]?.name) || "No Enrolled Courses";
 
   // Lock body scroll when drawer is open
   useEffect(() => {
@@ -193,10 +207,10 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
             >
               <div className="flex flex-col min-w-0 pr-2">
                 <span className="text-xs font-bold text-zinc-800 dark:text-zinc-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                  {selectedCohort}
+                  {activeCohortTitle}
                 </span>
                 <span className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate mt-0.5">
-                  Cohort 1 • Spring 2026
+                  {enrolledCourses.length > 0 ? `${enrolledCourses.length} Enrolled ${enrolledCourses.length === 1 ? "Course" : "Courses"}` : "No Active Enrollments"}
                 </span>
               </div>
               <ChevronDown
@@ -210,25 +224,45 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
             {cohortDropdownOpen && (
               <div className="absolute top-full left-0 right-0 mt-1.5 p-1.5 bg-white dark:bg-[#121622] rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 z-30 animate-fade-in space-y-1">
                 <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                  Select Program / Cohort
+                  Enrolled Courses ({enrolledCourses.length})
                 </div>
-                {["Learner Experience - Beta", "Full-Stack AI Engineering", "Data Analytics Masterclass"].map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => {
-                      setSelectedCohort(c);
-                      setCohortDropdownOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-left transition-colors ${
-                      selectedCohort === c
-                        ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold"
-                        : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
-                    }`}
-                  >
-                    <span className="truncate">{c}</span>
-                    {selectedCohort === c && <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />}
-                  </button>
-                ))}
+                {enrolledCourses.length === 0 ? (
+                  <div className="p-3 text-center space-y-2">
+                    <p className="text-xs text-zinc-500">No enrolled courses yet</p>
+                    <Link
+                      to="/catalog"
+                      onClick={() => {
+                        setCohortDropdownOpen(false);
+                        onClose();
+                      }}
+                      className="inline-block text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                    >
+                      Browse Catalog →
+                    </Link>
+                  </div>
+                ) : (
+                  enrolledCourses.map((c: any) => {
+                    const title = c.title || c.name;
+                    const isSelected = activeCohortTitle === title;
+                    return (
+                      <button
+                        key={c.id || title}
+                        onClick={() => {
+                          setSelectedCohort(title);
+                          setCohortDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-left transition-colors ${
+                          isSelected
+                            ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold"
+                            : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+                        }`}
+                      >
+                        <span className="truncate">{title}</span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />}
+                      </button>
+                    );
+                  })
+                )}
               </div>
             )}
           </div>

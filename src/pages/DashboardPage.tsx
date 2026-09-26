@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
@@ -20,13 +20,25 @@ export default function DashboardPage() {
 
   const [activeTab, setActiveTab] = useState<"active" | "completed">("active");
   const [cohortDropdownOpen, setCohortDropdownOpen] = useState(false);
-  const [selectedCohort, setSelectedCohort] = useState("Learner Experience - Beta");
+  const [selectedCohort, setSelectedCohort] = useState<string>("");
 
   const { data: myPathways = [], isLoading: isPathwaysLoading } = useGetMyPathwaysQuery(undefined, {
     skip: !isAuthenticated,
   });
 
-  const { data: publicPathways = [] } = useGetPublicPathwaysQuery(undefined);
+  const enrolledCourses = useMemo(() => {
+    return myPathways
+      .map((item: any) => item.pathway || item)
+      .filter((p: any) => p && (p.title || p.name));
+  }, [myPathways]);
+
+  useEffect(() => {
+    if (enrolledCourses.length > 0 && !selectedCohort) {
+      setSelectedCohort(enrolledCourses[0].title || enrolledCourses[0].name);
+    }
+  }, [enrolledCourses, selectedCohort]);
+
+  const activeCohortTitle = selectedCohort || (enrolledCourses[0]?.title || enrolledCourses[0]?.name) || "No Enrolled Courses";
 
   // Submissions for the student
   const submissions = useMemo(() => {
@@ -41,43 +53,21 @@ export default function DashboardPage() {
     return submissions.filter((s) => s.status === "PENDING" || s.status === "CHANGES_REQUESTED");
   }, [submissions]);
 
-  // Determine continue learning items
+  // Determine continue learning items (only actual enrolled courses)
   const continueLearningItems = useMemo(() => {
-    if (myPathways.length > 0) {
-      return myPathways.slice(0, 3).map((item: any, idx: number) => {
-        const p = item.pathway || item;
-        const isOdd = idx % 2 === 1;
-        return {
-          id: p.id,
-          title: p.title || "Foundations Course",
-          type: isOdd ? "video" : "quiz",
-          subtitle: isOdd
-            ? "Hierarchical Clustering · 28 Mins 23 Secs Left"
-            : `Quiz - ${p.title?.split(" ")[0] || "Module"} Foundations`,
-          path: `/learn/${p.id}`,
-        };
-      });
-    }
-
-    // Default reference items matching Great Learning UI
-    const defaultPathwayId = publicPathways[0]?.id || "1";
-    return [
-      {
-        id: "py-101",
-        title: "Introduction to Python",
-        type: "quiz",
-        subtitle: "Quiz - Python Foundations",
-        path: `/learn/${defaultPathwayId}`,
-      },
-      {
-        id: "ml-201",
-        title: "Machine Learning AIML",
-        type: "video",
-        subtitle: "Hierarchical Clustering · 28 Mins 23 Secs Left",
-        path: `/learn/${defaultPathwayId}`,
-      },
-    ];
-  }, [myPathways, publicPathways]);
+    return enrolledCourses.map((p: any, idx: number) => {
+      const isOdd = idx % 2 === 1;
+      return {
+        id: p.id,
+        title: p.title || p.name,
+        type: isOdd ? "video" : "quiz",
+        subtitle: isOdd
+          ? "Interactive Module Lessons"
+          : `Quiz & Notes - ${p.title?.split(" ")[0] || "Foundations"}`,
+        path: `/learn/${p.id}`,
+      };
+    });
+  }, [enrolledCourses]);
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-50/70 dark:bg-[#0B0D13] py-4 sm:py-6 transition-colors">
@@ -90,10 +80,12 @@ export default function DashboardPage() {
           >
             <div className="flex flex-col min-w-0 pr-3">
               <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
-                {selectedCohort}
+                {activeCohortTitle}
               </span>
               <span className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
-                Learner Experience - Cohort 1
+                {enrolledCourses.length > 0
+                  ? `${enrolledCourses.length} Enrolled ${enrolledCourses.length === 1 ? "Course" : "Courses"}`
+                  : "No Active Enrollments"}
               </span>
             </div>
             <ChevronDown
@@ -107,25 +99,42 @@ export default function DashboardPage() {
           {cohortDropdownOpen && (
             <div className="absolute top-full left-0 right-0 mt-1.5 p-2 bg-white dark:bg-[#121622] rounded-2xl shadow-xl border border-slate-200 dark:border-zinc-800 z-30 animate-fade-in space-y-1">
               <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                Your Cohorts & Tracks
+                Enrolled Courses ({enrolledCourses.length})
               </div>
-              {["Learner Experience - Beta", "Full-Stack AI Engineering", "Machine Learning AIML Track"].map((c) => (
-                <button
-                  key={c}
-                  onClick={() => {
-                    setSelectedCohort(c);
-                    setCohortDropdownOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-left transition-colors ${
-                    selectedCohort === c
-                      ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold"
-                      : "text-zinc-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60"
-                  }`}
-                >
-                  <span className="truncate">{c}</span>
-                  {selectedCohort === c && <Check className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />}
-                </button>
-              ))}
+              {enrolledCourses.length === 0 ? (
+                <div className="p-3 text-center space-y-2">
+                  <p className="text-xs text-zinc-500">No enrolled courses yet</p>
+                  <Link
+                    to="/catalog"
+                    onClick={() => setCohortDropdownOpen(false)}
+                    className="inline-block text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                  >
+                    Browse Catalog →
+                  </Link>
+                </div>
+              ) : (
+                enrolledCourses.map((c: any) => {
+                  const title = c.title || c.name;
+                  const isSelected = activeCohortTitle === title;
+                  return (
+                    <button
+                      key={c.id || title}
+                      onClick={() => {
+                        setSelectedCohort(title);
+                        setCohortDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-left transition-colors ${
+                        isSelected
+                          ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold"
+                          : "text-zinc-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60"
+                      }`}
+                    >
+                      <span className="truncate">{title}</span>
+                      {isSelected && <Check className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />}
+                    </button>
+                  );
+                })
+              )}
             </div>
           )}
         </div>
@@ -144,37 +153,56 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          <div className="space-y-2.5">
-            {continueLearningItems.map((item) => (
-              <div
-                key={item.id}
-                onClick={() => navigate(item.path)}
-                className="bg-white dark:bg-[#121622] rounded-2xl border border-slate-200/90 dark:border-zinc-800/90 p-3.5 sm:p-4 flex items-center gap-3.5 shadow-2xs hover:border-indigo-300 dark:hover:border-indigo-600/70 hover:shadow-xs transition-all cursor-pointer group"
+          {continueLearningItems.length === 0 ? (
+            <div className="bg-white dark:bg-[#121622] rounded-2xl border border-slate-200/90 dark:border-zinc-800/90 p-8 text-center space-y-3 shadow-2xs">
+              <BookOpen className="w-10 h-10 text-zinc-300 dark:text-zinc-600 mx-auto" />
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                No active courses in progress
+              </h3>
+              <p className="text-xs text-zinc-500 max-w-xs mx-auto leading-relaxed">
+                You are not currently enrolled in any learning pathways. Explore our curated tracks to get started.
+              </p>
+              <Link
+                to="/catalog"
+                className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2.5 px-5 rounded-xl shadow-xs transition-colors"
               >
-                {/* Yellow/Amber Course Thumbnail */}
-                <div className="w-12 h-12 rounded-xl bg-amber-100/80 dark:bg-amber-950/50 border border-amber-200/70 dark:border-amber-900/40 flex items-center justify-center shrink-0 text-amber-700 dark:text-amber-300 shadow-2xs group-hover:scale-105 transition-transform">
-                  <div className="w-6 h-6 rounded-md bg-amber-200/70 dark:bg-amber-800/40 flex items-center justify-center">
-                    <BookOpen className="w-3.5 h-3.5 stroke-[2.2]" />
+                <span>Browse Pathways Catalog</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {continueLearningItems.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => navigate(item.path)}
+                  className="bg-white dark:bg-[#121622] rounded-2xl border border-slate-200/90 dark:border-zinc-800/90 p-3.5 sm:p-4 flex items-center gap-3.5 shadow-2xs hover:border-indigo-300 dark:hover:border-indigo-600/70 hover:shadow-xs transition-all cursor-pointer group"
+                >
+                  {/* Yellow/Amber Course Thumbnail */}
+                  <div className="w-12 h-12 rounded-xl bg-amber-100/80 dark:bg-amber-950/50 border border-amber-200/70 dark:border-amber-900/40 flex items-center justify-center shrink-0 text-amber-700 dark:text-amber-300 shadow-2xs group-hover:scale-105 transition-transform">
+                    <div className="w-6 h-6 rounded-md bg-amber-200/70 dark:bg-amber-800/40 flex items-center justify-center">
+                      <BookOpen className="w-3.5 h-3.5 stroke-[2.2]" />
+                    </div>
                   </div>
-                </div>
 
-                {/* Course & Activity Metadata */}
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                    {item.title}
-                  </h3>
-                  <div className="flex items-center gap-1.5 mt-1 text-xs text-zinc-500 dark:text-zinc-400 truncate">
-                    {item.type === "quiz" ? (
-                      <FileQuestion className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                    ) : (
-                      <Video className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                    )}
-                    <span className="truncate">{item.subtitle}</span>
+                  {/* Course & Activity Metadata */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                      {item.title}
+                    </h3>
+                    <div className="flex items-center gap-1.5 mt-1 text-xs text-zinc-500 dark:text-zinc-400 truncate">
+                      {item.type === "quiz" ? (
+                        <FileQuestion className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                      ) : (
+                        <Video className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                      )}
+                      <span className="truncate">{item.subtitle}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Learning Activities Section */}
