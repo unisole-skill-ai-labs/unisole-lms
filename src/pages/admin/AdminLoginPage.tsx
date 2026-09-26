@@ -69,7 +69,7 @@ export default function AdminLoginPage() {
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-zinc-300 mb-1">
-                Staff Username or Mobile Number
+                Username or Phone Number
               </label>
               <div className="relative">
                 <User className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -77,7 +77,7 @@ export default function AdminLoginPage() {
                   type="text"
                   required
                   autoFocus
-                  placeholder="e.g. girish or registered staff phone"
+                  placeholder="Enter your username or phone number"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-zinc-800 bg-zinc-950 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-600"
@@ -94,7 +94,7 @@ export default function AdminLoginPage() {
                 <input
                   type="password"
                   required
-                  placeholder="Enter staff password..."
+                  placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-zinc-800 bg-zinc-950 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-600"
@@ -107,7 +107,7 @@ export default function AdminLoginPage() {
               disabled={isLoading}
               className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
             >
-              <span>{isLoading ? "Signing In..." : "Sign In to Studio"}</span>
+              <span>{isLoading ? "Signing in..." : "Sign In"}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </form>
