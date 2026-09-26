@@ -6,6 +6,7 @@ import Layout from "./components/layout/Layout";
 import ProtectedRoute from "./components/guards/ProtectedRoute";
 
 import DashboardPage from "./pages/DashboardPage";
+import CatalogPage from "./pages/CatalogPage";
 import PathwayDetailPage from "./pages/PathwayDetailPage";
 import EnrolledCoursesPage from "./pages/EnrolledCoursesPage";
 import LmsPlayerPage from "./pages/LmsPlayerPage";
@@ -74,6 +75,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="catalog"
+          element={
+            <ProtectedRoute>
+              <CatalogPage />
             </ProtectedRoute>
           }
         />
