@@ -132,9 +132,9 @@ export default function CurriculumSidebar({
                                     <button
                                       key={lesson.id}
                                       onClick={() => onSelectLesson(lesson)}
-                                      className={`w-full px-2.5 py-2 rounded-md flex items-center justify-between text-left transition-all text-xs ${
+                                      className={`w-full px-2.5 py-2 rounded-lg flex items-center justify-between text-left transition-all text-xs ${
                                         isActive
-                                          ? "bg-indigo-600 text-white font-bold shadow-xs"
+                                          ? "bg-indigo-600 text-white font-semibold shadow-xs ring-1 ring-indigo-500/40"
                                           : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 hover:text-zinc-900 dark:hover:text-zinc-100 font-medium"
                                       }`}
                                     >

@@ -37,32 +37,32 @@
   }
 
   .dark {
-    --background: 240 10% 4%; /* #09090b */
-    --foreground: 0 0% 98%; /* #fafafa */
+    --background: 224 25% 6%; /* #0b0d13 */
+    --foreground: 210 40% 98%; /* #f8fafc */
     
-    --card: 240 10% 6%; /* #101014 */
-    --card-foreground: 0 0% 98%;
+    --card: 224 24% 10%; /* #121622 */
+    --card-foreground: 210 40% 98%;
     
-    --popover: 240 10% 6%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 224 24% 10%; /* #121622 */
+    --popover-foreground: 210 40% 98%;
     
     --primary: 238 84% 67%; /* #6366f1 */
     --primary-foreground: 0 0% 100%;
     
-    --secondary: 240 4% 12%; /* #1c1c21 */
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 224 20% 16%; /* #1e2433 */
+    --secondary-foreground: 210 40% 98%;
     
-    --muted: 240 5% 65%; /* #a1a1aa */
-    --muted-foreground: 240 5% 65%;
+    --muted: 220 14% 65%; /* #94a3b8 */
+    --muted-foreground: 220 14% 60%;
     
-    --accent: 240 4% 12%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 224 20% 16%; /* #1e2433 */
+    --accent-foreground: 210 40% 98%;
     
     --destructive: 0 63% 51%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 4% 16%; /* #27272a */
-    --input: 240 4% 16%;
+    --border: 224 20% 18%; /* #23293a */
+    --input: 224 20% 18%;
     --ring: 238 84% 67%;
   }
 }
@@ -93,9 +93,9 @@
 }
 
 .dark .minimal-card, .dark .luxury-card {
-  background: #111114;
+  background: #121622;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.5);
 }
 
 .minimal-card:hover, .luxury-card:hover {
@@ -117,9 +117,9 @@
 }
 
 .dark .glass-panel, .dark .glass-card {
-  background: rgba(16, 16, 20, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(18, 22, 34, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -271,10 +271,11 @@
 }
 
 .rich-content pre {
-  background: #09090b !important;
-  color: #f4f4f5 !important;
+  background: #0d0f17 !important;
+  color: #f1f5f9 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
   padding: 0.85rem 1.15rem !important;
-  border-radius: 0.6rem !important;
+  border-radius: 0.75rem !important;
   overflow-x: auto !important;
   margin: 0.85rem 0 !important;
   font-size: 0.85rem !important;
