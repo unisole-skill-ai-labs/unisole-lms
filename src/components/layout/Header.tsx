@@ -14,11 +14,13 @@ import {
   Sparkles,
   Layers,
   X,
+  Menu,
 } from "lucide-react";
 import { logout } from "../../store/authSlice";
 import { useTheme } from "../../context/ThemeContext";
 import { useGetPublicPathwaysQuery } from "../../store/apiSlice";
 import Button from "../ui/Button";
+import LearnerDrawer from "./LearnerDrawer";
 
 export default function Header() {
   const { isAuthenticated, user } = useSelector((state: any) => state.auth);
@@ -29,6 +31,7 @@ export default function Header() {
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -59,6 +62,7 @@ export default function Header() {
       }
       if (e.key === "Escape") {
         setSearchOpen(false);
+        setDrawerOpen(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -68,6 +72,7 @@ export default function Header() {
   useEffect(() => {
     setProfileOpen(false);
     setSearchOpen(false);
+    setDrawerOpen(false);
   }, [location.pathname]);
 
   const handleLogout = () => {
@@ -94,9 +99,19 @@ export default function Header() {
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-200/80 dark:border-zinc-800/80 transition-all shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Brand Logo & Tag */}
-            <div className="flex items-center gap-6">
-              <Link to="/" className="flex items-center gap-3 group">
+            {/* Left: Mobile Drawer Trigger + Brand Logo */}
+            <div className="flex items-center gap-3 sm:gap-6">
+              {/* Mobile Drawer Trigger (Hamburger) */}
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(true)}
+                aria-label="Open learner navigation drawer"
+                className="p-2 -ml-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              >
+                <Menu className="w-5 h-5 stroke-[2]" />
+              </button>
+
+              <Link to="/" className="flex items-center gap-2.5 sm:gap-3 group">
                 <img
                   src="https://res.cloudinary.com/hehmsemf/image/upload/f_auto,q_auto,w_64/v1785299421/Unisole_logo_new_mhqbma.png"
                   alt="Unisole Logo"
@@ -137,8 +152,17 @@ export default function Header() {
             </div>
 
             {/* Right Controls: Search, Theme Toggle, Auth */}
-            <div className="flex items-center gap-2.5">
-              {/* Quick Search Shortcut Button */}
+            <div className="flex items-center gap-1.5 sm:gap-2.5">
+              {/* Mobile Search Icon Button */}
+              <button
+                onClick={() => setSearchOpen(true)}
+                aria-label="Search pathways"
+                className="sm:hidden p-2 rounded-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              >
+                <Search className="w-4 h-4" />
+              </button>
+
+              {/* Quick Search Shortcut Button (Desktop) */}
               <button
                 onClick={() => setSearchOpen(true)}
                 className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 text-xs text-zinc-500 dark:text-zinc-400 border border-zinc-200/60 dark:border-zinc-800 transition-colors"
@@ -308,6 +332,9 @@ export default function Header() {
           </div>
         </div>
       )}
+
+      {/* Mobile-First Navigation Drawer */}
+      <LearnerDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </>
   );
 }
