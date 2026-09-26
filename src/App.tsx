@@ -24,6 +24,7 @@ import EditCoursePage from "./pages/admin/EditCoursePage";
 import SubmissionsPage from "./pages/admin/SubmissionsPage";
 import FilesPage from "./pages/admin/FilesPage";
 import StudentsPage from "./pages/admin/StudentsPage";
+import AdminLoginPage from "./pages/admin/AdminLoginPage";
 
 export default function App() {
   const dispatch = useDispatch();
@@ -42,6 +43,9 @@ export default function App() {
   }, [location, dispatch]);
   return (
     <Routes>
+      {/* Dedicated Admin & Mentor Login */}
+      <Route path="/admin/login" element={<AdminLoginPage />} />
+
       {/* Admin & Mentor Portal */}
       <Route
         path="/admin"

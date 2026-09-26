@@ -14,21 +14,20 @@ export default function AdminGuard({ children }: AdminGuardProps) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // 1. Not signed in: redirect to /login with redirect query param
+  // 1. Not signed in: redirect directly to the separate /admin/login page
   if (!isAuthenticated || !token) {
-    const redirectUrl = `/login?redirect=${encodeURIComponent(location.pathname + location.search)}`;
-    return <Navigate to={redirectUrl} replace />;
+    return <Navigate to="/admin/login" replace />;
   }
 
   // 2. Check Role
   const role = user?.role ? String(user.role).toUpperCase() : "";
   const isAllowed = ["ADMIN", "SUPER_ADMIN", "MENTOR", "MEMBER"].includes(role);
 
-  // 3. User is logged in as a STUDENT: Show informative Access Restricted screen instead of silent bounce
+  // 3. User is logged in as a STUDENT: Show informative Access Restricted screen
   if (!isAllowed) {
     const handleSwitchToStaff = () => {
       dispatch(logout());
-      navigate(`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`);
+      navigate("/admin/login");
     };
 
     return (
