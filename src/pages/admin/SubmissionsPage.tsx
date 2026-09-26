@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { StudentSubmission } from "../../types";
+import { getSubmissions, updateSubmissionReview } from "../../utils/submissionsStorage";
 
 export default function SubmissionsPage() {
   const { user } = useSelector((state: any) => state.auth);
@@ -21,54 +22,7 @@ export default function SubmissionsPage() {
   );
   const [search, setSearch] = useState("");
 
-  // Demo initial submissions data for mentor reviewing
-  const [submissions, setSubmissions] = useState<StudentSubmission[]>([
-    {
-      id: "sub-1",
-      assignmentId: "asg-1",
-      studentId: "u-101",
-      studentName: "Aman Sharma",
-      studentEmail: "aman.sharma@example.com",
-      courseTitle: "Full-Stack AI Engineering",
-      lessonTitle: "Project Setup & Fastify Integration",
-      submissionUrl: "https://github.com/amansharma/unisole-fastify-demo",
-      submissionText: "Completed Docker compose and Fastify route rate-limiter setup as required.",
-      status: "PENDING",
-      createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-    },
-    {
-      id: "sub-2",
-      assignmentId: "asg-2",
-      studentId: "u-102",
-      studentName: "Priya Patel",
-      studentEmail: "priya.p@example.com",
-      courseTitle: "Applied Machine Learning",
-      lessonTitle: "PyTorch Model Training & Evaluation",
-      submissionUrl: "https://github.com/priyapatel/ml-evaluation-pipeline",
-      submissionText: "Trained on CIFAR-10 with ResNet18 reaching 91.2% accuracy.",
-      status: "APPROVED",
-      mentorFeedback: "Excellent accuracy and clean modular code structure. Well done!",
-      reviewedBy: "Mentor",
-      reviewedAt: new Date(Date.now() - 3600000 * 24).toISOString(),
-      createdAt: new Date(Date.now() - 3600000 * 28).toISOString(),
-    },
-    {
-      id: "sub-3",
-      assignmentId: "asg-3",
-      studentId: "u-103",
-      studentName: "Rohan Verma",
-      studentEmail: "rohan.v@example.com",
-      courseTitle: "Full-Stack AI Engineering",
-      lessonTitle: "Vector Database Setup & RAG Search",
-      submissionUrl: "https://github.com/rohanverma/rag-agent-prototype",
-      submissionText: "Added ChromaDB with embedding pipeline.",
-      status: "CHANGES_REQUESTED",
-      mentorFeedback: "Please include error handling for missing OpenAI API keys in the .env file.",
-      reviewedBy: "Mentor",
-      reviewedAt: new Date(Date.now() - 3600000 * 48).toISOString(),
-      createdAt: new Date(Date.now() - 3600000 * 52).toISOString(),
-    },
-  ]);
+  const [submissions, setSubmissions] = useState<StudentSubmission[]>(() => getSubmissions());
 
   // Selected Submission for Review Modal
   const [selectedSub, setSelectedSub] = useState<StudentSubmission | null>(null);
@@ -83,19 +37,13 @@ export default function SubmissionsPage() {
 
   const handleSaveReview = () => {
     if (!selectedSub) return;
-    setSubmissions((prev) =>
-      prev.map((s) =>
-        s.id === selectedSub.id
-          ? {
-              ...s,
-              status: reviewStatus,
-              mentorFeedback: reviewFeedback,
-              reviewedBy: user?.name || "Mentor",
-              reviewedAt: new Date().toISOString(),
-            }
-          : s
-      )
+    updateSubmissionReview(
+      selectedSub.id,
+      reviewStatus,
+      reviewFeedback,
+      user?.name || "Mentor"
     );
+    setSubmissions(getSubmissions());
     setSelectedSub(null);
   };
 

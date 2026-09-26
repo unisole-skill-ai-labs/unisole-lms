@@ -18,6 +18,8 @@ import {
   useGetAdminStudentsQuery,
 } from "../../store/apiSlice";
 
+import { getSubmissions } from "../../utils/submissionsStorage";
+
 export default function AdminDashboardPage() {
   const { user } = useSelector((state: any) => state.auth);
   const { data: courses = [], isLoading: coursesLoading } = useGetAdminCoursesQuery(undefined);
@@ -27,6 +29,9 @@ export default function AdminDashboardPage() {
   const publishedCourses = courses.filter((c: any) => c.status === "PUBLISHED").length;
   const publishedLessons = lessons.filter((l: any) => l.status === "PUBLISHED").length;
   const draftLessons = lessons.filter((l: any) => l.status === "DRAFT").length;
+
+  const allSubmissions = getSubmissions();
+  const pendingSubmissionsCount = allSubmissions.filter((s) => s.status === "PENDING").length;
 
   const stats = [
     {
@@ -52,8 +57,8 @@ export default function AdminDashboardPage() {
     },
     {
       title: "Pending Assignments",
-      value: 0,
-      detail: "All submissions cleared",
+      value: pendingSubmissionsCount,
+      detail: pendingSubmissionsCount > 0 ? `${pendingSubmissionsCount} awaiting review` : "All submissions cleared",
       icon: ClipboardCheck,
       href: "/admin/submissions",
     },
