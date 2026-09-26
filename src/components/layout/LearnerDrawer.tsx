@@ -198,18 +198,18 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin">
+        <div className="flex-1 overflow-y-auto px-4 py-5 space-y-6 scrollbar-thin">
           {/* Cohort / Experience Selector Card */}
           <div className="relative">
             <button
               onClick={() => setCohortDropdownOpen((prev) => !prev)}
-              className="w-full flex items-center justify-between p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900/70 hover:bg-zinc-100/80 dark:hover:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-800 transition-all text-left shadow-2xs group"
+              className="w-full flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/70 hover:bg-zinc-100/80 dark:hover:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-800 transition-all text-left shadow-2xs group"
             >
               <div className="flex flex-col min-w-0 pr-2">
-                <span className="text-xs font-bold text-zinc-800 dark:text-zinc-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                <span className="text-sm font-bold text-zinc-800 dark:text-zinc-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                   {activeCohortTitle}
                 </span>
-                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate mt-0.5">
+                <span className="text-[11px] text-zinc-400 dark:text-zinc-500 truncate mt-0.5">
                   {enrolledCourses.length > 0 ? `${enrolledCourses.length} Enrolled ${enrolledCourses.length === 1 ? "Course" : "Courses"}` : "No Active Enrollments"}
                 </span>
               </div>
@@ -222,8 +222,8 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
 
             {/* Cohort Dropdown */}
             {cohortDropdownOpen && (
-              <div className="absolute top-full left-0 right-0 mt-1.5 p-1.5 bg-white dark:bg-[#121622] rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 z-30 animate-fade-in space-y-1">
-                <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+              <div className="absolute top-full left-0 right-0 mt-1.5 p-2 bg-white dark:bg-[#121622] rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 z-30 animate-fade-in space-y-1">
+                <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
                   Enrolled Courses ({enrolledCourses.length})
                 </div>
                 {enrolledCourses.length === 0 ? (
@@ -251,7 +251,7 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
                           setSelectedCohort(title);
                           setCohortDropdownOpen(false);
                         }}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-left transition-colors ${
+                        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-left transition-colors ${
                           isSelected
                             ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold"
                             : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
@@ -268,7 +268,7 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
           </div>
 
           {/* Navigation Items List */}
-          <nav className="space-y-1">
+          <nav className="space-y-2">
             {navItems.map((item) => {
               const active = isCurrentActive(item.id, item.to);
               const Icon = item.icon;
@@ -278,10 +278,10 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
                   <button
                     key={item.id}
                     onClick={item.onClick}
-                    className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center justify-between px-4 py-3 min-h-[48px] rounded-2xl text-[13px] sm:text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer text-left"
                   >
                     <div className="flex items-center gap-3.5">
-                      <Icon className="w-4 h-4 text-zinc-500 dark:text-zinc-400 stroke-[1.8]" />
+                      <Icon className="w-[18px] h-[18px] text-zinc-500 dark:text-zinc-400 stroke-[1.8]" />
                       <span>{item.name}</span>
                     </div>
                   </button>
@@ -293,7 +293,7 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
                   key={item.id}
                   to={item.to!}
                   onClick={onClose}
-                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs transition-colors ${
+                  className={`flex items-center justify-between px-4 py-3 min-h-[48px] rounded-2xl text-[13px] sm:text-sm transition-colors ${
                     active
                       ? "bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 font-bold shadow-2xs"
                       : "text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 font-medium"
@@ -301,7 +301,7 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
                 >
                   <div className="flex items-center gap-3.5">
                     <Icon
-                      className={`w-4 h-4 stroke-[1.8] ${
+                      className={`w-[18px] h-[18px] stroke-[1.8] ${
                         active ? "text-indigo-600 dark:text-indigo-400 stroke-[2.2]" : "text-zinc-500 dark:text-zinc-400"
                       }`}
                     />
@@ -314,7 +314,7 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
         </div>
 
         {/* Drawer Footer: User Profile & Quick Actions */}
-        <div className="p-4 border-t border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 space-y-3">
+        <div className="p-4 sm:p-5 border-t border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 space-y-3.5">
           {isAuthenticated && user ? (
             <>
               <div className="flex items-center justify-between">
