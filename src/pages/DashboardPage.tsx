@@ -1,17 +1,15 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
-  ChevronDown,
   FileQuestion,
   Video,
   CheckCircle2,
   ArrowRight,
   BookOpen,
-  Check,
   Layers,
 } from "lucide-react";
-import { useGetMyPathwaysQuery, useGetPublicPathwaysQuery } from "../store/apiSlice";
+import { useGetMyPathwaysQuery } from "../store/apiSlice";
 import { getSubmissions } from "../utils/submissionsStorage";
 
 export default function DashboardPage() {
@@ -19,10 +17,8 @@ export default function DashboardPage() {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<"active" | "completed">("active");
-  const [cohortDropdownOpen, setCohortDropdownOpen] = useState(false);
-  const [selectedCohort, setSelectedCohort] = useState<string>("");
 
-  const { data: myPathways = [], isLoading: isPathwaysLoading } = useGetMyPathwaysQuery(undefined, {
+  const { data: myPathways = [] } = useGetMyPathwaysQuery(undefined, {
     skip: !isAuthenticated,
   });
 
@@ -32,14 +28,6 @@ export default function DashboardPage() {
       .filter((p: any) => p && (p.title || p.name));
   }, [myPathways]);
 
-  useEffect(() => {
-    if (enrolledCourses.length > 0 && !selectedCohort) {
-      setSelectedCohort(enrolledCourses[0].title || enrolledCourses[0].name);
-    }
-  }, [enrolledCourses, selectedCohort]);
-
-  const activeCohortTitle = selectedCohort || (enrolledCourses[0]?.title || enrolledCourses[0]?.name) || "No Enrolled Courses";
-
   // Submissions for the student
   const submissions = useMemo(() => {
     return getSubmissions();
@@ -47,10 +35,6 @@ export default function DashboardPage() {
 
   const completedSubmissions = useMemo(() => {
     return submissions.filter((s) => s.status === "APPROVED");
-  }, [submissions]);
-
-  const pendingSubmissions = useMemo(() => {
-    return submissions.filter((s) => s.status === "PENDING" || s.status === "CHANGES_REQUESTED");
   }, [submissions]);
 
   // Determine continue learning items (only actual enrolled courses)
@@ -71,74 +55,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-50/70 dark:bg-[#0B0D13] py-4 sm:py-6 transition-colors">
-      <div className="max-w-2xl mx-auto px-4 space-y-4">
-        {/* Top Cohort Switcher Card */}
-        <div className="relative">
-          <button
-            onClick={() => setCohortDropdownOpen((prev) => !prev)}
-            className="w-full flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-[#121622] hover:bg-slate-50/80 dark:hover:bg-zinc-800/50 border border-slate-200/90 dark:border-zinc-800/90 shadow-2xs transition-all text-left group"
-          >
-            <div className="flex flex-col min-w-0 pr-3">
-              <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
-                {activeCohortTitle}
-              </span>
-              <span className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
-                {enrolledCourses.length > 0
-                  ? `${enrolledCourses.length} Enrolled ${enrolledCourses.length === 1 ? "Course" : "Courses"}`
-                  : "No Active Enrollments"}
-              </span>
-            </div>
-            <ChevronDown
-              className={`w-5 h-5 text-zinc-600 dark:text-zinc-400 shrink-0 transition-transform duration-200 ${
-                cohortDropdownOpen ? "rotate-180 text-indigo-600" : ""
-              }`}
-            />
-          </button>
-
-          {/* Cohort Selector Dropdown */}
-          {cohortDropdownOpen && (
-            <div className="absolute top-full left-0 right-0 mt-1.5 p-2 bg-white dark:bg-[#121622] rounded-2xl shadow-xl border border-slate-200 dark:border-zinc-800 z-30 animate-fade-in space-y-1">
-              <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                Enrolled Courses ({enrolledCourses.length})
-              </div>
-              {enrolledCourses.length === 0 ? (
-                <div className="p-3 text-center space-y-2">
-                  <p className="text-xs text-zinc-500">No enrolled courses yet</p>
-                  <Link
-                    to="/catalog"
-                    onClick={() => setCohortDropdownOpen(false)}
-                    className="inline-block text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
-                  >
-                    Browse Catalog →
-                  </Link>
-                </div>
-              ) : (
-                enrolledCourses.map((c: any) => {
-                  const title = c.title || c.name;
-                  const isSelected = activeCohortTitle === title;
-                  return (
-                    <button
-                      key={c.id || title}
-                      onClick={() => {
-                        setSelectedCohort(title);
-                        setCohortDropdownOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-left transition-colors ${
-                        isSelected
-                          ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold"
-                          : "text-zinc-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60"
-                      }`}
-                    >
-                      <span className="truncate">{title}</span>
-                      {isSelected && <Check className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />}
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          )}
-        </div>
-
+      <div className="max-w-2xl mx-auto px-4 space-y-5">
         {/* Continue Learning Section */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
