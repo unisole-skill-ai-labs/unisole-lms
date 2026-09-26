@@ -1,105 +1,77 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { useSelector } from "react-redux";
-import { BookOpen, Award, CheckCircle2, TrendingUp, Sparkles, Compass, Play, ArrowRight, Layers } from "lucide-react";
+import { BookOpen, CheckCircle2, Compass, Play, Layers } from "lucide-react";
 import { useGetMyPathwaysQuery } from "../store/apiSlice";
-import Card from "../components/ui/Card";
 import Badge from "../components/ui/Badge";
 import Spinner from "../components/ui/Spinner";
 import Button from "../components/ui/Button";
 
 export default function EnrolledCoursesPage() {
-  const { user } = useSelector((state: any) => state.auth);
   const { data: myPathways = [], isLoading } = useGetMyPathwaysQuery(undefined);
 
   const totalEnrolled = myPathways.length;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-8 animate-fade-in">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 animate-fade-in">
+      {/* Page Header with Compact Enrolled Count Badge */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-zinc-100 dark:border-zinc-800/80">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-zinc-100 tracking-tight">
-            My Learning Pathways
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-zinc-100 tracking-tight">
+              My Learning
+            </h1>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40">
+              <BookOpen className="w-3 h-3 stroke-[2.2]" />
+              <span>{totalEnrolled} {totalEnrolled === 1 ? "Enrolled Course" : "Enrolled Courses"}</span>
+            </span>
+          </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-1">
-            Access your enrolled curriculums, modular tracks, and video lessons
+            Courses and curriculums you are actively enrolled in
           </p>
         </div>
 
-        <Link to="/">
+        <Link to="/catalog">
           <Button variant="outline" size="sm" icon={Compass}>
-            Explore More Pathways
+            Explore Catalog
           </Button>
         </Link>
       </div>
 
-      {/* Progress Metric Highlights */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6">
-        <div className="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 mb-1.5">
-            <BookOpen className="w-4 h-4" />
-            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-mono">
-              Enrolled Tracks
-            </span>
-          </div>
-          <span className="text-xl sm:text-3xl font-black text-zinc-900 dark:text-zinc-100">{totalEnrolled}</span>
-        </div>
-
-        <div className="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-1.5">
-            <CheckCircle2 className="w-4 h-4" />
-            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-mono">
-              Access Status
-            </span>
-          </div>
-          <span className="text-xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">Active</span>
-        </div>
-
-        <div className="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-xs col-span-2 sm:col-span-1">
-          <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 mb-1.5">
-            <Sparkles className="w-4 h-4" />
-            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-mono">
-              Account Role
-            </span>
-          </div>
-          <span className="text-xl sm:text-3xl font-black text-zinc-900 dark:text-zinc-100">{user?.role || "STUDENT"}</span>
-        </div>
-      </div>
-
-      {/* Enrolled Pathways Grid */}
+      {/* Enrolled Courses Grid */}
       {isLoading ? (
         <div className="py-16 text-center">
-          <Spinner label="Loading your enrolled pathways..." size="lg" />
+          <Spinner label="Loading your enrolled courses..." size="lg" />
         </div>
       ) : totalEnrolled === 0 ? (
-        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/80 dark:border-zinc-800 p-12 text-center space-y-4 max-w-md mx-auto shadow-xs">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto">
-            <BookOpen className="w-8 h-8" />
+        <div className="bg-white dark:bg-[#121622] rounded-3xl border border-zinc-200/80 dark:border-zinc-800 p-10 text-center space-y-4 max-w-md mx-auto shadow-2xs">
+          <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto">
+            <BookOpen className="w-7 h-7 stroke-[1.8]" />
           </div>
-          <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">No active enrollments yet</h3>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-            You haven't enrolled in any learning pathways yet. Browse our curated catalog to start learning!
+          <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+            No active enrolled courses yet
+          </h3>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-xs mx-auto">
+            You haven't enrolled in any courses yet. Browse our curated catalog to start your learning journey!
           </p>
-          <Link to="/">
-            <Button variant="primary" size="md" icon={Compass}>
+          <Link to="/catalog">
+            <Button variant="primary" size="sm" icon={Compass}>
               Browse Pathways Catalog
             </Button>
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           {myPathways.map((item: any) => {
-            const pathway = item.pathway;
+            const pathway = item.pathway || item;
             if (!pathway) return null;
 
             return (
               <div
                 key={item.enrollmentId || pathway.id}
-                className="minimal-card p-6 flex flex-col justify-between h-full group bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl"
+                className="p-5 flex flex-col justify-between h-full bg-white dark:bg-[#121622] border border-slate-200/90 dark:border-zinc-800/90 rounded-2xl shadow-2xs hover:border-indigo-300 dark:hover:border-indigo-600/70 hover:shadow-xs transition-all group"
               >
-                <div>
-                  <div className="flex items-center justify-between mb-3">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
                     <Badge variant="emerald" size="sm" className="gap-1">
                       <CheckCircle2 className="w-3 h-3" /> Active
                     </Badge>
@@ -112,13 +84,13 @@ export default function EnrolledCoursesPage() {
                     {pathway.title}
                   </h3>
 
-                  <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed">
                     {pathway.shortDescription || pathway.description || "Comprehensive modular learning curriculum."}
                   </p>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
+                <div className="mt-5 pt-3.5 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
                     <Layers className="w-3.5 h-3.5 text-indigo-500" />
                     Full Access
                   </span>
