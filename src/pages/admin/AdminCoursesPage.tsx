@@ -105,7 +105,7 @@ export default function AdminCoursesPage() {
       {!isAdmin && (
         <div className="p-4 rounded-xl border border-indigo-200/70 dark:border-indigo-900/60 bg-indigo-50/60 dark:bg-indigo-950/30 text-xs text-indigo-900 dark:text-indigo-200 flex items-center justify-between">
           <span>
-            You are logged in as <strong>Mentor</strong>. You can author and publish chapters, lessons, quizzes, and tasks inside courses.
+            You are logged in as <strong>Mentor</strong>. You can author and publish chapters, lessons, quizzes, and assignments inside courses.
           </span>
         </div>
       )}

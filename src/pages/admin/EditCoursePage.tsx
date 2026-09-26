@@ -93,10 +93,10 @@ export default function EditCoursePage() {
     },
   ]);
 
-  // Task / Assignment State
-  const [taskInstructions, setTaskInstructions] = useState("");
-  const [allowedTypes, setAllowedTypes] = useState<("GITHUB" | "FILE" | "TEXT")[]>([
-    "GITHUB",
+  // Assignment State
+  const [assignmentInstructions, setAssignmentInstructions] = useState("");
+  const [allowedTypes, setAllowedTypes] = useState<("URL" | "GITHUB" | "FILE" | "TEXT")[]>([
+    "URL",
   ]);
   const [maxPoints, setMaxPoints] = useState(100);
 
@@ -139,8 +139,8 @@ export default function EditCoursePage() {
             setQuestions(parsed.quiz.questions || []);
           }
           if (parsed.assignment) {
-            setTaskInstructions(parsed.assignment.instructions || "");
-            setAllowedTypes(parsed.assignment.allowedTypes || ["GITHUB"]);
+            setAssignmentInstructions(parsed.assignment.instructions || "");
+            setAllowedTypes(parsed.assignment.allowedTypes || ["URL"]);
             setMaxPoints(parsed.assignment.maxPoints || 100);
           }
           if (parsed.attachments) {
@@ -177,7 +177,7 @@ export default function EditCoursePage() {
       questions,
     },
     assignment: {
-      instructions: taskInstructions,
+      instructions: assignmentInstructions,
       allowedTypes,
       maxPoints,
     },
@@ -521,7 +521,7 @@ export default function EditCoursePage() {
                 Select a lesson to edit
               </h3>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Choose any lesson from the outline on the left, or add a new lesson to start writing notes, creating quizzes, or setting tasks.
+                Choose any lesson from the outline on the left, or add a new lesson to start writing notes, creating quizzes, or setting assignments.
               </p>
             </div>
           ) : (
@@ -559,7 +559,7 @@ export default function EditCoursePage() {
                           : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
                       }`}
                     >
-                      Task
+                      Assignment
                     </button>
                   </div>
 
@@ -871,18 +871,18 @@ export default function EditCoursePage() {
                 </div>
               )}
 
-              {/* ──────────────── TYPE === TASK / ASSIGNMENT ──────────────── */}
+              {/* ──────────────── TYPE === ASSIGNMENT ──────────────── */}
               {lessonType === "ASSIGNMENT" && (
                 <div className="space-y-6">
                   {/* Instructions */}
                   <div className="space-y-1">
                     <label className="block text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                      Task Prompt & Problem Statement
+                      Assignment Prompt & Problem Statement
                     </label>
                     <textarea
                       rows={8}
-                      value={taskInstructions}
-                      onChange={(e) => setTaskInstructions(e.target.value)}
+                      value={assignmentInstructions}
+                      onChange={(e) => setAssignmentInstructions(e.target.value)}
                       placeholder="Detail the project requirements, architecture specifications, expected outputs, and submission instructions..."
                       className="w-full p-4 text-xs font-mono rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-800 dark:focus:ring-zinc-200"
                     />
@@ -898,14 +898,17 @@ export default function EditCoursePage() {
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={allowedTypes.includes("GITHUB")}
+                            checked={allowedTypes.includes("URL") || allowedTypes.includes("GITHUB")}
                             onChange={(e) => {
-                              if (e.target.checked) setAllowedTypes([...allowedTypes, "GITHUB"]);
-                              else setAllowedTypes(allowedTypes.filter((t) => t !== "GITHUB"));
+                              if (e.target.checked) {
+                                setAllowedTypes([...allowedTypes.filter((t) => t !== "GITHUB"), "URL"]);
+                              } else {
+                                setAllowedTypes(allowedTypes.filter((t) => t !== "URL" && t !== "GITHUB"));
+                              }
                             }}
                             className="rounded border-zinc-300 text-indigo-600"
                           />
-                          <span>GitHub Repository URL</span>
+                          <span>URLs</span>
                         </label>
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input

@@ -116,7 +116,7 @@ export default function SubmissionsPage() {
           Submissions
         </h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-          Review student task submissions, verify GitHub repositories, and provide mentor feedback.
+          Review student assignment submissions, verify URLs, and provide mentor feedback.
         </p>
       </div>
 
@@ -186,7 +186,7 @@ export default function SubmissionsPage() {
             <thead>
               <tr className="border-b border-zinc-200/80 dark:border-zinc-800 text-[11px] font-bold uppercase tracking-wider text-zinc-400 bg-zinc-50/50 dark:bg-zinc-950/40">
                 <th className="p-4">Student</th>
-                <th className="p-4">Course & Task</th>
+                <th className="p-4">Course & Assignment</th>
                 <th className="p-4">Submission Link</th>
                 <th className="p-4">Status</th>
                 <th className="p-4 text-right">Action</th>

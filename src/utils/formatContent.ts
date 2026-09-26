@@ -22,7 +22,7 @@ export interface ParsedLessonPayload {
   };
   assignment?: {
     instructions: string;
-    allowedTypes: ("GITHUB" | "FILE" | "TEXT")[];
+    allowedTypes: ("URL" | "GITHUB" | "FILE" | "TEXT")[];
     maxPoints?: number;
   };
   attachments?: Array<{

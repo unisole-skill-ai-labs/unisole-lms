@@ -41,7 +41,7 @@ export interface LessonQuiz {
 
 export interface LessonAssignment {
   instructions: string;
-  allowedTypes: ("GITHUB" | "FILE" | "TEXT")[];
+  allowedTypes: ("URL" | "GITHUB" | "FILE" | "TEXT")[];
   maxPoints?: number;
 }
 

@@ -147,14 +147,14 @@ export default function LessonViewer({
             {parsedContent.type === "QUIZ"
               ? "Interactive Knowledge Check"
               : parsedContent.type === "ASSIGNMENT"
-              ? "Hands-on Practical Task"
+              ? "Hands-on Practical Assignment"
               : "Interactive Reading & Study Lesson"}
           </h3>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-md mx-auto">
             {parsedContent.type === "QUIZ"
               ? "Test your understanding of the concepts covered in this module."
               : parsedContent.type === "ASSIGNMENT"
-              ? "Complete the practical task instructions and submit your work for mentor review."
+              ? "Complete the practical assignment instructions and submit your work for mentor review."
               : "This module focuses on core concepts, architecture breakdowns, and hands-on code examples."}
           </p>
         </div>
@@ -168,7 +168,7 @@ export default function LessonViewer({
               {parsedContent.type === "QUIZ"
                 ? "Quiz"
                 : parsedContent.type === "ASSIGNMENT"
-                ? "Task"
+                ? "Assignment"
                 : "Lesson"}
             </Badge>
             {lesson.durationMinutes && (
@@ -358,7 +358,7 @@ export default function LessonViewer({
           <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-4">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 font-mono">
               <FileCheck className="w-4 h-4" />
-              <span>Practical Task & Submission</span>
+              <span>Practical Assignment & Submission</span>
             </div>
             {parsedContent.assignment.maxPoints && (
               <span className="text-xs font-mono font-medium text-zinc-500 dark:text-zinc-400">
@@ -385,12 +385,12 @@ export default function LessonViewer({
             {/* Submission Form */}
             <div className="space-y-3 pt-2">
               <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                Submit Your Work (GitHub Repository Link, Demo URL, or Solution Notes):
+                Submit Your Work (URL, Live Demo Link, or Solution Notes):
               </label>
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="https://github.com/your-username/repo-name"
+                  placeholder="https://..."
                   value={assignmentSubmission}
                   disabled={assignmentSubmitted}
                   onChange={(e) => setAssignmentSubmission(e.target.value)}

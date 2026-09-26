@@ -51,7 +51,7 @@ export default function AdminDashboardPage() {
       href: "/admin/students",
     },
     {
-      title: "Pending Tasks",
+      title: "Pending Assignments",
       value: 0,
       detail: "All submissions cleared",
       icon: ClipboardCheck,
@@ -68,7 +68,7 @@ export default function AdminDashboardPage() {
             Welcome back, {user?.name || "Staff Member"}
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-            Manage your courses, edit chapter lessons, and track student task submissions.
+            Manage your courses, edit chapter lessons, and track student assignment submissions.
           </p>
         </div>
         <div className="flex items-center gap-3">
