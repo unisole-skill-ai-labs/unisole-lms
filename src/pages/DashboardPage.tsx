@@ -6,15 +6,10 @@ import {
   FileQuestion,
   Video,
   CheckCircle2,
-  Clock,
   ArrowRight,
-  Sparkles,
   BookOpen,
   Check,
-  FileText,
-  ExternalLink,
   Layers,
-  GraduationCap,
 } from "lucide-react";
 import { useGetMyPathwaysQuery, useGetPublicPathwaysQuery } from "../store/apiSlice";
 import { getSubmissions } from "../utils/submissionsStorage";
@@ -319,23 +314,6 @@ export default function DashboardPage() {
               )}
             </div>
           )}
-        </section>
-
-        {/* Stay up to date with AI Pulse Card */}
-        <section className="bg-white dark:bg-[#121622] rounded-2xl border border-slate-200/90 dark:border-zinc-800/90 p-4 shadow-2xs flex items-center justify-between gap-4">
-          <div className="space-y-1 min-w-0">
-            <h3 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight truncate">
-              Stay up to date with AI Pulse by GL
-            </h3>
-            <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed">
-              Concise biweekly modules featuring latest AI tools, innovations and practical workflows.
-            </p>
-          </div>
-
-          {/* AI Pulse Badge Graphic */}
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center text-white shrink-0 shadow-xs">
-            <Sparkles className="w-6 h-6 stroke-[2]" />
-          </div>
         </section>
 
         {/* Explore More Catalog Link */}

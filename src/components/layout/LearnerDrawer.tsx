@@ -5,10 +5,7 @@ import {
   Home,
   Calendar,
   Tv,
-  Sparkles,
-  Briefcase,
   Bell,
-  TrendingUp,
   HelpCircle,
   X,
   ChevronDown,
@@ -39,7 +36,7 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
 
   const [cohortDropdownOpen, setCohortDropdownOpen] = useState(false);
   const [selectedCohort, setSelectedCohort] = useState("Learner Experience - Beta");
-  const [activeModal, setActiveModal] = useState<"aiPulse" | "support" | "notifications" | "excelerate" | null>(null);
+  const [activeModal, setActiveModal] = useState<"support" | "notifications" | null>(null);
 
   const { data: myPathways = [] } = useGetMyPathwaysQuery(undefined, {
     skip: !isAuthenticated,
@@ -98,9 +95,6 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
     if (type === "courses") {
       return location.pathname === "/enrolled" || location.pathname.startsWith("/courses");
     }
-    if (type === "gradebook") {
-      return tab === "gradebook";
-    }
     if (path) {
       return location.pathname === path;
     }
@@ -130,34 +124,11 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
       isAction: false,
     },
     {
-      id: "aiPulse",
-      name: "AI Pulse",
-      icon: Sparkles,
-      badge: "New",
-      badgeClass: "bg-rose-100 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400 border border-rose-200/60 dark:border-rose-800/60",
-      isAction: true,
-      onClick: () => setActiveModal("aiPulse"),
-    },
-    {
-      id: "excelerate",
-      name: "Excelerate",
-      icon: Briefcase,
-      isAction: true,
-      onClick: () => setActiveModal("excelerate"),
-    },
-    {
       id: "notifications",
       name: "Notifications",
       icon: Bell,
       isAction: true,
       onClick: () => setActiveModal("notifications"),
-    },
-    {
-      id: "gradebook",
-      name: "Gradebook",
-      icon: TrendingUp,
-      to: "/?tab=gradebook",
-      isAction: false,
     },
     {
       id: "support",
@@ -279,11 +250,6 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
                       <Icon className="w-4 h-4 text-zinc-500 dark:text-zinc-400 stroke-[1.8]" />
                       <span>{item.name}</span>
                     </div>
-                    {item.badge && (
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.badgeClass}`}>
-                        {item.badge}
-                      </span>
-                    )}
                   </button>
                 );
               }
@@ -393,52 +359,6 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
         </div>
       </aside>
 
-      {/* Modal: AI Pulse */}
-      {activeModal === "aiPulse" && (
-        <div
-          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
-          onClick={() => setActiveModal(null)}
-        >
-          <div
-            className="bg-white dark:bg-[#121622] max-w-md w-full rounded-3xl p-6 border border-zinc-200 dark:border-zinc-800 shadow-2xl space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">AI Pulse</h3>
-                  <span className="text-[11px] text-zinc-400">Daily curated AI engineering updates</span>
-                </div>
-              </div>
-              <button
-                onClick={() => setActiveModal(null)}
-                className="p-1 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
-              Stay ahead with bite-sized breakdowns of the latest open-source models, agents, prompt patterns, and engineering workflows curated for Unisole learners.
-            </p>
-            <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800 text-xs space-y-1.5">
-              <span className="font-bold text-indigo-600 dark:text-indigo-400">⚡ Today's Highlight</span>
-              <p className="text-zinc-600 dark:text-zinc-400 text-[11px]">
-                Agentic workflows: How tool-augmented reasoning beats standard prompting in production architectures.
-              </p>
-            </div>
-            <button
-              onClick={() => setActiveModal(null)}
-              className="w-full py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
-            >
-              Explore Pulse Feed
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Modal: Support */}
       {activeModal === "support" && (
         <div
@@ -481,46 +401,6 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
                 <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
               </a>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal: Excelerate */}
-      {activeModal === "excelerate" && (
-        <div
-          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
-          onClick={() => setActiveModal(null)}
-        >
-          <div
-            className="bg-white dark:bg-[#121622] max-w-md w-full rounded-3xl p-6 border border-zinc-200 dark:border-zinc-800 shadow-2xl space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400">
-                  <Briefcase className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Unisole Excelerate</h3>
-                  <span className="text-[11px] text-zinc-400">Career accelerator & hiring drives</span>
-                </div>
-              </div>
-              <button
-                onClick={() => setActiveModal(null)}
-                className="p-1 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
-              Complete your weekly assignments and module quizzes to unlock verified credentials, portfolio reviews, and exclusive career opportunities.
-            </p>
-            <button
-              onClick={() => setActiveModal(null)}
-              className="w-full py-2.5 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white transition-colors"
-            >
-              View Opportunities
-            </button>
           </div>
         </div>
       )}
