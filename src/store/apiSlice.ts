@@ -98,6 +98,22 @@ export const apiSlice = createApi({
       },
       invalidatesTags: ["User", "Enrollment", "Pathway"],
     }),
+    adminLogin: builder.mutation({
+      query: (body) => ({
+        url: "/api/auth/admin-login",
+        method: "POST",
+        body,
+      }),
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(setCredentials(data));
+        } catch {
+          // Handled in component
+        }
+      },
+      invalidatesTags: ["User", "AdminCourses"],
+    }),
     sendOtp: builder.mutation({
       query: (body) => ({
         url: "/api/auth/send-otp",
@@ -334,6 +350,7 @@ export const apiSlice = createApi({
 export const {
   useCheckUserMutation,
   useLoginMutation,
+  useAdminLoginMutation,
   useSendOtpMutation,
   useVerifyOtpMutation,
   useGetMeQuery,

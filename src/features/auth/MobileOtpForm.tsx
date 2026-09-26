@@ -58,7 +58,10 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
   const location = useLocation();
   const dispatch = useDispatch();
 
-  const from = new URLSearchParams(location.search).get("redirect") || "/enrolled";
+  const from =
+    new URLSearchParams(location.search).get("redirect") ||
+    (location.state as any)?.from?.pathname ||
+    "/enrolled";
 
   // Form states
   const [step, setStep] = useState<AuthStep>("PHONE");
