@@ -22,6 +22,7 @@ import {
   AlertCircle,
   HelpCircle,
   FileCode,
+  Loader2,
 } from "lucide-react";
 import {
   useGetAdminCourseByIdQuery,
@@ -216,6 +217,7 @@ export default function EditCoursePage() {
     data: formData,
     onSave: handleSaveLesson,
     enabled: !!activeLessonId,
+    itemKey: activeLessonId,
     delayMs: 1200,
   });
 
@@ -385,24 +387,24 @@ export default function EditCoursePage() {
 
         <div className="flex items-center gap-3">
           {/* Autosave Status Pill */}
-          {activeLessonId && (
-            <div className="flex items-center gap-1.5 text-[11px] font-mono font-medium">
+          {activeLessonId && saveStatus !== "idle" && (
+            <div className="flex items-center gap-1.5 text-xs font-medium transition-all duration-200">
               {saveStatus === "saving" && (
-                <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  Saving...
+                <span className="text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />
+                  <span>Saving...</span>
                 </span>
               )}
               {saveStatus === "saved" && (
                 <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                   <Check className="w-3.5 h-3.5" />
-                  Saved
+                  <span>Saved</span>
                 </span>
               )}
               {saveStatus === "error" && (
                 <span className="text-red-500 flex items-center gap-1">
                   <AlertCircle className="w-3.5 h-3.5" />
-                  Save failed
+                  <span>Save failed</span>
                 </span>
               )}
             </div>
