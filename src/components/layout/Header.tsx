@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import {
+  LayoutDashboard,
   Compass,
   BookOpen,
   LogOut,
@@ -38,7 +39,7 @@ export default function Header() {
   const { data: pathways = [] } = useGetPublicPathwaysQuery(undefined);
 
   const navLinks = [
-    { name: "Pathways Catalog", path: "/", icon: Compass },
+    { name: "Dashboard", path: "/", icon: LayoutDashboard },
     { name: "My Learning", path: "/enrolled", icon: BookOpen, authRequired: true },
   ];
 
