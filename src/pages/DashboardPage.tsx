@@ -53,30 +53,7 @@ export default function DashboardPage() {
       .filter((p: any) => p && (p.title || p.name));
   }, [myPathways]);
 
-  // Selected course for multi-course enrolled students (default to first course)
-  const [selectedCourseIndex, setSelectedCourseIndex] = useState(0);
 
-  const activeCourse = useMemo(() => {
-    if (enrolledCourses.length === 0) {
-      return {
-        id: "",
-        title: "Explore Learning Pathways",
-        subtitle: "Enroll in a curriculum to start your hands-on journey",
-        path: "/catalog",
-        color: "blue" as MacFolderColor,
-      };
-    }
-    const primary = enrolledCourses[selectedCourseIndex] || enrolledCourses[0];
-    const title = primary.title || primary.name;
-    const courseId = primary.id || primary.slug;
-    return {
-      id: courseId,
-      title: title,
-      subtitle: `${primary.shortDescription || "Continue your next structured learning milestone"} · In Progress`,
-      path: `/learn/${courseId}`,
-      color: getFolderColor(title),
-    };
-  }, [enrolledCourses, selectedCourseIndex]);
 
   // Dynamic completed and scheduled activities from backend
   const completedList = useMemo(() => {
@@ -92,7 +69,7 @@ export default function DashboardPage() {
     <div className="min-h-[calc(100vh-4rem)] bg-slate-50/70 dark:bg-[#0B0D13] py-4 sm:py-8 transition-colors">
       <div className="max-w-2xl lg:max-w-3xl mx-auto px-4 sm:px-6 space-y-6">
 
-        {/* ─── Enrolled / Purchased Courses Section (macOS Philosophy) ─── */}
+        {/* ─── Continue Learning: Vertical Course Cards (Matching Reference) ─── */}
         {enrolledCourses.length === 0 ? (
           /* Empty Enrolled Courses Card */
           <div
@@ -110,129 +87,75 @@ export default function DashboardPage() {
             </div>
             <ArrowRight className="w-4 h-4 text-zinc-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 group-hover:translate-x-1 transition-all shrink-0" />
           </div>
-        ) : enrolledCourses.length === 1 ? (
-          /* Single Purchased Course: Primary Hero Card with Mac Folder Icon */
-          <div
-            onClick={() => navigate(activeCourse.path)}
-            className="macos-card rounded-2xl p-4 sm:p-4.5 flex items-center gap-3.5 cursor-pointer group active:scale-[0.99] transition-all"
-          >
-            {/* macOS High-Fidelity Folder Icon */}
-            <MacFolderIcon
-              size="md"
-              color={activeCourse.color}
-              className="group-hover:rotate-[-2deg] transition-transform shrink-0"
-            />
-
-            {/* Course & Next Activity Details */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                  {activeCourse.title}
-                </h3>
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-900/40">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                  Active
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 mt-1 text-xs text-zinc-500 dark:text-zinc-400 truncate">
-                <Video className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0 stroke-[2]" />
-                <span className="truncate">{activeCourse.subtitle}</span>
-              </div>
-            </div>
-
-            {/* Apple style hover action hint */}
-            <div className="hidden sm:flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-              <span>Resume</span>
-              <ChevronRight className="w-4 h-4" />
-            </div>
-          </div>
         ) : (
-          /* Multiple Purchased Courses: macOS Shelf / Finder Stack Selector */
           <div className="space-y-3">
-            {/* Active Highlighted Course Card */}
-            <div
-              onClick={() => navigate(activeCourse.path)}
-              className="macos-card rounded-2xl p-4 sm:p-4.5 flex items-center gap-3.5 cursor-pointer group active:scale-[0.99] transition-all"
-            >
-              <MacFolderIcon
-                size="md"
-                color={activeCourse.color}
-                className="group-hover:rotate-[-2deg] transition-transform shrink-0"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                    {activeCourse.title}
-                  </h3>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-900/40">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                    Active Course
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 mt-1 text-xs text-zinc-500 dark:text-zinc-400 truncate">
-                  <Video className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0 stroke-[2]" />
-                  <span className="truncate">{activeCourse.subtitle}</span>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors"
-              >
-                <span>Continue</span>
-                <Play className="w-3 h-3 fill-current" />
-              </button>
-            </div>
-
-            {/* macOS Horizontal Shelf of Purchased Courses */}
-            <div className="pt-1">
-              <div className="flex items-center justify-between pb-1.5 px-0.5">
-                <span className="text-[11px] font-bold tracking-wide uppercase text-zinc-500 dark:text-zinc-400">
-                  Your Enrolled Courses ({enrolledCourses.length})
-                </span>
+            <div className="flex items-center justify-between px-0.5">
+              <h2 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+                Continue Learning
+              </h2>
+              {enrolledCourses.length > 2 && (
                 <Link
                   to="/enrolled"
-                  className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                  className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
                 >
-                  View All
+                  <span>View All ({enrolledCourses.length})</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
                 </Link>
-              </div>
+              )}
+            </div>
 
-              <div className="flex items-center gap-2.5 overflow-x-auto pb-1 no-scrollbar">
-                {enrolledCourses.map((c: any, idx: number) => {
-                  const isSelected = idx === selectedCourseIndex;
-                  const cTitle = c.title || c.name;
-                  const folderColor = getFolderColor(cTitle);
+            <div className="flex flex-col space-y-3">
+              {enrolledCourses.map((c: any, idx: number) => {
+                const cTitle = c.title || c.name;
+                const courseId = c.id || c.slug;
+                const folderColor = getFolderColor(cTitle);
+                const path = `/learn/${courseId}`;
+                const subtitle = c.shortDescription || "Continue your next structured learning milestone";
 
-                  return (
-                    <button
-                      key={c.id || idx}
-                      type="button"
-                      onClick={() => setSelectedCourseIndex(idx)}
-                      className={`flex items-center gap-2.5 py-2 px-3 rounded-xl border text-left shrink-0 transition-all cursor-pointer ${
-                        isSelected
-                          ? "bg-white dark:bg-[#161a26] border-blue-500/70 shadow-xs ring-2 ring-blue-500/20"
-                          : "bg-white/60 dark:bg-[#121622]/60 border-slate-200/80 dark:border-zinc-800/80 hover:bg-white dark:hover:bg-[#161a26]"
-                      }`}
-                    >
-                      <MacFolderIcon size="sm" color={folderColor} />
-                      <div className="max-w-[140px] truncate">
-                        <div
-                          className={`text-xs font-bold truncate ${
-                            isSelected
-                              ? "text-blue-600 dark:text-blue-400"
-                              : "text-zinc-800 dark:text-zinc-200"
-                          }`}
-                        >
+                return (
+                  <div
+                    key={c.id || idx}
+                    onClick={() => navigate(path)}
+                    className="macos-card rounded-2xl p-4 sm:p-4.5 flex items-center gap-3.5 cursor-pointer group active:scale-[0.99] transition-all"
+                  >
+                    <MacFolderIcon
+                      size="md"
+                      color={folderColor}
+                      className="group-hover:rotate-[-2deg] transition-transform shrink-0"
+                    />
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                           {cTitle}
-                        </div>
-                        <div className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">
-                          {isSelected ? "Selected" : "Switch Course"}
-                        </div>
+                        </h3>
+                        {idx === 0 && (
+                          <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-900/40">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                            Active
+                          </span>
+                        )}
                       </div>
+                      <div className="flex items-center gap-1.5 mt-1 text-xs text-zinc-500 dark:text-zinc-400 truncate">
+                        <Video className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 shrink-0 stroke-[2]" />
+                        <span className="truncate">{subtitle}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(path);
+                      }}
+                      className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors shrink-0"
+                    >
+                      <span>Continue</span>
+                      <Play className="w-3 h-3 fill-current" />
                     </button>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -269,12 +192,20 @@ export default function DashboardPage() {
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-xs mx-auto leading-relaxed">
                   Complete video lectures, quizzes, or hands-on assignments to track your progress and marks here.
                 </p>
-                {activeCourse.id && (
+                {enrolledCourses.length > 0 ? (
                   <button
-                    onClick={() => navigate(activeCourse.path)}
+                    onClick={() => navigate(`/learn/${enrolledCourses[0]?.id || enrolledCourses[0]?.slug}`)}
                     className="mt-3 inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold py-2.5 px-6 rounded-full shadow-xs transition-all cursor-pointer"
                   >
                     <span>Start Learning</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => navigate("/catalog")}
+                    className="mt-3 inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold py-2.5 px-6 rounded-full shadow-xs transition-all cursor-pointer"
+                  >
+                    <span>Explore Catalog</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 )}

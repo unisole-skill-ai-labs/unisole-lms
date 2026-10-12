@@ -103,22 +103,44 @@ export default function LmsPlayerPage() {
       return allCourseModules.map((m: any, idx: number) => {
         const backendLessons = m.lessons || [];
         const videoCount = backendLessons.filter(
-          (l: any) => l.contentType !== "QUIZ" && l.contentType !== "ASSIGNMENT" && l.curriculumMode !== "PRACTICE" && l.curriculumMode !== "TEST" && l.curriculumMode !== "FOLDER"
+          (l: any) =>
+            l.contentType !== "QUIZ" &&
+            l.contentType !== "ASSIGNMENT" &&
+            l.curriculumMode !== "PRACTICE" &&
+            l.curriculumMode !== "TEST" &&
+            l.curriculumMode !== "FOLDER" &&
+            l.type !== "quiz" &&
+            l.type !== "assignment" &&
+            l.type !== "coding_test" &&
+            l.type !== "video_test" &&
+            l.type !== "subjective_test"
         ).length;
         const assessCount = backendLessons.filter(
-          (l: any) => l.contentType === "QUIZ" || l.contentType === "ASSIGNMENT" || l.curriculumMode === "PRACTICE" || l.curriculumMode === "TEST"
+          (l: any) =>
+            l.contentType === "QUIZ" ||
+            l.contentType === "ASSIGNMENT" ||
+            l.curriculumMode === "PRACTICE" ||
+            l.curriculumMode === "TEST" ||
+            l.type === "quiz" ||
+            l.type === "assignment" ||
+            l.type === "coding_test" ||
+            l.type === "video_test" ||
+            l.type === "subjective_test"
         ).length;
         const metaParts: string[] = [];
-        if (videoCount > 0 || assessCount === 0) {
+        if (videoCount > 0) {
           metaParts.push(`${videoCount} ${videoCount === 1 ? "Video" : "Videos"}`);
         }
         if (assessCount > 0) {
           metaParts.push(`${assessCount} ${assessCount === 1 ? "Assessment" : "Assessments"}`);
         }
+        if (metaParts.length === 0) {
+          metaParts.push("0 Lessons");
+        }
         return {
           id: m.id || `mod-${idx}`,
           title: m.title || `Week ${idx + 1}`,
-          meta: metaParts.join(" · ") || "0 Lessons",
+          meta: metaParts.join(" · "),
           items: backendLessons.map((l: any, lIdx: number) => {
             // Try parse structured json content if available
             let parsedContent: any = null;
@@ -504,24 +526,25 @@ export default function LmsPlayerPage() {
       .reduce((acc, l) => acc + ((l as any).maxScore || 10), 0);
   }, [assessmentItems, completedLessonIds]);
 
-  // Dynamic syllabus summary text (only includes items that were actually created)
+  // Dynamic syllabus summary text (strictly synced with actual course content and taxonomy)
   const statsSummary = useMemo(() => {
     if (totalLessons === 0) {
       return "Curriculum in preparation · 0 / 0 Completed";
     }
     const parts: string[] = [];
-    if (totalVideos > 0 || (practiceTasksCount === 0 && testTasksCount === 0)) {
-      parts.push(`${completedVideos} / ${totalVideos} ${totalVideos === 1 ? "Lecture" : "Lectures"}`);
+    if (totalVideos > 0) {
+      parts.push(`${completedVideos} / ${totalVideos} ${totalVideos === 1 ? "Video" : "Videos"}`);
     }
-    if (practiceTasksCount > 0) {
-      parts.push(`${practiceTasksCount} Practice ${practiceTasksCount === 1 ? "Task" : "Tasks"}`);
-    }
-    if (testTasksCount > 0) {
-      parts.push(`${testTasksCount} ${testTasksCount === 1 ? "Test" : "Tests"}`);
+    if (totalAssessments > 0) {
+      parts.push(
+        completedAssessments > 0
+          ? `${completedAssessments} / ${totalAssessments} ${totalAssessments === 1 ? "Assessment" : "Assessments"}`
+          : `${totalAssessments} ${totalAssessments === 1 ? "Assessment" : "Assessments"}`
+      );
     }
     parts.push(`${completedCount} / ${totalLessons} Completed`);
     return parts.join(" · ");
-  }, [totalLessons, completedVideos, totalVideos, practiceTasksCount, testTasksCount, completedCount]);
+  }, [totalLessons, completedVideos, totalVideos, totalAssessments, completedAssessments, completedCount]);
 
   // Contextual status badge (replaces false "AT RISK" on new/empty courses)
   const statusBadge = useMemo(() => {
