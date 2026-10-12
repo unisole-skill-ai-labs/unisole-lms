@@ -17,6 +17,7 @@ import ProfilePage from "./pages/ProfilePage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import CalendarPage from "./pages/CalendarPage";
+import ArticlesPage from "./pages/ArticlesPage";
 
 // Admin & Mentor Portal
 import AdminGuard from "./components/guards/AdminGuard";
@@ -86,6 +87,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <CatalogPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="articles"
+          element={
+            <ProtectedRoute>
+              <ArticlesPage />
             </ProtectedRoute>
           }
         />

@@ -262,7 +262,7 @@ export default function Header() {
 
                         {/* 3. Industry Articles */}
                         <Link
-                          to="/catalog"
+                          to="/articles"
                           onClick={() => setProfileOpen(false)}
                           className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-colors"
                         >
