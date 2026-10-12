@@ -42,7 +42,13 @@ export default function ProfilePage() {
   }
 
   const name = user.name || "Unisole Learner";
-  const email = user.email || (user.phone ? `${user.phone.replace(/[^0-9]/g, "")}@unisole.org` : "learner@unisole.org");
+  const rawEmail = user.email || "";
+  const cleanPhone = user.phone ? user.phone.replace(/[^0-9]/g, "") : "";
+  const isSyntheticEmail = !rawEmail || rawEmail === `${cleanPhone}@unisole.org` || rawEmail === "learner@unisole.org";
+  const hasRealEmail = Boolean(rawEmail && !isSyntheticEmail);
+  const emailDisplay = hasRealEmail ? rawEmail : "Enter your email address";
+  const email = hasRealEmail ? rawEmail : (cleanPhone ? `${cleanPhone}@unisole.org` : "learner@unisole.org");
+
   const phone = user.phone
     ? user.phone.startsWith("+")
       ? user.phone
@@ -53,7 +59,7 @@ export default function ProfilePage() {
 
   const openEdit = (field: "name" | "email" | "phone" | "timezone" | "linkedin") => {
     if (field === "name") setEditValue(user.name || "");
-    if (field === "email") setEditValue(user.email || "");
+    if (field === "email") setEditValue(hasRealEmail ? rawEmail : "");
     if (field === "phone") setEditValue(user.phone || "");
     if (field === "timezone") setEditValue(timezone);
     if (field === "linkedin") setEditValue(linkedin);
@@ -134,15 +140,21 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between py-0.5">
               <div className="flex items-center gap-2.5 min-w-0 pr-2">
                 <Mail className="w-4 h-4 text-zinc-700 dark:text-zinc-300 shrink-0 stroke-[1.8]" />
-                <span className="text-zinc-800 dark:text-zinc-200 truncate font-normal">
-                  {email}
+                <span
+                  className={`truncate ${
+                    hasRealEmail
+                      ? "text-zinc-800 dark:text-zinc-200 font-normal"
+                      : "text-zinc-400 dark:text-zinc-500 italic"
+                  }`}
+                >
+                  {emailDisplay}
                 </span>
               </div>
               <button
                 onClick={() => openEdit("email")}
                 className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline shrink-0 cursor-pointer"
               >
-                Edit
+                {hasRealEmail ? "Edit" : "Add"}
               </button>
             </div>
 
@@ -286,7 +298,9 @@ export default function ProfilePage() {
                   type={activeModal === "email" ? "email" : "text"}
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
-                  placeholder={`Enter your ${activeModal}`}
+                  placeholder={
+                    activeModal === "email" ? "Enter your email address" : `Enter your ${activeModal}`
+                  }
                   className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                   autoFocus
                 />
