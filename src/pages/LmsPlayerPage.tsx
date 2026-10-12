@@ -98,13 +98,27 @@ export default function LmsPlayerPage() {
 
   // Build modules from backend DB or rich canonical curriculum
   const modules: ModuleSection[] = useMemo(() => {
-    if (courses.length > 0 && courses[0].modules?.length > 0) {
-      return courses[0].modules.map((m: any, idx: number) => {
+    const allCourseModules = courses.flatMap((c: any) => c.modules || []);
+    if (allCourseModules.length > 0) {
+      return allCourseModules.map((m: any, idx: number) => {
         const backendLessons = m.lessons || [];
+        const videoCount = backendLessons.filter(
+          (l: any) => l.contentType !== "QUIZ" && l.contentType !== "ASSIGNMENT" && l.curriculumMode !== "PRACTICE" && l.curriculumMode !== "TEST" && l.curriculumMode !== "FOLDER"
+        ).length;
+        const assessCount = backendLessons.filter(
+          (l: any) => l.contentType === "QUIZ" || l.contentType === "ASSIGNMENT" || l.curriculumMode === "PRACTICE" || l.curriculumMode === "TEST"
+        ).length;
+        const metaParts: string[] = [];
+        if (videoCount > 0 || assessCount === 0) {
+          metaParts.push(`${videoCount} ${videoCount === 1 ? "Video" : "Videos"}`);
+        }
+        if (assessCount > 0) {
+          metaParts.push(`${assessCount} ${assessCount === 1 ? "Assessment" : "Assessments"}`);
+        }
         return {
           id: m.id || `mod-${idx}`,
           title: m.title || `Week ${idx + 1}`,
-          meta: `${backendLessons.filter((l: any) => l.contentType !== "QUIZ" && l.contentType !== "ASSIGNMENT").length || 3} Videos · ${backendLessons.filter((l: any) => l.contentType === "QUIZ" || l.contentType === "ASSIGNMENT").length || 2} Assessments`,
+          meta: metaParts.join(" · ") || "0 Lessons",
           items: backendLessons.map((l: any, lIdx: number) => {
             // Try parse structured json content if available
             let parsedContent: any = null;
@@ -432,29 +446,114 @@ export default function LmsPlayerPage() {
     }
   };
 
-  // Progress metrics & Diagram Taxonomy
-  const totalLessons = allLessonItems.length || 1;
-  const completedCount = completedLessonIds.length;
-  const progressPercent = Math.min(100, Math.round((completedCount / totalLessons) * 100));
+  // Progress metrics & Diagram Taxonomy (strictly based on actual created course content)
+  const actionableLessons = useMemo(() => {
+    return allLessonItems.filter((l) => l.type !== "folder" && (l as any).category !== "FOLDER");
+  }, [allLessonItems]);
 
-  const totalAssessments = allLessonItems.filter(
-    (l) => l.type === "quiz" || l.type === "assignment" || (l as any).category === "PRACTICE" || (l as any).category === "TEST"
-  ).length || 24;
-  const completedAssessments = allLessonItems.filter(
-    (l) => (l.type === "quiz" || l.type === "assignment" || (l as any).category) && completedLessonIds.includes(l.id)
-  ).length;
-  const currentMarks = completedAssessments * 10;
-  const maxMarks = totalAssessments * 10;
+  const totalLessons = actionableLessons.length;
+  const completedLessonsInCourse = useMemo(() => {
+    return actionableLessons.filter((l) => completedLessonIds.includes(l.id));
+  }, [actionableLessons, completedLessonIds]);
+  const completedCount = completedLessonsInCourse.length;
+  const progressPercent = totalLessons > 0 ? Math.min(100, Math.round((completedCount / totalLessons) * 100)) : 0;
 
-  const totalVideos = allLessonItems.filter((l) => l.type === "video").length || 36;
-  const completedVideos = allLessonItems.filter((l) => l.type === "video" && completedLessonIds.includes(l.id)).length;
+  // Breakdown of actual content types
+  const lectureItems = useMemo(() => {
+    return actionableLessons.filter((l) => l.type === "video" || (l as any).category === "LECTURE");
+  }, [actionableLessons]);
+  const totalVideos = lectureItems.length;
+  const completedVideos = useMemo(() => {
+    return lectureItems.filter((l) => completedLessonIds.includes(l.id)).length;
+  }, [lectureItems, completedLessonIds]);
 
-  const practiceTasksCount = allLessonItems.filter(
-    (l) => l.type === "quiz" || (l as any).category === "PRACTICE"
-  ).length || 15;
-  const testTasksCount = allLessonItems.filter(
-    (l) => (l as any).category === "TEST" || (l as any).type === "CODING_TEST" || (l as any).type === "SUBJECTIVE_TEST" || (l as any).type === "VIDEO_TEST" || l.type === "assignment"
-  ).length || 9;
+  const practiceItems = useMemo(() => {
+    return actionableLessons.filter(
+      (l) => (l as any).category === "PRACTICE" || (l.type === "quiz" && (l as any).category !== "TEST")
+    );
+  }, [actionableLessons]);
+  const practiceTasksCount = practiceItems.length;
+
+  const testItems = useMemo(() => {
+    return actionableLessons.filter(
+      (l) =>
+        (l as any).category === "TEST" ||
+        (l as any).type === "coding_test" ||
+        (l as any).type === "subjective_test" ||
+        (l as any).type === "video_test" ||
+        (l.type === "assignment" && (l as any).category !== "PRACTICE")
+    );
+  }, [actionableLessons]);
+  const testTasksCount = testItems.length;
+
+  const assessmentItems = useMemo(() => {
+    return [...practiceItems, ...testItems];
+  }, [practiceItems, testItems]);
+  const totalAssessments = assessmentItems.length;
+  const completedAssessments = useMemo(() => {
+    return assessmentItems.filter((l) => completedLessonIds.includes(l.id)).length;
+  }, [assessmentItems, completedLessonIds]);
+
+  const maxMarks = useMemo(() => {
+    return assessmentItems.reduce((acc, l) => acc + ((l as any).maxScore || 10), 0);
+  }, [assessmentItems]);
+
+  const currentMarks = useMemo(() => {
+    return assessmentItems
+      .filter((l) => completedLessonIds.includes(l.id))
+      .reduce((acc, l) => acc + ((l as any).maxScore || 10), 0);
+  }, [assessmentItems, completedLessonIds]);
+
+  // Dynamic syllabus summary text (only includes items that were actually created)
+  const statsSummary = useMemo(() => {
+    if (totalLessons === 0) {
+      return "Curriculum in preparation · 0 / 0 Completed";
+    }
+    const parts: string[] = [];
+    if (totalVideos > 0 || (practiceTasksCount === 0 && testTasksCount === 0)) {
+      parts.push(`${completedVideos} / ${totalVideos} ${totalVideos === 1 ? "Lecture" : "Lectures"}`);
+    }
+    if (practiceTasksCount > 0) {
+      parts.push(`${practiceTasksCount} Practice ${practiceTasksCount === 1 ? "Task" : "Tasks"}`);
+    }
+    if (testTasksCount > 0) {
+      parts.push(`${testTasksCount} ${testTasksCount === 1 ? "Test" : "Tests"}`);
+    }
+    parts.push(`${completedCount} / ${totalLessons} Completed`);
+    return parts.join(" · ");
+  }, [totalLessons, completedVideos, totalVideos, practiceTasksCount, testTasksCount, completedCount]);
+
+  // Contextual status badge (replaces false "AT RISK" on new/empty courses)
+  const statusBadge = useMemo(() => {
+    if (totalLessons === 0) {
+      return {
+        label: "IN PREPARATION",
+        className: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+      };
+    }
+    if (completedCount === totalLessons) {
+      return {
+        label: "COMPLETED",
+        className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+      };
+    }
+    if (completedCount === 0) {
+      return {
+        label: "NOT STARTED",
+        className: "bg-sky-500/10 text-sky-400 border-sky-500/20",
+      };
+    }
+    if (progressPercent >= 70) {
+      return {
+        label: "ON TRACK",
+        className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+      };
+    }
+    return {
+      label: "IN PROGRESS",
+      className: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    };
+  }, [totalLessons, completedCount, progressPercent]);
 
   // Full milestone list for modal and diamond tracker
   const milestoneList = useMemo(() => {
@@ -604,8 +703,8 @@ export default function LmsPlayerPage() {
 
               {/* Status Badge */}
               <div>
-                <span className="inline-block px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                  {progressPercent === 0 ? "AT RISK" : progressPercent >= 70 ? "ON TRACK" : "IN PROGRESS"}
+                <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${statusBadge.className}`}>
+                  {statusBadge.label}
                 </span>
               </div>
 
@@ -615,7 +714,7 @@ export default function LmsPlayerPage() {
                   {courseTitle}
                 </h1>
                 <p className="text-xs text-slate-300 mt-1 font-medium">
-                  {completedVideos} / {totalVideos} Lectures · {practiceTasksCount} Practice Tasks · {testTasksCount} Tests · {completedCount} / {totalLessons} Completed
+                  {statsSummary}
                 </p>
               </div>
 
@@ -636,8 +735,10 @@ export default function LmsPlayerPage() {
               <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 pt-2">
                 {/* Mandatory Assessments Card */}
                 <div
-                  onClick={() => setIsMilestonesOpen(true)}
-                  className="sm:col-span-3 bg-white/[0.06] hover:bg-white/[0.12] backdrop-blur-md border border-white/10 rounded-2xl p-3 sm:p-3.5 flex items-center justify-between cursor-pointer transition-all shadow-sm group"
+                  onClick={() => totalAssessments > 0 && setIsMilestonesOpen(true)}
+                  className={`sm:col-span-3 bg-white/[0.06] backdrop-blur-md border border-white/10 rounded-2xl p-3 sm:p-3.5 flex items-center justify-between transition-all shadow-sm group ${
+                    totalAssessments > 0 ? "hover:bg-white/[0.12] cursor-pointer" : "opacity-80 cursor-default"
+                  }`}
                 >
                   <div className="flex items-center gap-3 min-w-0 pr-1">
                     <div className="w-9 h-9 rounded-xl bg-sky-500/20 border border-sky-500/30 text-sky-300 flex items-center justify-center shrink-0">
@@ -648,11 +749,13 @@ export default function LmsPlayerPage() {
                         Curriculum Assessments ({totalAssessments})
                       </p>
                       <p className="text-[10px] text-sky-200/80 truncate mt-0.5 font-medium">
-                        View All Milestones
+                        {totalAssessments > 0 ? "View All Milestones" : "No assessments scheduled"}
                       </p>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-white/80 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                  {totalAssessments > 0 && (
+                    <ChevronRight className="w-4 h-4 text-white/80 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                  )}
                 </div>
 
                 {/* Marks Card */}
