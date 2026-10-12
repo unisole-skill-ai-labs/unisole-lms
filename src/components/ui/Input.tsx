@@ -38,7 +38,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
           ref={ref}
           id={inputId}
           className={cn(
-            "w-full bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-slate-100 border rounded-xl px-3.5 py-2.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-400 dark:disabled:bg-slate-950 dark:disabled:text-slate-600 placeholder:text-slate-400 dark:placeholder:text-slate-500",
+            "w-full bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-slate-100 border rounded-xl px-3.5 py-2.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:bg-slate-50 disabled:text-slate-400 dark:disabled:bg-slate-950 dark:disabled:text-slate-600 placeholder:text-slate-400 dark:placeholder:text-slate-500",
             Icon ? "pl-10" : "",
             error
               ? "border-rose-400 dark:border-rose-800/80 focus:border-rose-500 focus:ring-rose-500/20"

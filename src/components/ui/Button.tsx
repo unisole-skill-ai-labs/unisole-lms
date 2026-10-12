@@ -36,9 +36,9 @@ export default function Button({
 
   const variantStyles = {
     primary:
-      "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-100 dark:shadow-none focus:ring-indigo-500",
+      "bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-100 dark:shadow-none focus:ring-blue-500",
     brand:
-      "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-lg shadow-indigo-500/10 dark:shadow-none focus:ring-indigo-500",
+      "bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-700 hover:to-sky-600 text-white shadow-lg shadow-blue-500/10 dark:shadow-none focus:ring-blue-500",
     secondary:
       "bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200/50 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-100 dark:border-slate-700/50 focus:ring-slate-400",
     outline:

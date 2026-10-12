@@ -21,7 +21,7 @@ export default function EnrolledCoursesPage() {
             <h1 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-zinc-100 tracking-tight">
               My Learning
             </h1>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 border border-blue-100 dark:border-blue-900/40">
               <BookOpen className="w-3 h-3 stroke-[2.2]" />
               <span>{totalEnrolled} {totalEnrolled === 1 ? "Enrolled Course" : "Enrolled Courses"}</span>
             </span>
