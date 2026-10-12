@@ -174,22 +174,31 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
     },
   ];
 
-  if (!isOpen) return null;
-
   return (
     <>
-      {/* Backdrop */}
+      {/* Drawer Container (Pre-mounted for instant zero-lag slide on low-end mobile) */}
       <div
-        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs transition-opacity animate-fade-in"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
-      {/* Drawer Panel */}
-      <aside
-        aria-label="Learner Navigation Drawer"
-        className="fixed inset-y-0 left-0 z-50 w-[300px] sm:w-[330px] max-w-[85vw] bg-white dark:bg-[#121622] text-slate-900 dark:text-slate-100 shadow-2xl flex flex-col border-r border-slate-200/80 dark:border-slate-800/80 animate-in slide-in-from-left duration-300 select-none overflow-hidden"
+        className={`fixed inset-0 z-50 transition-[visibility] duration-200 ${
+          isOpen ? "visible pointer-events-auto" : "invisible pointer-events-none"
+        }`}
+        aria-hidden={!isOpen}
       >
+        {/* Backdrop (Solid alpha overlay, zero GPU blur choke on budget phones) */}
+        <div
+          className={`fixed inset-0 bg-black/60 transition-opacity duration-200 ease-out ${
+            isOpen ? "opacity-100" : "opacity-0"
+          }`}
+          onClick={onClose}
+          aria-hidden="true"
+        />
+
+        {/* Drawer Panel (Dedicated GPU Compositor Layer, hardware translate3d) */}
+        <aside
+          aria-label="Learner Navigation Drawer"
+          className={`fixed inset-y-0 left-0 z-50 w-[300px] sm:w-[330px] max-w-[85vw] bg-white dark:bg-[#121622] text-slate-900 dark:text-slate-100 shadow-xl flex flex-col border-r border-slate-200/80 dark:border-slate-800/80 select-none overflow-hidden transform-gpu will-change-transform transition-transform duration-200 ease-out ${
+            isOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
         {/* Drawer Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800/80">
           <Link to="/" onClick={onClose} className="flex items-center gap-2.5">
@@ -428,15 +437,16 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
           )}
         </div>
       </aside>
+      </div>
 
       {/* Modal: Support */}
       {activeModal === "support" && (
         <div
-          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 animate-fade-in"
           onClick={() => setActiveModal(null)}
         >
           <div
-            className="bg-white dark:bg-[#121622] max-w-md w-full rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4"
+            className="bg-white dark:bg-[#121622] max-w-md w-full rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -478,11 +488,11 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
       {/* Modal: Notifications */}
       {activeModal === "notifications" && (
         <div
-          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 animate-fade-in"
           onClick={() => setActiveModal(null)}
         >
           <div
-            className="bg-white dark:bg-[#121622] max-w-md w-full rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4"
+            className="bg-white dark:bg-[#121622] max-w-md w-full rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
