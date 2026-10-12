@@ -9,10 +9,24 @@ import {
   ArrowRight,
   BookOpen,
   Layers,
-  LayoutGrid,
   Check,
+  Play,
+  Sparkles,
+  ChevronRight,
 } from "lucide-react";
 import { useGetMyPathwaysQuery, useGetStudentActivitiesQuery } from "../store/apiSlice";
+import MacFolderIcon, { MacFolderColor } from "../components/ui/MacFolderIcon";
+import MacSegmentedControl from "../components/ui/MacSegmentedControl";
+
+// Helper to determine macOS folder color based on course title / topic
+const getFolderColor = (title: string = ""): MacFolderColor => {
+  const t = title.toLowerCase();
+  if (t.includes("analytic") || t.includes("data") || t.includes("excel")) return "amber";
+  if (t.includes("ai") || t.includes("machine learning") || t.includes("python")) return "blue";
+  if (t.includes("web") || t.includes("full stack") || t.includes("react")) return "emerald";
+  if (t.includes("science") || t.includes("math")) return "purple";
+  return "blue";
+};
 
 export default function DashboardPage() {
   const { isAuthenticated, user } = useSelector((state: any) => state.auth);
@@ -25,7 +39,7 @@ export default function DashboardPage() {
     return tab === "active" ? "active" : "completed";
   });
 
-  const { data: myPathways = [] } = useGetMyPathwaysQuery(undefined, {
+  const { data: myPathways = [], isLoading: isPathwaysLoading } = useGetMyPathwaysQuery(undefined, {
     skip: !isAuthenticated,
   });
 
@@ -39,17 +53,20 @@ export default function DashboardPage() {
       .filter((p: any) => p && (p.title || p.name));
   }, [myPathways]);
 
-  // Top active course banner matching student's enrolled pathway
-  const topCourse = useMemo(() => {
-    const primary = enrolledCourses[0];
-    if (!primary) {
+  // Selected course for multi-course enrolled students (default to first course)
+  const [selectedCourseIndex, setSelectedCourseIndex] = useState(0);
+
+  const activeCourse = useMemo(() => {
+    if (enrolledCourses.length === 0) {
       return {
         id: "",
         title: "Explore Learning Pathways",
         subtitle: "Enroll in a curriculum to start your hands-on journey",
         path: "/catalog",
+        color: "blue" as MacFolderColor,
       };
     }
+    const primary = enrolledCourses[selectedCourseIndex] || enrolledCourses[0];
     const title = primary.title || primary.name;
     const courseId = primary.id || primary.slug;
     return {
@@ -57,8 +74,9 @@ export default function DashboardPage() {
       title: title,
       subtitle: `${primary.shortDescription || "Continue your next structured learning milestone"} · In Progress`,
       path: `/learn/${courseId}`,
+      color: getFolderColor(title),
     };
-  }, [enrolledCourses]);
+  }, [enrolledCourses, selectedCourseIndex]);
 
   // Dynamic completed and scheduled activities from backend
   const completedList = useMemo(() => {
@@ -73,82 +91,188 @@ export default function DashboardPage() {
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-50/70 dark:bg-[#0B0D13] py-4 sm:py-8 transition-colors">
       <div className="max-w-2xl lg:max-w-3xl mx-auto px-4 sm:px-6 space-y-6">
-        {/* Top Active Course & Next Lesson Card (Great Learning Style) */}
-        <div
-          onClick={() => navigate(topCourse.path)}
-          className="bg-white dark:bg-[#121622] rounded-2xl border border-slate-200/80 dark:border-zinc-800/80 p-4 flex items-center gap-3.5 shadow-2xs hover:border-slate-300 dark:hover:border-zinc-700 hover:shadow-xs transition-all cursor-pointer group"
-        >
-          {/* Amber 4-Square Thumbnail */}
-          <div className="w-12 h-12 rounded-xl bg-[#FDE8B3] dark:bg-amber-950/60 border border-amber-200/70 dark:border-amber-900/40 flex items-center justify-center shrink-0 text-[#B87708] dark:text-amber-300 shadow-2xs group-hover:scale-105 transition-transform">
-            <LayoutGrid className="w-6 h-6 stroke-[1.8]" />
-          </div>
 
-          {/* Course & Next Activity Details */}
-          <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-              {topCourse.title}
-            </h3>
-            <div className="flex items-center gap-1.5 mt-1 text-xs text-zinc-500 dark:text-zinc-400 truncate">
-              <Video className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0 stroke-[2]" />
-              <span className="truncate">{topCourse.subtitle}</span>
+        {/* ─── Enrolled / Purchased Courses Section (macOS Philosophy) ─── */}
+        {enrolledCourses.length === 0 ? (
+          /* Empty Enrolled Courses Card */
+          <div
+            onClick={() => navigate("/catalog")}
+            className="macos-card rounded-2xl p-4 sm:p-5 flex items-center gap-4 cursor-pointer group"
+          >
+            <MacFolderIcon size="md" color="blue" />
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                Explore Learning Pathways
+              </h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 truncate">
+                Enroll in a curriculum to start your hands-on journey
+              </p>
+            </div>
+            <ArrowRight className="w-4 h-4 text-zinc-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 group-hover:translate-x-1 transition-all shrink-0" />
+          </div>
+        ) : enrolledCourses.length === 1 ? (
+          /* Single Purchased Course: Primary Hero Card with Mac Folder Icon */
+          <div
+            onClick={() => navigate(activeCourse.path)}
+            className="macos-card rounded-2xl p-4 sm:p-4.5 flex items-center gap-3.5 cursor-pointer group active:scale-[0.99] transition-all"
+          >
+            {/* macOS High-Fidelity Folder Icon */}
+            <MacFolderIcon
+              size="md"
+              color={activeCourse.color}
+              className="group-hover:rotate-[-2deg] transition-transform shrink-0"
+            />
+
+            {/* Course & Next Activity Details */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                  {activeCourse.title}
+                </h3>
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-900/40">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                  Active
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 mt-1 text-xs text-zinc-500 dark:text-zinc-400 truncate">
+                <Video className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0 stroke-[2]" />
+                <span className="truncate">{activeCourse.subtitle}</span>
+              </div>
+            </div>
+
+            {/* Apple style hover action hint */}
+            <div className="hidden sm:flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+              <span>Resume</span>
+              <ChevronRight className="w-4 h-4" />
             </div>
           </div>
-        </div>
-
-        {/* Learning Activities Section */}
-        <section className="space-y-3.5 pt-1">
-          <h2 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-            Learning Activities
-          </h2>
-
-          {/* Tab Switcher */}
-          <div className="flex items-center border-b border-slate-200 dark:border-zinc-800">
-            <button
-              onClick={() => setActiveTab("active")}
-              className={`pb-2.5 px-6 text-sm font-semibold transition-all relative cursor-pointer ${
-                activeTab === "active"
-                  ? "text-blue-600 dark:text-blue-400 font-bold"
-                  : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
-              }`}
+        ) : (
+          /* Multiple Purchased Courses: macOS Shelf / Finder Stack Selector */
+          <div className="space-y-3">
+            {/* Active Highlighted Course Card */}
+            <div
+              onClick={() => navigate(activeCourse.path)}
+              className="macos-card rounded-2xl p-4 sm:p-4.5 flex items-center gap-3.5 cursor-pointer group active:scale-[0.99] transition-all"
             >
-              Active
-              {activeTab === "active" && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400 rounded-full" />
-              )}
-            </button>
+              <MacFolderIcon
+                size="md"
+                color={activeCourse.color}
+                className="group-hover:rotate-[-2deg] transition-transform shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    {activeCourse.title}
+                  </h3>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-900/40">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                    Active Course
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 mt-1 text-xs text-zinc-500 dark:text-zinc-400 truncate">
+                  <Video className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0 stroke-[2]" />
+                  <span className="truncate">{activeCourse.subtitle}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors"
+              >
+                <span>Continue</span>
+                <Play className="w-3 h-3 fill-current" />
+              </button>
+            </div>
 
-            <button
-              onClick={() => setActiveTab("completed")}
-              className={`pb-2.5 px-6 text-sm font-semibold transition-all relative cursor-pointer ${
-                activeTab === "completed"
-                  ? "text-blue-600 dark:text-blue-400 font-bold"
-                  : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
-              }`}
-            >
-              Completed
-              {activeTab === "completed" && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400 rounded-full" />
-              )}
-            </button>
+            {/* macOS Horizontal Shelf of Purchased Courses */}
+            <div className="pt-1">
+              <div className="flex items-center justify-between pb-1.5 px-0.5">
+                <span className="text-[11px] font-bold tracking-wide uppercase text-zinc-500 dark:text-zinc-400">
+                  Your Enrolled Courses ({enrolledCourses.length})
+                </span>
+                <Link
+                  to="/enrolled"
+                  className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  View All
+                </Link>
+              </div>
+
+              <div className="flex items-center gap-2.5 overflow-x-auto pb-1 no-scrollbar">
+                {enrolledCourses.map((c: any, idx: number) => {
+                  const isSelected = idx === selectedCourseIndex;
+                  const cTitle = c.title || c.name;
+                  const folderColor = getFolderColor(cTitle);
+
+                  return (
+                    <button
+                      key={c.id || idx}
+                      type="button"
+                      onClick={() => setSelectedCourseIndex(idx)}
+                      className={`flex items-center gap-2.5 py-2 px-3 rounded-xl border text-left shrink-0 transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-white dark:bg-[#161a26] border-blue-500/70 shadow-xs ring-2 ring-blue-500/20"
+                          : "bg-white/60 dark:bg-[#121622]/60 border-slate-200/80 dark:border-zinc-800/80 hover:bg-white dark:hover:bg-[#161a26]"
+                      }`}
+                    >
+                      <MacFolderIcon size="sm" color={folderColor} />
+                      <div className="max-w-[140px] truncate">
+                        <div
+                          className={`text-xs font-bold truncate ${
+                            isSelected
+                              ? "text-blue-600 dark:text-blue-400"
+                              : "text-zinc-800 dark:text-zinc-200"
+                          }`}
+                        >
+                          {cTitle}
+                        </div>
+                        <div className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">
+                          {isSelected ? "Selected" : "Switch Course"}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─── Learning Activities Section ─── */}
+        <section className="space-y-4 pt-1">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h2 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+              Learning Activities
+            </h2>
+
+            {/* Apple macOS Segmented Control */}
+            <MacSegmentedControl<"active" | "completed">
+              value={activeTab}
+              onChange={(val) => setActiveTab(val)}
+              options={[
+                { value: "active", label: "Active", badge: activeList.length > 0 ? activeList.length : undefined },
+                { value: "completed", label: "Completed", badge: completedList.length > 0 ? completedList.length : undefined },
+              ]}
+            />
           </div>
 
           {/* Tab Content */}
           {activeTab === "completed" ? (
             completedList.length === 0 ? (
-              <div className="bg-white dark:bg-[#121622] rounded-3xl border border-slate-200/90 dark:border-zinc-800/90 p-8 text-center space-y-3">
-                <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto">
+              /* Empty Completed State matching screenshot with macOS glassmorphism */
+              <div className="macos-card rounded-3xl p-8 sm:p-10 text-center space-y-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto shadow-2xs border border-blue-100 dark:border-blue-900/40">
                   <CheckCircle2 className="w-6 h-6 stroke-[1.8]" />
                 </div>
-                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100">
                   No completed learning activities yet
                 </h3>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-xs mx-auto leading-relaxed">
                   Complete video lectures, quizzes, or hands-on assignments to track your progress and marks here.
                 </p>
-                {topCourse.id && (
+                {activeCourse.id && (
                   <button
-                    onClick={() => navigate(topCourse.path)}
-                    className="mt-2 inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-5 rounded-full shadow-xs transition-colors cursor-pointer"
+                    onClick={() => navigate(activeCourse.path)}
+                    className="mt-3 inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold py-2.5 px-6 rounded-full shadow-xs transition-all cursor-pointer"
                   >
                     <span>Start Learning</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -161,7 +285,7 @@ export default function DashboardPage() {
                   <div
                     key={item.id}
                     onClick={() => item.pathwayId && navigate(`/learn/${item.pathwayId}`)}
-                    className="bg-white dark:bg-[#121622] rounded-2xl border border-slate-100/90 dark:border-zinc-800/80 p-3.5 sm:p-4 shadow-2xs hover:border-slate-200 dark:hover:border-zinc-700 hover:shadow-xs transition-all flex items-center gap-3.5 cursor-pointer group"
+                    className="macos-card rounded-2xl p-3.5 sm:p-4 flex items-center gap-3.5 cursor-pointer group active:scale-[0.99] transition-all"
                   >
                     {/* Left Icon with Green Checkmark Badge */}
                     <div className="relative shrink-0">
@@ -201,7 +325,7 @@ export default function DashboardPage() {
                 <div
                   key={item.id}
                   onClick={() => item.pathwayId && navigate(`/learn/${item.pathwayId}`)}
-                  className="bg-white dark:bg-[#121622] rounded-2xl border border-slate-100/90 dark:border-zinc-800/80 p-3.5 sm:p-4 shadow-2xs hover:border-slate-200 dark:hover:border-zinc-700 hover:shadow-xs transition-all flex items-center gap-3.5 cursor-pointer group"
+                  className="macos-card rounded-2xl p-3.5 sm:p-4 flex items-center gap-3.5 cursor-pointer group active:scale-[0.99] transition-all"
                 >
                   <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 shadow-2xs">
                     {item.type === "quiz" ? (
@@ -225,7 +349,7 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : (
-            <div className="bg-white dark:bg-[#121622] rounded-3xl border border-slate-200/90 dark:border-zinc-800/90 p-8 sm:p-10 shadow-2xs flex flex-col items-center justify-center text-center">
+            <div className="macos-card rounded-3xl p-8 sm:p-10 shadow-2xs flex flex-col items-center justify-center text-center">
               {/* Illustration Matching Great Learning Design */}
               <div className="w-48 h-40 relative flex items-center justify-center">
                 <svg
@@ -271,7 +395,7 @@ export default function DashboardPage() {
               {/* Solid Blue Button */}
               <button
                 onClick={() => navigate("/activities")}
-                className="mt-5 inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2.5 px-6 rounded-full shadow-xs transition-colors cursor-pointer"
+                className="mt-5 inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold py-2.5 px-6 rounded-full shadow-xs transition-all cursor-pointer"
               >
                 <span>View All Activities</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -280,11 +404,11 @@ export default function DashboardPage() {
           )}
         </section>
 
-        {/* Explore More Catalog Link */}
+        {/* ─── Explore More Catalog Link ─── */}
         <div className="text-center pt-2 pb-4">
           <Link
             to="/catalog"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors py-1.5 px-3 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/50"
           >
             <Layers className="w-3.5 h-3.5" />
             <span>Looking for more pathways? Browse Full Catalog</span>

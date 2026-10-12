@@ -5,6 +5,7 @@ import { useGetMyPathwaysQuery } from "../store/apiSlice";
 import Badge from "../components/ui/Badge";
 import Spinner from "../components/ui/Spinner";
 import Button from "../components/ui/Button";
+import MacFolderIcon from "../components/ui/MacFolderIcon";
 
 export default function EnrolledCoursesPage() {
   const { data: myPathways = [], isLoading } = useGetMyPathwaysQuery(undefined);
@@ -43,10 +44,8 @@ export default function EnrolledCoursesPage() {
           <Spinner label="Loading your enrolled courses..." size="lg" />
         </div>
       ) : totalEnrolled === 0 ? (
-        <div className="bg-white dark:bg-[#121622] rounded-3xl border border-zinc-200/80 dark:border-zinc-800 p-10 text-center space-y-4 max-w-md mx-auto shadow-2xs">
-          <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto">
-            <BookOpen className="w-7 h-7 stroke-[1.8]" />
-          </div>
+        <div className="macos-card rounded-3xl p-10 text-center space-y-4 max-w-md mx-auto">
+          <MacFolderIcon size="lg" color="blue" className="mx-auto mb-2" />
           <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
             No active enrolled courses yet
           </h3>
@@ -64,23 +63,32 @@ export default function EnrolledCoursesPage() {
           {myPathways.map((item: any) => {
             const pathway = item.pathway || item;
             if (!pathway) return null;
+            const title = pathway.title || pathway.name || "";
+            const isAnalytics = title.toLowerCase().includes("analytic") || title.toLowerCase().includes("data");
+            const isWeb = title.toLowerCase().includes("web") || title.toLowerCase().includes("full stack");
+            const folderColor = isAnalytics ? "amber" : isWeb ? "emerald" : "blue";
 
             return (
               <div
                 key={item.enrollmentId || pathway.id}
-                className="p-5 flex flex-col justify-between h-full bg-white dark:bg-[#121622] border border-slate-200/90 dark:border-zinc-800/90 rounded-2xl shadow-2xs hover:border-indigo-300 dark:hover:border-indigo-600/70 hover:shadow-xs transition-all group"
+                className="p-5 flex flex-col justify-between h-full macos-card rounded-2xl group active:scale-[0.99] transition-all"
               >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Badge variant="emerald" size="sm" className="gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Active
-                    </Badge>
-                    <span className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 font-mono">
-                      {item.enrolledAt ? new Date(item.enrolledAt).toLocaleDateString("en-IN") : "Enrolled"}
-                    </span>
+                <div className="space-y-3.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <MacFolderIcon size="md" color={folderColor} className="shrink-0 group-hover:rotate-[-2deg] transition-transform" />
+                      <div>
+                        <Badge variant="emerald" size="sm" className="gap-1">
+                          <CheckCircle2 className="w-3 h-3" /> Active
+                        </Badge>
+                        <div className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 font-mono mt-1">
+                          {item.enrolledAt ? new Date(item.enrolledAt).toLocaleDateString("en-IN") : "Enrolled"}
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  <h3 className="font-extrabold text-base text-zinc-900 dark:text-zinc-100 line-clamp-2 leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                  <h3 className="font-extrabold text-base text-zinc-900 dark:text-zinc-100 line-clamp-2 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                     {pathway.title}
                   </h3>
 
@@ -91,7 +99,7 @@ export default function EnrolledCoursesPage() {
 
                 <div className="mt-5 pt-3.5 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between">
                   <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-indigo-500" />
+                    <Layers className="w-3.5 h-3.5 text-blue-500" />
                     Full Access
                   </span>
 

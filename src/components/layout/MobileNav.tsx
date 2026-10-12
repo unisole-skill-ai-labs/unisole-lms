@@ -24,8 +24,8 @@ export default function MobileNav() {
   };
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-lg border-t border-zinc-200/90 dark:border-zinc-800/90 px-3 py-1.5 shadow-lg safe-area-bottom">
-      <div className="flex items-center justify-around">
+    <div className="md:hidden fixed bottom-3 left-3 right-3 z-40 max-w-sm mx-auto pointer-events-none safe-area-bottom">
+      <div className="macos-dock rounded-2xl p-1.5 pointer-events-auto flex items-center justify-around shadow-xl">
         {tabs.map((tab) => {
           if (tab.authOnly && !isAuthenticated) return null;
           const Icon = tab.icon;
@@ -35,20 +35,25 @@ export default function MobileNav() {
             <Link
               key={tab.name}
               to={tab.path}
-              className={`flex flex-col items-center justify-center py-1 px-3 min-w-[64px] min-h-[48px] rounded-xl transition-all ${
+              className={`relative flex flex-col items-center justify-center py-1 px-3 min-w-[64px] min-h-[46px] rounded-xl transition-all duration-200 cursor-pointer active:scale-95 ${
                 active
-                  ? "text-indigo-600 dark:text-indigo-400 font-bold scale-105"
+                  ? "text-blue-600 dark:text-blue-400 font-bold"
                   : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 font-medium"
               }`}
             >
               <div
-                className={`p-1 rounded-lg transition-colors ${
-                  active ? "bg-indigo-50 dark:bg-indigo-950/60" : "bg-transparent"
+                className={`p-1 rounded-xl transition-all duration-200 ${
+                  active ? "bg-blue-50 dark:bg-blue-950/70 shadow-2xs scale-105" : "bg-transparent"
                 }`}
               >
-                <Icon className={`w-5 h-5 ${active ? "stroke-[2.5]" : "stroke-[1.75]"}`} />
+                <Icon className={`w-5 h-5 ${active ? "stroke-[2.2]" : "stroke-[1.75]"}`} />
               </div>
               <span className="text-[10px] tracking-tight mt-0.5">{tab.name}</span>
+
+              {/* macOS Active App Indicator Dot under active icon */}
+              {active && (
+                <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-blue-600 dark:bg-blue-400" />
+              )}
             </Link>
           );
         })}
