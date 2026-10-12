@@ -127,7 +127,7 @@ export default function Header() {
                 />
                 <div className="flex flex-col">
                   <span className="font-extrabold text-base sm:text-lg text-zinc-900 dark:text-zinc-100 tracking-tight leading-none">
-                    Unisole <span className="text-indigo-600 dark:text-indigo-400">LMS</span>
+                    Unisole <span className="text-blue-600 dark:text-blue-400">LMS</span>
                   </span>
                   <span className="text-[9px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mt-0.5 hidden xs:block">
                     Skill AI Labs
@@ -147,11 +147,11 @@ export default function Header() {
                       to={link.path}
                       className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
                         active
-                          ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 shadow-xs"
+                          ? "bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 shadow-xs"
                           : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900"
                       }`}
                     >
-                      <Icon className={`w-3.5 h-3.5 ${active ? "text-indigo-600 dark:text-indigo-400" : "text-zinc-400 dark:text-zinc-500"}`} />
+                      <Icon className={`w-3.5 h-3.5 ${active ? "text-blue-600 dark:text-blue-400" : "text-zinc-400 dark:text-zinc-500"}`} />
                       {link.name}
                     </Link>
                   );
@@ -285,9 +285,9 @@ export default function Header() {
                           <Link
                             to="/admin"
                             onClick={() => setProfileOpen(false)}
-                            className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50/80 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors border border-indigo-200/50 dark:border-indigo-800/50"
+                            className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors border border-blue-200/50 dark:border-blue-800/50"
                           >
-                            <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0 stroke-[2]" />
+                            <Layers className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 stroke-[2]" />
                             <span>Course Studio & CMS</span>
                           </Link>
                         )}
@@ -366,7 +366,7 @@ export default function Header() {
                           {pathway.shortDescription || pathway.description}
                         </p>
                       </div>
-                      <span className="text-[11px] font-extrabold text-indigo-600 dark:text-indigo-400 shrink-0">
+                      <span className="text-[11px] font-extrabold text-blue-600 dark:text-blue-400 shrink-0">
                         {pathway.pricePaise ? `₹${(pathway.pricePaise / 100).toLocaleString("en-IN")}` : "Free"}
                       </span>
                     </Link>
@@ -387,7 +387,7 @@ export default function Header() {
           <div className="bg-white dark:bg-[#121622] w-full max-w-sm rounded-3xl shadow-2xl border border-zinc-200/80 dark:border-zinc-800 p-6 space-y-4 animate-scale-in">
             <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
               <div className="flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                <CreditCard className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Fee Payment</h3>
               </div>
               <button
