@@ -201,10 +201,10 @@ export default function Header() {
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setProfileOpen((prev) => !prev)}
-                    className="flex items-center p-0.5 rounded-full hover:ring-2 hover:ring-indigo-500/30 transition-all cursor-pointer"
+                    className="flex items-center p-0.5 rounded-full hover:ring-2 hover:ring-blue-500/30 transition-all cursor-pointer"
                     aria-label="User Profile Menu"
                   >
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white text-xs font-bold shadow-xs overflow-hidden border border-zinc-200/80 dark:border-zinc-700">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-sky-500 flex items-center justify-center text-white text-xs font-bold shadow-xs overflow-hidden border border-zinc-200/80 dark:border-zinc-700">
                       {user.avatar ? (
                         <img src={user.avatar} alt={user.name || "Avatar"} className="w-full h-full object-cover" />
                       ) : (
@@ -218,7 +218,7 @@ export default function Header() {
                     <div className="absolute right-0 mt-2 w-64 sm:w-72 bg-white dark:bg-[#121622] rounded-2xl shadow-xl border border-zinc-200/90 dark:border-zinc-800 p-3 animate-fade-in z-50">
                       {/* User Header */}
                       <div className="flex items-center gap-3 pb-3 mb-2 border-b border-zinc-100 dark:border-zinc-800">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white text-sm font-bold shadow-xs shrink-0 overflow-hidden">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-sky-500 flex items-center justify-center text-white text-sm font-bold shadow-xs shrink-0 overflow-hidden">
                           {user.avatar ? (
                             <img src={user.avatar} alt={user.name || "Avatar"} className="w-full h-full object-cover" />
                           ) : (
@@ -230,7 +230,7 @@ export default function Header() {
                             {user.name || "Student"}
                           </p>
                           <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono truncate">
-                            {user.email || (user.phone ? `+91 ${user.phone}` : "learner@unisole.org")}
+                            {user.email || (user.phone ? (user.phone.startsWith("+91") ? user.phone : `+91 ${user.phone}`) : "learner@unisole.org")}
                           </p>
                         </div>
                       </div>
