@@ -108,9 +108,8 @@ export default function CalendarPage() {
   const isMentor = userRoles.includes("MENTOR");
   const canManageEvents = isAdmin || isProgramManager || isMentor;
 
-  // View & Filter States
-  const [activeFilter, setActiveFilter] = useState<"ALL" | "LIVE_CLASS" | "MILESTONE" | "DEADLINE" | "VIVA_1ON1">("ALL");
-  const [viewMode, setViewMode] = useState<"week" | "month" | "day">("month");
+  // View States
+  const [viewMode, setViewMode] = useState<"week" | "month" | "day">("week");
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [search, setSearch] = useState("");
@@ -134,7 +133,7 @@ export default function CalendarPage() {
   const [newMeetUrl, setNewMeetUrl] = useState("");
   const [newColorScheme, setNewColorScheme] = useState("blue");
 
-  // RTK Query
+  // RTK Query: Dynamic calendar events from DB
   const { data: rawEvents = [], isLoading } = useGetCalendarEventsQuery({});
 
   // Dynamic Event Counts
@@ -149,12 +148,9 @@ export default function CalendarPage() {
     };
   }, [rawEvents]);
 
-  // Reactive Filtered Events
+  // Reactive Events (all filters removed for weekly overview, search maintained)
   const events = useMemo(() => {
     let list = Array.isArray(rawEvents) ? [...rawEvents] : [];
-    if (activeFilter !== "ALL") {
-      list = list.filter((e: any) => e.eventType === activeFilter);
-    }
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -166,7 +162,28 @@ export default function CalendarPage() {
       );
     }
     return list;
-  }, [rawEvents, activeFilter, search]);
+  }, [rawEvents, search]);
+
+  // Today calculations from real DB events
+  const todayDateStr = useMemo(() => {
+    return new Date().toISOString().split("T")[0];
+  }, []);
+
+  const todayEvents = useMemo(() => {
+    return (events || []).filter((ev: any) => {
+      if (!ev.startTime) return false;
+      const evDate = new Date(ev.startTime).toISOString().split("T")[0];
+      return evDate === todayDateStr;
+    });
+  }, [events, todayDateStr]);
+
+  const liveSessionToday = useMemo(() => {
+    return todayEvents.find((e: any) => e.eventType === "LIVE_CLASS");
+  }, [todayEvents]);
+
+  const remainingTasksToday = useMemo(() => {
+    return todayEvents.filter((e: any) => e.id !== liveSessionToday?.id);
+  }, [todayEvents, liveSessionToday]);
 
   // Events on the selected day
   const selectedDateStr = useMemo(() => {
@@ -398,106 +415,158 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 border-b border-slate-100 dark:border-slate-800/80 scrollbar-none -mx-3 px-3 sm:mx-0 sm:px-0">
-        <button
-          type="button"
-          onClick={() => setActiveFilter("ALL")}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-xl transition-all cursor-pointer font-bold whitespace-nowrap shrink-0 ${
-            activeFilter === "ALL"
-              ? "bg-slate-950 text-white dark:bg-white dark:text-slate-950 shadow-xs"
-              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60"
-          }`}
-        >
-          <span>All Events</span>
-          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
-            activeFilter === "ALL"
-              ? "bg-white/20 text-white dark:bg-slate-950/20 dark:text-slate-950"
-              : "bg-slate-100 dark:bg-slate-800 text-slate-500"
-          }`}>
-            {eventCounts.ALL}
-          </span>
-        </button>
+      {/* ─── Live Today & What's Left For Today Spotlight ─── */}
+      <div className="rounded-2xl border border-sky-200/80 dark:border-sky-900/50 bg-gradient-to-r from-sky-500/[0.08] via-blue-500/[0.04] to-transparent p-4 sm:p-5 shadow-2xs space-y-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-sky-100 dark:border-sky-900/30 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+            </div>
+            <div>
+              <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span>Today's Live Sessions & Tasks</span>
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-sky-500 text-white">
+                  Live Today
+                </span>
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+              </p>
+            </div>
+          </div>
 
-        <button
-          type="button"
-          onClick={() => setActiveFilter("LIVE_CLASS")}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-xl transition-all cursor-pointer font-bold whitespace-nowrap shrink-0 ${
-            activeFilter === "LIVE_CLASS"
-              ? "bg-sky-500 text-white shadow-xs"
-              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60"
-          }`}
-        >
-          <span className="w-2 h-2 rounded-full bg-sky-400" />
-          <span>Live Classes</span>
-          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
-            activeFilter === "LIVE_CLASS"
-              ? "bg-white/20 text-white"
-              : "bg-slate-100 dark:bg-slate-800 text-slate-500"
-          }`}>
-            {eventCounts.LIVE_CLASS}
-          </span>
-        </button>
+          <div className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+            {todayEvents.length > 0 ? (
+              <span className="px-2.5 py-1 rounded-lg bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300 border border-sky-200/60 dark:border-sky-900/40">
+                {todayEvents.length} scheduled for today
+              </span>
+            ) : (
+              <span className="text-slate-400">All caught up for today</span>
+            )}
+          </div>
+        </div>
 
-        <button
-          type="button"
-          onClick={() => setActiveFilter("MILESTONE")}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-xl transition-all cursor-pointer font-bold whitespace-nowrap shrink-0 ${
-            activeFilter === "MILESTONE"
-              ? "bg-emerald-600 text-white shadow-xs"
-              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60"
-          }`}
-        >
-          <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          <span>Quizzes & Milestones</span>
-          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
-            activeFilter === "MILESTONE"
-              ? "bg-white/20 text-white"
-              : "bg-slate-100 dark:bg-slate-800 text-slate-500"
-          }`}>
-            {eventCounts.MILESTONE}
-          </span>
-        </button>
+        {/* Live Class Spotlight & Tasks Remaining Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+          {/* Live Session Card */}
+          {liveSessionToday ? (
+            <div className="rounded-xl border border-sky-300/80 dark:border-sky-800 bg-white dark:bg-[#0B1120] p-4 flex flex-col justify-between gap-3 shadow-xs">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 text-xs font-bold text-sky-600 dark:text-sky-400">
+                  <Video className="w-4 h-4 text-sky-500 stroke-[2.5]" />
+                  <span>Interactive Live Masterclass</span>
+                  <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 font-black animate-pulse">
+                    LIVE TODAY
+                  </span>
+                </div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                  {liveSessionToday.title}
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
+                  {liveSessionToday.description || "Join the interactive live masterclass with lead architects and peer group."}
+                </p>
+                <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 pt-1 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-sky-500" />
+                  <span>
+                    {new Date(liveSessionToday.startTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} – {new Date(liveSessionToday.endTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} IST
+                  </span>
+                </div>
+              </div>
 
-        <button
-          type="button"
-          onClick={() => setActiveFilter("DEADLINE")}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-xl transition-all cursor-pointer font-bold whitespace-nowrap shrink-0 ${
-            activeFilter === "DEADLINE"
-              ? "bg-purple-600 text-white shadow-xs"
-              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60"
-          }`}
-        >
-          <span className="w-2 h-2 rounded-full bg-purple-400" />
-          <span>Lab Deliverables</span>
-          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
-            activeFilter === "DEADLINE"
-              ? "bg-white/20 text-white"
-              : "bg-slate-100 dark:bg-slate-800 text-slate-500"
-          }`}>
-            {eventCounts.DEADLINE}
-          </span>
-        </button>
+              {liveSessionToday.meetUrl && (
+                <a
+                  href={liveSessionToday.meetUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+                >
+                  <Video className="w-3.5 h-3.5" />
+                  <span>Join Live Class (Google Meet)</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white/60 dark:bg-[#0B1120]/60 p-4 flex items-center gap-3">
+              <CheckCircle2 className="w-8 h-8 text-slate-400 dark:text-slate-500 shrink-0 stroke-[1.8]" />
+              <div>
+                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  No Live Sessions Right Now
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Upcoming masterclasses are scheduled for Thursday & Saturday.
+                </p>
+              </div>
+            </div>
+          )}
 
-        <button
-          type="button"
-          onClick={() => setActiveFilter("VIVA_1ON1")}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-xl transition-all cursor-pointer font-bold whitespace-nowrap shrink-0 ${
-            activeFilter === "VIVA_1ON1"
-              ? "bg-rose-500 text-white shadow-xs"
-              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60"
-          }`}
-        >
-          <span className="w-2 h-2 rounded-full bg-rose-400" />
-          <span>1-on-1 Mentorship</span>
-          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
-            activeFilter === "VIVA_1ON1"
-              ? "bg-white/20 text-white"
-              : "bg-slate-100 dark:bg-slate-800 text-slate-500"
-          }`}>
-            {eventCounts.VIVA_1ON1}
-          </span>
-        </button>
+          {/* Left For Today / Pending Tasks Card */}
+          <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#0B1120] p-4 flex flex-col justify-between gap-2.5 shadow-xs">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>What's Left For Today</span>
+                </span>
+                <span className="text-[10px] font-mono text-slate-400">
+                  {remainingTasksToday.length} item{remainingTasksToday.length === 1 ? "" : "s"}
+                </span>
+              </div>
+
+              {remainingTasksToday.length === 0 ? (
+                <div className="py-4 text-center space-y-1">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto stroke-[2]" />
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    All caught up for today!
+                  </p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                    No quizzes or lab deadlines left for today.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {remainingTasksToday.map((task: any) => (
+                    <div
+                      key={task.id}
+                      onClick={() => {
+                        if (task.lessonId) {
+                          navigate(`/learn/${task.courseId || "course1"}?lesson=${task.lessonId}`);
+                        }
+                      }}
+                      className="p-2.5 rounded-lg border border-slate-100 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-900/40 flex items-center justify-between gap-2 cursor-pointer hover:border-sky-300 dark:hover:border-sky-800 transition-colors"
+                    >
+                      <div className="min-w-0 pr-1">
+                        <h5 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                          {task.title}
+                        </h5>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                          {task.eventType === "MILESTONE" ? "Graded Quiz" : task.eventType === "DEADLINE" ? "Deliverable" : "Core Lecture"} · Due {new Date(task.endTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 text-[11px] font-bold shrink-0 transition-colors cursor-pointer"
+                      >
+                        {task.eventType === "MILESTONE" ? "Start Quiz" : "Open"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="pt-1 flex items-center justify-between text-[11px] text-slate-400 font-medium">
+              <span>Course: AI Agent Engineering</span>
+              <button
+                onClick={() => navigate("/learn/course1")}
+                className="text-sky-500 hover:underline font-bold cursor-pointer"
+              >
+                Go to Curriculum →
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Date Navigation & Controls Bar */}
@@ -599,11 +668,17 @@ export default function CalendarPage() {
                 return (
                   <div
                     key={idx}
-                    className="p-3 text-xs font-semibold text-slate-600 dark:text-slate-300 border-r border-slate-100 dark:border-slate-800/80 last:border-r-0 flex items-center justify-center gap-1.5"
+                    className={`p-3 text-xs font-semibold border-r border-slate-100 dark:border-slate-800/80 last:border-r-0 flex items-center justify-center gap-1.5 ${
+                      isToday
+                        ? "bg-sky-500/10 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400 font-bold"
+                        : "text-slate-600 dark:text-slate-300"
+                    }`}
                   >
-                    <span className="text-slate-400">{dayName}</span>
+                    <span className={isToday ? "text-sky-600 dark:text-sky-400 font-extrabold uppercase text-[10px]" : "text-slate-400"}>
+                      {isToday ? "Today" : dayName}
+                    </span>
                     {isToday ? (
-                      <span className="w-6 h-6 rounded-full bg-slate-950 dark:bg-white text-white dark:text-slate-950 text-xs font-extrabold flex items-center justify-center">
+                      <span className="w-6 h-6 rounded-full bg-sky-500 text-white text-xs font-black flex items-center justify-center shadow-xs">
                         {dayNum}
                       </span>
                     ) : (
@@ -642,6 +717,10 @@ export default function CalendarPage() {
                 {/* 7 Days Columns */}
                 {weekDays.map((dayDate, dayIdx) => {
                   const dayDateStr = dayDate.toISOString().split("T")[0];
+                  const isTodayCol =
+                    dayDate.getDate() === now.getDate() &&
+                    dayDate.getMonth() === now.getMonth() &&
+                    dayDate.getFullYear() === now.getFullYear();
 
                   // Filter events matching this day
                   const dayEvents = (events || []).filter((ev: any) => {
@@ -653,7 +732,9 @@ export default function CalendarPage() {
                   return (
                     <div
                       key={dayIdx}
-                      className="relative divide-y divide-slate-100/80 dark:divide-slate-800/60 min-h-[484px]"
+                      className={`relative divide-y divide-slate-100/80 dark:divide-slate-800/60 min-h-[484px] ${
+                        isTodayCol ? "bg-sky-50/[0.3] dark:bg-sky-950/20" : ""
+                      }`}
                     >
                       {/* Hour Slot Grid Background */}
                       {HOURS.map((_, slotIdx) => (

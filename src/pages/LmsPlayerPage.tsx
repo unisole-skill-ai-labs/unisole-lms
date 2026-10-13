@@ -370,8 +370,6 @@ export default function LmsPlayerPage() {
     }
   };
 
-  // Tabs on Overview: "learning" | "groups" | "notes"
-  const [overviewTab, setOverviewTab] = useState<"learning" | "groups" | "notes">("learning");
 
   // Tabs on Player: "notes" | "help"
   const [playerTab, setPlayerTab] = useState<"notes" | "help">("help");
@@ -771,211 +769,53 @@ export default function LmsPlayerPage() {
                 </span>
               </div>
             </div>
-          </div>          {/* Tabs: Learning, Groups, Notes */}
-          <div className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] sticky top-0 z-10">
-            <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 flex items-center justify-between">
-              <div className="flex items-center">
-                <button
-                  onClick={() => setOverviewTab("learning")}
-                  className={`py-3 px-6 text-sm font-semibold relative transition-colors cursor-pointer ${
-                    overviewTab === "learning"
-                      ? "text-sky-500 font-bold"
-                      : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
-                  }`}
-                >
-                  Learning
-                  {overviewTab === "learning" && (
-                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-500 rounded-full" />
-                  )}
-                </button>
-                <button
-                  onClick={() => setOverviewTab("groups")}
-                  className={`py-3 px-6 text-sm font-semibold relative transition-colors cursor-pointer ${
-                    overviewTab === "groups"
-                      ? "text-sky-500 font-bold"
-                      : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
-                  }`}
-                >
-                  Groups & Mentorship
-                  {overviewTab === "groups" && (
-                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-500 rounded-full" />
-                  )}
-                </button>
-                <button
-                  onClick={() => setOverviewTab("notes")}
-                  className={`py-3 px-6 text-sm font-semibold relative transition-colors cursor-pointer ${
-                    overviewTab === "notes"
-                      ? "text-sky-500 font-bold"
-                      : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
-                  }`}
-                >
-                  Notes
-                  {overviewTab === "notes" && (
-                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-500 rounded-full" />
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Tab Content: Learning Modules vs Groups vs Notes */}
+          </div>          {/* Course Curriculum Modules List */}
           <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 py-6">
-            {overviewTab === "learning" && (
-              modules.length === 0 ? (
-                <div className="bg-white dark:bg-[#0B1120] rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-12 text-center space-y-3">
-                  <BookOpen className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto stroke-[1.5]" />
-                  <div className="space-y-1">
-                    <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                      Curriculum Under Preparation
-                    </h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-                      Lessons and assessments for this course will appear here once published by the instructor in the Course Studio.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3.5">
-                  {modules.map((mod, idx) => {
-                    const modItems = mod.items || [];
-                    const modCompletedCount = modItems.filter((i) => completedLessonIds.includes(i.id)).length;
-                    const isModCompleted = modItems.length > 0 && modCompletedCount === modItems.length;
-
-                    return (
-                      <div
-                        key={mod.id}
-                        onClick={() => {
-                          setSelectedModule(mod);
-                          setCurrentView("chapter");
-                        }}
-                        className="bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-4.5 shadow-2xs hover:border-sky-500/40 dark:hover:border-sky-500/40 hover:shadow-xs transition-all flex items-center justify-between cursor-pointer group"
-                      >
-                        <div className="pr-3 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-sky-500 transition-colors">
-                              {mod.title}
-                            </h3>
-                            {isModCompleted && (
-                              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                            )}
-                          </div>
-                          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 truncate">
-                            {mod.meta} {modCompletedCount > 0 && `· ${modCompletedCount}/${modItems.length} Done`}
-                          </p>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-zinc-400 group-hover:text-sky-500 shrink-0 transition-transform group-hover:translate-x-0.5" />
-                      </div>
-                    );
-                  })}
-                </div>
-              )
-            )}
-
-            {overviewTab === "groups" && (
-              <div className="space-y-5 animate-fade-in">
-                {/* Program Mentor Card */}
-                <div className="bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
-                      Assigned Program Mentor
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                    <img
-                      src={studentMentor?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"}
-                      alt={studentMentor?.name || "Mentor"}
-                      className="w-16 h-16 rounded-2xl object-cover border-2 border-sky-500/40 shrink-0"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <h5 className="text-base font-bold text-slate-900 dark:text-white truncate">
-                        {studentMentor?.name || "Assigned Mentor"}
-                      </h5>
-                      <p className="text-xs text-sky-500 dark:text-sky-400 font-semibold truncate mt-0.5">
-                        {studentMentor?.specialization || "Technical Mentor & Project Evaluator"}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                        {studentMentor?.bio || "Senior technical mentor guiding student capstone projects and assessments."}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Program Classmates List */}
-                <div className="bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs space-y-3">
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
-                    Program Classmates
+            {modules.length === 0 ? (
+              <div className="bg-white dark:bg-[#0B1120] rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-12 text-center space-y-3">
+                <BookOpen className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto stroke-[1.5]" />
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                    Curriculum Under Preparation
                   </h4>
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {(cohortData?.peers || [
-                      { id: "p1", name: "Priya Verma", college: "Centre of Excellence GDC Sanjauli", branch: "BCA", status: "Active Now" },
-                      { id: "p2", name: "Rohan Mehta", college: "GDC Theog", branch: "B.Sc CS", status: "Completed Week 1" },
-                      { id: "p3", name: "Ananya Thakur", college: "ABV GDC Sunni", branch: "B.Tech IT", status: "Active Now" },
-                      { id: "p4", name: "Sahil Rana", college: "GDC Sanjauli", branch: "BCA", status: "Week 2 in Progress" },
-                      { id: "p5", name: "Vikram Chauhan", college: "HPU Shimla", branch: "MCA", status: "Active 2h ago" },
-                    ]).map((peer: any) => (
-                      <div key={peer.id} className="py-2.5 flex items-center justify-between first:pt-0 last:pb-0">
-                        <div className="min-w-0 pr-2">
-                          <h6 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
-                            {peer.name}
-                          </h6>
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                            {peer.college} • {peer.branch}
-                          </p>
-                        </div>
-                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full shrink-0">
-                          {peer.status}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                    Lessons and assessments for this course will appear here once published by the instructor in the Course Studio.
+                  </p>
                 </div>
               </div>
-            )}
+            ) : (
+              <div className="space-y-3.5">
+                {modules.map((mod) => {
+                  const modItems = mod.items || [];
+                  const modCompletedCount = modItems.filter((i) => completedLessonIds.includes(i.id)).length;
+                  const isModCompleted = modItems.length > 0 && modCompletedCount === modItems.length;
 
-            {overviewTab === "notes" && (
-              <div className="space-y-3.5 animate-fade-in">
-                {notesData.length === 0 ? (
-                  <div className="bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center space-y-3">
-                    <div className="w-12 h-12 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center mx-auto">
-                      <FileText className="w-6 h-6 stroke-[1.8]" />
-                    </div>
-                    <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                      No course notes saved yet
-                    </h4>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-xs mx-auto leading-relaxed">
-                      While watching video lessons, open the Notes tab to capture key takeaways and architecture code snippets.
-                    </p>
-                    <button
-                      onClick={() => {
-                        setSelectedModule(modules[0]);
-                        setSelectedLesson(modules[0]?.items[0]);
-                        setCurrentView("player");
-                      }}
-                      className="mt-2 inline-flex items-center gap-1.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white text-xs font-bold py-2 px-5 rounded-xl shadow-xs transition-colors cursor-pointer"
-                    >
-                      <span>Go to First Lesson</span>
-                    </button>
-                  </div>
-                ) : (
-                  notesData.map((note: any) => (
+                  return (
                     <div
-                      key={note.id}
-                      className="bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-2xs space-y-2"
+                      key={mod.id}
+                      onClick={() => {
+                        setSelectedModule(mod);
+                        setCurrentView("chapter");
+                      }}
+                      className="bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-4.5 shadow-2xs hover:border-sky-500/40 dark:hover:border-sky-500/40 hover:shadow-xs transition-all flex items-center justify-between cursor-pointer group"
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold text-sky-400 truncate">
-                          {note.lessonTitle || `Lesson Note`}
-                        </span>
-                        <span className="text-[10px] text-zinc-400">
-                          {new Date(note.updatedAt || note.createdAt).toLocaleDateString()}
-                        </span>
+                      <div className="pr-3 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-sky-500 transition-colors">
+                            {mod.title}
+                          </h3>
+                          {isModCompleted && (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                          )}
+                        </div>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 truncate">
+                          {mod.meta} {modCompletedCount > 0 && `· ${modCompletedCount}/${modItems.length} Done`}
+                        </p>
                       </div>
-                      <p className="text-xs text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
-                        {note.content}
-                      </p>
+                      <ChevronRight className="w-4 h-4 text-zinc-400 group-hover:text-sky-500 shrink-0 transition-transform group-hover:translate-x-0.5" />
                     </div>
-                  ))
-                )}
+                  );
+                })}
               </div>
             )}
           </div>
