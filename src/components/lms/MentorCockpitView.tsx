@@ -7,9 +7,7 @@ import {
   GraduationCap,
   ArrowRight,
   ChevronDown,
-  LayoutDashboard,
   User,
-  LayoutGrid,
 } from "lucide-react";
 
 export interface MenteeCourse {
@@ -128,93 +126,59 @@ export default function MentorCockpitView({
 
   return (
     <div className="space-y-6 animate-fade-in font-sans">
-      {/* Top Header Bar with Mode Toggle */}
+      {/* Top Header Bar with Separate Mode Buttons */}
       <div className="bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          {/* Toggle Button: All Students (Dashboard) vs Single Student Detail */}
-          <div className="flex items-center gap-1.5 bg-slate-100/90 dark:bg-[#070A11] p-1 rounded-xl border border-slate-200/80 dark:border-slate-800 self-start sm:self-auto">
+          {/* Separate Buttons: Dashboard vs Mentor View */}
+          <div className="flex items-center gap-2.5 flex-wrap">
             <button
               type="button"
               onClick={() => setViewMode("dashboard")}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                 viewMode === "dashboard"
-                  ? "bg-white dark:bg-sky-500/20 text-sky-600 dark:text-sky-300 shadow-2xs"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  ? "bg-sky-500 text-white border-sky-500 shadow-xs"
+                  : "bg-white dark:bg-[#070A11] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700"
               }`}
             >
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              <span>All Students (Dashboard)</span>
+              Dashboard
             </button>
             <button
               type="button"
               onClick={() => setViewMode("student")}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                 viewMode === "student"
-                  ? "bg-white dark:bg-sky-500/20 text-sky-600 dark:text-sky-300 shadow-2xs"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  ? "bg-sky-500 text-white border-sky-500 shadow-xs"
+                  : "bg-white dark:bg-[#070A11] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700"
               }`}
             >
-              <User className="w-3.5 h-3.5" />
-              <span>Single Student View</span>
+              Mentor View
             </button>
           </div>
-
-          {/* Right Info: Mentor info badge */}
-          {mentor && (
-            <div className="flex items-center gap-2.5 text-xs text-slate-500 dark:text-slate-400 self-end sm:self-auto">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span>
-                Mentor: <strong className="text-slate-800 dark:text-slate-200">{mentor.name || "Assigned Mentor"}</strong>
-              </span>
-            </div>
-          )}
         </div>
 
-        {/* When in Single Student View: Show the Student Dropdown Selector & Quick S1, S2, S3 buttons */}
+        {/* When in Mentor View: Show the Student Dropdown Selector */}
         {viewMode === "student" && (
           <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-3 flex-wrap w-full sm:w-auto">
               <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                 <User className="w-3.5 h-3.5 text-sky-500" />
                 <span>Select Student:</span>
               </div>
 
-              <div className="relative min-w-[280px] sm:min-w-[340px]">
+              <div className="relative min-w-[280px] sm:min-w-[360px] flex-1 sm:flex-initial">
                 <select
                   id="mentor-student-dropdown"
                   value={selectedMentee?.id || ""}
                   onChange={(e) => setCurrentMenteeId(e.target.value)}
                   className="w-full appearance-none bg-slate-50 dark:bg-[#070A11] border border-slate-200 dark:border-slate-700/80 hover:border-sky-500/50 rounded-xl px-4 py-2 pr-10 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 cursor-pointer transition-all shadow-2xs"
                 >
-                  {mentees.map((m, idx) => (
+                  {mentees.map((m) => (
                     <option key={m.id} value={m.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white py-1">
-                      Student {idx + 1}: {m.name} {m.college ? `(${m.college})` : ""}
+                      {m.name} - {m.college || "Govt Degree College"}
                     </option>
                   ))}
                 </select>
                 <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-
-              {/* Quick S1, S2, S3 buttons */}
-              <div className="flex items-center gap-1.5 pl-1 overflow-x-auto">
-                {mentees.map((m, idx) => {
-                  const isSelected = m.id === currentMenteeId;
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setCurrentMenteeId(m.id)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
-                        isSelected
-                          ? "bg-sky-500 text-white border-sky-500 shadow-xs"
-                          : "bg-slate-100/80 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-                      }`}
-                      title={m.name}
-                    >
-                      S{idx + 1}
-                    </button>
-                  );
-                })}
               </div>
             </div>
           </div>
@@ -222,15 +186,14 @@ export default function MentorCockpitView({
       </div>
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* 1. ALL STUDENTS DASHBOARD VIEW (Direct match to user sketch) */}
+      {/* 1. ALL STUDENTS DASHBOARD VIEW                                */}
       {/* ───────────────────────────────────────────────────────────── */}
       {viewMode === "dashboard" && (
         <div className="bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 sm:p-7 space-y-6 shadow-2xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/80">
             <div>
-              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                <LayoutDashboard className="w-5 h-5 text-sky-500" />
-                <span>Mentor Dashboard — All Students Overview</span>
+              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">
+                All Students Overview
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Overview of missed deliverables and upcoming sessions across all mentees
@@ -271,21 +234,16 @@ export default function MentorCockpitView({
                       key={mentee.id}
                       className="hover:bg-slate-50/40 dark:hover:bg-slate-800/20 transition-colors"
                     >
-                      {/* Column 1: Student (S1, S2... with real name) */}
+                      {/* Column 1: Student */}
                       <td className="py-5 px-5 align-top space-y-3">
                         <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500/20 to-indigo-500/20 border border-sky-500/30 flex items-center justify-center font-black text-sky-600 dark:text-sky-300 text-xs shrink-0 select-none shadow-2xs">
-                            S{idx + 1}
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500/20 to-indigo-500/20 border border-sky-500/30 flex items-center justify-center font-bold text-sky-600 dark:text-sky-300 text-xs shrink-0 select-none shadow-2xs">
+                            {mentee.name ? mentee.name.charAt(0).toUpperCase() : <User className="w-4 h-4 text-sky-500" />}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-extrabold text-sm text-slate-900 dark:text-white">
-                                {mentee.name}
-                              </span>
-                              <span className="text-[10px] font-bold text-slate-400">
-                                (S{idx + 1})
-                              </span>
-                            </div>
+                            <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                              {mentee.name}
+                            </span>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                               {mentee.college || "Govt Degree College"}
                             </p>
@@ -304,7 +262,7 @@ export default function MentorCockpitView({
                           }}
                           className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 transition-colors cursor-pointer"
                         >
-                          <span>Inspect Student Course Breakdown</span>
+                          <span>Inspect Student View</span>
                           <ArrowRight className="w-3 h-3" />
                         </button>
                       </td>
@@ -412,33 +370,16 @@ export default function MentorCockpitView({
                   className="w-12 h-12 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
                 />
               ) : (
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-500/20 to-indigo-500/20 border border-sky-500/30 flex items-center justify-center font-black text-sky-600 dark:text-sky-300 text-sm shrink-0 select-none shadow-2xs">
-                  S{selectedIndex + 1}
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-500/20 to-indigo-500/20 border border-sky-500/30 flex items-center justify-center font-bold text-sky-600 dark:text-sky-300 text-sm shrink-0 select-none shadow-2xs">
+                  {selectedMentee.name ? selectedMentee.name.charAt(0).toUpperCase() : <User className="w-5 h-5 text-sky-500" />}
                 </div>
               )}
               <div>
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                    Student {selectedIndex + 1}: {selectedMentee.name}
-                  </h2>
-                  <span
-                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                      selectedMentee.status === "NEEDS_REVIEW"
-                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-                        : selectedMentee.status === "AT_RISK"
-                        ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
-                        : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                    }`}
-                  >
-                    {selectedMentee.status === "NEEDS_REVIEW"
-                      ? "Needs Review"
-                      : selectedMentee.status === "AT_RISK"
-                      ? "At Risk"
-                      : "On Track"}
-                  </span>
-                </div>
+                <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                  {selectedMentee.name}
+                </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  {selectedMentee.email} {selectedMentee.college ? `• ${selectedMentee.college}` : ""}
+                  {selectedMentee.college || "Govt Degree College"}
                 </p>
               </div>
             </div>
@@ -455,9 +396,8 @@ export default function MentorCockpitView({
             <div className="flex items-center justify-between px-1">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
                 <GraduationCap className="w-4 h-4 text-sky-500" />
-                <span>Enrolled Courses & Milestones Overview</span>
+                <span>Student Overview</span>
               </h3>
-              <span className="text-[11px] text-slate-400">Live Database Feed</span>
             </div>
 
             {/* Table Container */}

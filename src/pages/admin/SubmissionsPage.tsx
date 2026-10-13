@@ -3,7 +3,6 @@ import { useSelector } from "react-redux";
 import {
   Search,
   User,
-  Award,
   ArrowRight,
 } from "lucide-react";
 import {
@@ -83,9 +82,8 @@ export default function SubmissionsPage() {
       {/* Top Header & Tab Switcher */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800/80">
         <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-            <Award className="w-5 h-5 text-sky-500" />
-            <span>Dashboard</span>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            Dashboard
           </h1>
         </div>
 
