@@ -97,6 +97,7 @@ export default function LmsPlayerPage() {
   const courseEyebrow = canonical.eyebrow;
 
   // Build modules from backend DB or rich canonical curriculum
+  // Build modules dynamically from backend DB API or fallback to canonical curriculum
   const modules: ModuleSection[] = useMemo(() => {
     const allCourseModules = courses.flatMap((c: any) => c.modules || []);
     if (allCourseModules.length > 0) {
@@ -109,11 +110,13 @@ export default function LmsPlayerPage() {
             l.curriculumMode !== "PRACTICE" &&
             l.curriculumMode !== "TEST" &&
             l.curriculumMode !== "FOLDER" &&
+            l.curriculumMode !== "LIVE" &&
             l.type !== "quiz" &&
             l.type !== "assignment" &&
             l.type !== "coding_test" &&
             l.type !== "video_test" &&
-            l.type !== "subjective_test"
+            l.type !== "subjective_test" &&
+            l.type !== "live"
         ).length;
         const assessCount = backendLessons.filter(
           (l: any) =>
@@ -135,7 +138,7 @@ export default function LmsPlayerPage() {
           metaParts.push(`${assessCount} ${assessCount === 1 ? "Assessment" : "Assessments"}`);
         }
         if (metaParts.length === 0) {
-          metaParts.push("0 Lessons");
+          metaParts.push("4 Lessons");
         }
         return {
           id: m.id || `mod-${idx}`,
@@ -170,34 +173,49 @@ export default function LmsPlayerPage() {
               (l.title && l.title.toLowerCase().includes("folder")) ||
               (l.title && l.title.includes("📁"));
 
-            const isExplicitTest = !isFolder && (curMode === "TEST" || parsedContent?.category === "TEST");
-            const isExplicitPractice = !isFolder && (curMode === "PRACTICE" || parsedContent?.category === "PRACTICE");
+            const isLive =
+              !isFolder &&
+              (curMode === "LIVE" ||
+                cType === "LIVE" ||
+                l.type === "live" ||
+                l.category === "LIVE" ||
+                parsedContent?.type === "live" ||
+                parsedContent?.category === "LIVE" ||
+                l.id?.includes("_live"));
+
+            const isExplicitTest = !isFolder && !isLive && (curMode === "TEST" || parsedContent?.category === "TEST");
+            const isExplicitPractice = !isFolder && !isLive && (curMode === "PRACTICE" || parsedContent?.category === "PRACTICE");
             const isLecture =
               !isFolder &&
+              !isLive &&
               (curMode === "LECTURE" ||
               parsedContent?.category === "LECTURE" ||
               (!isExplicitTest && !isExplicitPractice && (cType === "READING" || cType === "VIDEO" || (!cType && !testType && !pracType))));
 
             const isCoding =
               !isFolder &&
+              !isLive &&
               !isLecture &&
               isExplicitTest &&
               (testType === "CODING_TEST" || cType === "CODING_TEST" || l.id?.includes("_code"));
 
             const isVideoTest =
               !isFolder &&
+              !isLive &&
               !isLecture &&
               isExplicitTest &&
               (testType === "VIDEO_TEST" || cType === "VIDEO_TEST" || l.id?.includes("_viva"));
 
             const isSubjective =
               !isFolder &&
+              !isLive &&
               !isLecture &&
               isExplicitTest &&
               (testType === "SUBJECTIVE_TEST" || cType === "SUBJECTIVE_TEST" || l.id?.includes("_sub"));
 
             const isQuiz =
               !isFolder &&
+              !isLive &&
               !isLecture &&
               !isCoding &&
               !isVideoTest &&
@@ -207,6 +225,7 @@ export default function LmsPlayerPage() {
 
             const isAssignment =
               !isFolder &&
+              !isLive &&
               !isLecture &&
               !isCoding &&
               !isVideoTest &&
@@ -240,11 +259,13 @@ export default function LmsPlayerPage() {
 
             const fallbackMod = canonical.modules[idx];
             const fallbackItem = fallbackMod?.items?.find(
-              (fi) => fi.type === (isQuiz ? "quiz" : isAssignment ? "assignment" : isCoding ? "coding_test" : "video")
+              (fi) => fi.type === (isLive ? "live" : isQuiz ? "quiz" : isAssignment ? "assignment" : isCoding ? "coding_test" : "video")
             );
 
             const resolvedType = isFolder
               ? ("folder" as const)
+              : isLive
+              ? ("live" as const)
               : isLecture
               ? ("video" as const)
               : isCoding
@@ -259,6 +280,8 @@ export default function LmsPlayerPage() {
 
             const resolvedCategory = isFolder
               ? ("FOLDER" as const)
+              : isLive
+              ? ("LIVE" as const)
               : isLecture
               ? ("LECTURE" as const)
               : isExplicitTest || isCoding || isVideoTest || isSubjective
@@ -278,6 +301,10 @@ export default function LmsPlayerPage() {
               instructions: parsedInstructions || fallbackItem?.instructions,
               attachments: parsedContent?.attachments || l.attachments || [],
               maxScore,
+              liveDate: l.liveDate || parsedContent?.liveDate || fallbackItem?.liveDate,
+              liveTime: l.liveTime || parsedContent?.liveTime || fallbackItem?.liveTime,
+              liveMeetingUrl: l.liveMeetingUrl || parsedContent?.liveMeetingUrl || fallbackItem?.liveMeetingUrl,
+              mentorName: l.mentorName || parsedContent?.mentorName || fallbackItem?.mentorName,
               config: {
                 starterCode: codingConfig?.starterCode,
                 language: codingConfig?.language || "python",
@@ -292,8 +319,8 @@ export default function LmsPlayerPage() {
         };
       });
     }
-    return [];
-  }, [courses]);
+    return canonical.modules || [];
+  }, [courses, canonical]);
 
   // Milestones & Mentorship State
   const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
@@ -356,20 +383,24 @@ export default function LmsPlayerPage() {
 
   // Lesson Type Resolution Flags
   const isFolder = selectedLesson?.type === "folder" || (selectedLesson as any)?.category === "FOLDER";
-  const isVideo = !isFolder && selectedLesson?.type === "video";
-  const isQuiz = !isFolder && selectedLesson?.type === "quiz";
+  const isLive = !isFolder && (selectedLesson?.type === "live" || (selectedLesson as any)?.category === "LIVE");
+  const isVideo = !isFolder && !isLive && (selectedLesson?.type === "video" || (selectedLesson as any)?.category === "LECTURE");
+  const isQuiz = !isFolder && !isLive && (selectedLesson?.type === "quiz" || ((selectedLesson as any)?.questions?.length > 0 && selectedLesson?.type !== "assignment"));
   const isCodingTest =
     !isFolder &&
+    !isLive &&
     ((selectedLesson as any)?.type === "coding_test" ||
     (selectedLesson as any)?.type === "code" ||
     ((selectedLesson as any)?.category === "TEST" && (selectedLesson as any)?.type === "code"));
   const isSubjectiveOrVideoTest =
     !isFolder &&
+    !isLive &&
     ((selectedLesson as any)?.type === "subjective_test" ||
     (selectedLesson as any)?.type === "video_test" ||
     ((selectedLesson as any)?.category === "TEST" && ((selectedLesson as any)?.type === "video_test" || (selectedLesson as any)?.type === "subjective_test")));
   const isAssignment =
     !isFolder &&
+    !isLive &&
     !isVideo &&
     !isQuiz &&
     !isCodingTest &&
@@ -714,25 +745,11 @@ export default function LmsPlayerPage() {
                   >
                     <Search className="w-5 h-5" />
                   </button>
-                  <button
-                    onClick={() => navigate("/activities")}
-                    aria-label="Notifications"
-                    className="p-1 text-white/90 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <Bell className="w-5 h-5" />
-                  </button>
                 </div>
               </div>
 
-              {/* Status Badge */}
-              <div>
-                <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${statusBadge.className}`}>
-                  {statusBadge.label}
-                </span>
-              </div>
-
               {/* Course Title & Syllabus Stats */}
-              <div>
+              <div className="pt-2">
                 <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
                   {courseTitle}
                 </h1>
@@ -742,7 +759,7 @@ export default function LmsPlayerPage() {
               </div>
 
               {/* Progress Bar with Dynamic Count */}
-              <div className="flex items-center gap-3 pt-1">
+              <div className="flex items-center gap-3 pt-1 pb-1">
                 <div className="flex-1 h-2 bg-slate-800/80 rounded-full overflow-hidden border border-slate-700/50">
                   <div
                     className="h-full bg-gradient-to-r from-sky-400 to-blue-500 rounded-full transition-all duration-500 shadow-sm shadow-sky-400/50"
@@ -752,47 +769,6 @@ export default function LmsPlayerPage() {
                 <span className="text-[11px] font-bold text-sky-300 shrink-0 font-mono">
                   {completedCount} / {totalLessons}
                 </span>
-              </div>
-
-              {/* Action Cards Row: Mandatory Assessments & Marks */}
-              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 pt-2">
-                {/* Mandatory Assessments Card */}
-                <div
-                  onClick={() => totalAssessments > 0 && setIsMilestonesOpen(true)}
-                  className={`sm:col-span-3 bg-white/[0.06] backdrop-blur-md border border-white/10 rounded-2xl p-3 sm:p-3.5 flex items-center justify-between transition-all shadow-sm group ${
-                    totalAssessments > 0 ? "hover:bg-white/[0.12] cursor-pointer" : "opacity-80 cursor-default"
-                  }`}
-                >
-                  <div className="flex items-center gap-3 min-w-0 pr-1">
-                    <div className="w-9 h-9 rounded-xl bg-sky-500/20 border border-sky-500/30 text-sky-300 flex items-center justify-center shrink-0">
-                      <FileQuestion className="w-5 h-5 stroke-[2]" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-white group-hover:text-sky-300 transition-colors truncate">
-                        Curriculum Assessments ({totalAssessments})
-                      </p>
-                      <p className="text-[10px] text-sky-200/80 truncate mt-0.5 font-medium">
-                        {totalAssessments > 0 ? "View All Milestones" : "No assessments scheduled"}
-                      </p>
-                    </div>
-                  </div>
-                  {totalAssessments > 0 && (
-                    <ChevronRight className="w-4 h-4 text-white/80 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                  )}
-                </div>
-
-                {/* Marks Card */}
-                <div className="sm:col-span-2 bg-white/[0.06] backdrop-blur-md border border-white/10 rounded-2xl p-3 sm:p-3.5 flex items-center gap-2.5 shadow-sm">
-                  <div className="w-9 h-9 rounded-xl bg-sky-500/20 border border-sky-500/30 text-sky-300 flex items-center justify-center shrink-0">
-                    <BookOpen className="w-4 h-4 stroke-[2]" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] text-sky-200/80 truncate font-medium">Marks</p>
-                    <p className="text-xs font-bold text-white truncate mt-0.5">
-                      {currentMarks} / {maxMarks}
-                    </p>
-                  </div>
-                </div>
               </div>
             </div>
           </div>          {/* Tabs: Learning, Groups, Notes */}
@@ -1056,27 +1032,37 @@ export default function LmsPlayerPage() {
   if (currentView === "chapter") {
     const folderLessons =
       selectedModule?.items.filter((i) => i.category === "FOLDER" || i.type === "folder") || [];
-    const videoLessons =
+    const lectureLessons =
       selectedModule?.items.filter(
         (i) => (i.category === "LECTURE" || i.type === "video") && i.category !== "FOLDER" && !i.folderId
       ) || [];
-    const practiceLessons =
+    const questionLessons =
       selectedModule?.items.filter(
         (i: any) =>
-          (i.category === "PRACTICE" ||
-            (i.type === "quiz" && i.category !== "TEST" && i.category !== "LECTURE") ||
-            (i.type === "assignment" && i.category === "PRACTICE")) &&
+          (i.type === "quiz" || (i.category === "PRACTICE" && (i.questions?.length || 0) > 0)) &&
           i.category !== "FOLDER" &&
           !i.folderId
       ) || [];
-    const testLessons =
+    const assignmentLessons =
       selectedModule?.items.filter(
         (i: any) =>
-          (i.category === "TEST" ||
+          (i.type === "assignment" ||
             i.type === "coding_test" ||
             i.type === "subjective_test" ||
             i.type === "video_test" ||
-            (i.type === "assignment" && i.category === "TEST")) &&
+            i.category === "TEST" ||
+            (i.category === "PRACTICE" && (i.questions?.length || 0) === 0)) &&
+          i.type !== "live" &&
+          i.category !== "LIVE" &&
+          i.type !== "video" &&
+          i.category !== "LECTURE" &&
+          i.category !== "FOLDER" &&
+          !i.folderId
+      ) || [];
+    const liveLessons =
+      selectedModule?.items.filter(
+        (i: any) =>
+          (i.type === "live" || i.category === "LIVE") &&
           i.category !== "FOLDER" &&
           !i.folderId
       ) || [];
@@ -1102,16 +1088,6 @@ export default function LmsPlayerPage() {
                   {selectedModule?.title || "Module Curriculum"}
                 </h1>
               </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setIsMilestonesOpen(true)}
-                className="px-3.5 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/10 dark:hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
-              >
-                <Award className="w-4 h-4" />
-                <span>Milestones</span>
-              </button>
             </div>
           </div>
         </div>
@@ -1166,69 +1142,69 @@ export default function LmsPlayerPage() {
           )}
 
           {/* Section 1: Lecture Videos */}
-          <div className="space-y-3.5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                <PlayCircle className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                <span>Lecture Videos ({videoLessons.length})</span>
-              </h2>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Concept Immersion</span>
-            </div>
+          {lectureLessons.length > 0 && (
+            <div className="space-y-3.5">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                  <PlayCircle className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                  <span>Lecture Videos ({lectureLessons.length})</span>
+                </h2>
+              </div>
 
-            <div className="space-y-2.5">
-              {videoLessons.map((item) => {
-                const isDone = completedLessonIds.includes(item.id);
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => {
-                      setSelectedLesson(item);
-                      setCurrentView("player");
-                    }}
-                    className="bg-white dark:bg-[#0B1120]/80 hover:bg-slate-50 dark:hover:bg-[#0F172A] rounded-2xl border border-slate-200/80 dark:border-sky-500/15 hover:border-sky-400/40 p-4 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0 pr-2">
-                      <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/20 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <PlayCircle className="w-5 h-5 stroke-[2]" />
-                      </div>
-
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-sky-600 dark:group-hover:text-sky-300 transition-colors">
-                            {item.title}
-                          </h3>
-                          {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
+              <div className="space-y-2.5">
+                {lectureLessons.map((item) => {
+                  const isDone = completedLessonIds.includes(item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        setSelectedLesson(item);
+                        setCurrentView("player");
+                      }}
+                      className="bg-white dark:bg-[#0B1120]/80 hover:bg-slate-50 dark:hover:bg-[#0F172A] rounded-2xl border border-slate-200/80 dark:border-sky-500/15 hover:border-sky-400/40 p-4 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0 pr-2">
+                        <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/20 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                          <PlayCircle className="w-5 h-5 stroke-[2]" />
                         </div>
-                        {item.duration && (
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate font-medium">
-                            {item.duration} {item.description ? `· ${item.description}` : ""}
-                          </p>
-                        )}
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-sky-600 dark:group-hover:text-sky-300 transition-colors">
+                              {item.title}
+                            </h3>
+                            {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
+                          </div>
+                          {item.duration && (
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate font-medium">
+                              {item.duration} {item.description ? `· ${item.description}` : ""}
+                            </p>
+                          )}
+                        </div>
                       </div>
+
+                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-sky-500 dark:group-hover:text-sky-400 shrink-0 transition-transform group-hover:translate-x-1" />
                     </div>
-
-                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-sky-500 dark:group-hover:text-sky-400 shrink-0 transition-transform group-hover:translate-x-1" />
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Section 2: Practice Assignments (MCQ, Projects) */}
-          {practiceLessons.length > 0 && (
+          {/* Section 2: Questions & Quizzes */}
+          {questionLessons.length > 0 && (
             <div className="space-y-3.5">
               <div className="flex items-center justify-between">
                 <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 flex items-center gap-2">
                   <FileQuestion className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  <span>Practice Assignments ({practiceLessons.length})</span>
+                  <span>Questions & Quizzes ({questionLessons.length})</span>
                 </h2>
-                <span className="text-[11px] text-amber-600 dark:text-amber-400/80 font-medium">Ungraded Self-Assessment</span>
+                <span className="text-[11px] text-amber-600 dark:text-amber-400/80 font-medium">Knowledge Checks</span>
               </div>
 
               <div className="space-y-2.5">
-                {practiceLessons.map((item: any) => {
+                {questionLessons.map((item: any) => {
                   const isDone = completedLessonIds.includes(item.id);
-                  const isQuizItem = item.type === "quiz";
                   return (
                     <div
                       key={item.id}
@@ -1240,11 +1216,7 @@ export default function LmsPlayerPage() {
                     >
                       <div className="flex items-center gap-3.5 min-w-0 pr-2">
                         <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                          {isQuizItem ? (
-                            <FileQuestion className="w-5 h-5 stroke-[2]" />
-                          ) : (
-                            <Code className="w-5 h-5 stroke-[2]" />
-                          )}
+                          <FileQuestion className="w-5 h-5 stroke-[2]" />
                         </div>
 
                         <div className="min-w-0">
@@ -1253,12 +1225,12 @@ export default function LmsPlayerPage() {
                               {item.title}
                             </h3>
                             <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-300">
-                              {isQuizItem ? "Practice MCQ" : "Practice Project"}
+                              Question MCQ
                             </span>
                             {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
                           </div>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate font-medium">
-                            {item.duration || "20 Mins"} {item.description ? `· ${item.description}` : ""}
+                            {item.duration || "15 Mins"} · {(item.questions?.length || 3)} Questions
                           </p>
                         </div>
                       </div>
@@ -1271,19 +1243,19 @@ export default function LmsPlayerPage() {
             </div>
           )}
 
-          {/* Section 3: Evaluated Test Assignments (Coding Tests, Subjective, Video, Projects) */}
-          {testLessons.length > 0 && (
+          {/* Section 3: Hands-on Practical Assignments */}
+          {assignmentLessons.length > 0 && (
             <div className="space-y-3.5">
               <div className="flex items-center justify-between">
                 <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 flex items-center gap-2">
-                  <Award className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                  <span>Evaluated Test Assignments ({testLessons.length})</span>
+                  <Code2 className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                  <span>Hands-on Assignments ({assignmentLessons.length})</span>
                 </h2>
-                <span className="text-[11px] text-sky-600 dark:text-sky-400/80 font-medium">Mentor & Autograded</span>
+                <span className="text-[11px] text-sky-600 dark:text-sky-400/80 font-medium">Practical Deliverables</span>
               </div>
 
               <div className="space-y-2.5">
-                {testLessons.map((item: any) => {
+                {assignmentLessons.map((item: any) => {
                   const isDone = completedLessonIds.includes(item.id);
                   const isCoding = item.type === "coding_test" || item.type === "code";
                   const isVideo = item.type === "video_test";
@@ -1321,17 +1293,70 @@ export default function LmsPlayerPage() {
                                 ? "Video Viva"
                                 : isSubjective
                                 ? "Subjective Test"
-                                : "Capstone Project"}
+                                : "Practical Project"}
                             </span>
                             {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
                           </div>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate font-medium">
-                            {item.duration || "45 Mins"} · Max Score: {item.maxScore || 100} pts
+                            {item.duration || "90 Mins"} {item.instructions ? `· ${item.instructions.split('\n')[0]}` : ""}
                           </p>
                         </div>
                       </div>
 
                       <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-sky-500 dark:group-hover:text-sky-400 shrink-0 transition-transform group-hover:translate-x-1" />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Section 4: Live Interactive Sessions */}
+          {liveLessons.length > 0 && (
+            <div className="space-y-3.5">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
+                  <VideoIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span>Live Sessions ({liveLessons.length})</span>
+                </h2>
+                <span className="text-[11px] text-indigo-600 dark:text-indigo-400/80 font-medium">Interactive Mentoring</span>
+              </div>
+
+              <div className="space-y-2.5">
+                {liveLessons.map((item: any) => {
+                  const isDone = completedLessonIds.includes(item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        setSelectedLesson(item);
+                        setCurrentView("player");
+                      }}
+                      className="bg-white dark:bg-gradient-to-r dark:from-[#0E1326] dark:to-[#171B33] hover:bg-indigo-50/50 dark:hover:to-[#1E2342] rounded-2xl border border-indigo-200/80 dark:border-indigo-500/30 hover:border-indigo-400 p-4 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0 pr-2">
+                        <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                          <VideoIcon className="w-5 h-5 stroke-[2.2]" />
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">
+                              {item.title}
+                            </h3>
+                            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-500/20 border border-red-200 dark:border-red-500/40 text-red-700 dark:text-red-400">
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                              Live Class
+                            </span>
+                            {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
+                          </div>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate font-medium">
+                            {item.liveDate || "Weekend Session"} • {item.liveTime || "6:00 PM IST"} {item.mentorName ? `· ${item.mentorName}` : ""}
+                          </p>
+                        </div>
+                      </div>
+
+                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 shrink-0 transition-transform group-hover:translate-x-1" />
                     </div>
                   );
                 })}
@@ -1558,6 +1583,99 @@ export default function LmsPlayerPage() {
                 isCompleted={completedLessonIds.includes(selectedLesson.id)}
                 onSubmit={handleSubjectiveVideoSubmit}
               />
+            </div>
+          </div>
+        )}
+
+        {/* LIVE CLASS VIEW */}
+        {isLive && (
+          <div className="bg-white dark:bg-[#0B1120] border-b border-slate-200/80 dark:border-sky-500/20 py-8">
+            <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 space-y-6">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setCurrentView("chapter")}
+                  className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white cursor-pointer"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Back to Curriculum Module</span>
+                </button>
+                <button
+                  onClick={() => markLessonComplete(selectedLesson.id)}
+                  className="text-[10px] font-bold px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+                >
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                  <span>{completedLessonIds.includes(selectedLesson.id) ? "Session Completed" : "Mark as Attended"}</span>
+                </button>
+              </div>
+
+              {/* Live Session Hero Card */}
+              <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-indigo-900 via-[#0E1326] to-[#070A11] border border-indigo-500/30 p-6 sm:p-8 text-white space-y-6 shadow-xl">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/20 border border-red-500/40 text-red-400 text-xs font-black uppercase tracking-wider">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    Interactive Live Class
+                  </div>
+                  <div className="text-xs text-indigo-300 font-medium">
+                    Unisole Skill AI Labs • Cohort Mentorship
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                    {selectedLesson.title}
+                  </h1>
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
+                    {selectedLesson.description ||
+                      "Join the real-time architectural lab walkthrough, live coding demonstrations, and Q&A with industry lead architects."}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                  <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
+                    <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider block">Scheduled Date</span>
+                    <span className="text-xs sm:text-sm font-bold text-white mt-0.5 block">
+                      {selectedLesson.liveDate || "Weekend Session"}
+                    </span>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
+                    <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider block">Time Slot</span>
+                    <span className="text-xs sm:text-sm font-bold text-white mt-0.5 block">
+                      {selectedLesson.liveTime || "6:00 PM - 8:00 PM IST"}
+                    </span>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
+                    <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider block">Lead Instructor</span>
+                    <span className="text-xs sm:text-sm font-bold text-white mt-0.5 block">
+                      {selectedLesson.mentorName || "Lead AI Systems Architect"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <a
+                    href={selectedLesson.liveMeetingUrl || "https://meet.google.com/new"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 bg-indigo-500 hover:bg-indigo-400 text-slate-950 font-bold text-xs sm:text-sm py-3 px-6 rounded-2xl shadow-lg shadow-indigo-500/25 transition-all cursor-pointer"
+                  >
+                    <VideoIcon className="w-4 h-4 stroke-[2.5]" />
+                    <span>Join Live Classroom</span>
+                    <ExternalLink className="w-3.5 h-3.5 ml-1 opacity-75" />
+                  </a>
+                </div>
+              </div>
+
+              {/* Instructions / Agenda Box */}
+              {selectedLesson.instructions && (
+                <div className="bg-slate-50 dark:bg-[#070A11] rounded-2xl border border-slate-200 dark:border-sky-500/20 p-5 space-y-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                    Live Workshop Agenda & Setup
+                  </h3>
+                  <div className="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed">
+                    {selectedLesson.instructions}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1852,99 +1970,6 @@ export default function LmsPlayerPage() {
             </div>
           </div>
         )}
-
-        {/* Player Sub-tabs: Notes & Help */}
-        <div className="border-b border-slate-200/80 dark:border-sky-500/20 bg-white dark:bg-[#0B1120]">
-          <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 flex items-center">
-            <button
-              onClick={() => setPlayerTab("notes")}
-              className={`py-3.5 px-6 text-sm font-semibold relative transition-colors cursor-pointer ${
-                playerTab === "notes"
-                  ? "text-slate-900 dark:text-white font-bold"
-                  : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-              }`}
-            >
-              Notes
-              {playerTab === "notes" && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-500 rounded-full" />
-              )}
-            </button>
-
-            <button
-              onClick={() => setPlayerTab("help")}
-              className={`py-3.5 px-6 text-sm font-semibold relative transition-colors flex items-center gap-1.5 cursor-pointer ${
-                playerTab === "help"
-                  ? "text-slate-900 dark:text-white font-bold"
-                  : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-              }`}
-            >
-              <span>Help</span>
-              <span className="w-2 h-2 rounded-full bg-rose-500 inline-block mb-1" />
-              {playerTab === "help" && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-500 rounded-full" />
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Tab Content: Help (Mentor & Program Support) or Notes */}
-        <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-3.5">
-          {playerTab === "help" ? (
-            <div className="space-y-3">
-              {/* Contact Support */}
-              <div
-                onClick={() => setSupportTicketOpen(true)}
-                className="bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200/80 dark:border-sky-500/20 p-4 shadow-2xs dark:shadow-sm hover:border-sky-400 dark:hover:border-sky-500/40 hover:shadow-xs transition-all flex items-center justify-between cursor-pointer group"
-              >
-                <div className="flex items-center gap-3.5 min-w-0 pr-2">
-                  <div className="w-10 h-10 rounded-full bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/20 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
-                    <SlidersHorizontal className="w-5 h-5 stroke-[2]" />
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-300 transition-colors">
-                      Contact Program Support & Mentor
-                    </h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                      Academic questions, technical assistance, or assignment guidance
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-sky-500 dark:group-hover:text-sky-400 shrink-0 transition-transform group-hover:translate-x-1" />
-              </div>
-            </div>
-          ) : (
-            /* Notes Tab */
-            <div className="bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200/80 dark:border-sky-500/20 p-4 sm:p-5 shadow-2xs dark:shadow-sm space-y-3">
-              <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                Lecture Notes for {selectedLesson?.title}
-              </h4>
-              <textarea
-                value={userNotes}
-                onChange={(e) => {
-                  setUserNotes(e.target.value);
-                  setNotesSaved(false);
-                }}
-                rows={4}
-                placeholder="Take personal lecture notes, write code snippets, or save mentor feedback..."
-                className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-sky-500/30 bg-slate-50 dark:bg-[#070A11] text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
-              />
-              <div className="flex items-center justify-between">
-                <button
-                  onClick={handleSaveNote}
-                  className="bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold py-2 px-5 rounded-xl cursor-pointer shadow-sm transition-all"
-                >
-                  Save Notes
-                </button>
-                {notesSaved && (
-                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Saved!</span>
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Bottom Sticky Lesson Navigation */}

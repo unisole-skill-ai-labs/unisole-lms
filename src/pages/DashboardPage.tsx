@@ -48,9 +48,45 @@ export default function DashboardPage() {
   });
 
   const enrolledCourses = useMemo(() => {
-    return myPathways
+    const list = myPathways
       .map((item: any) => item.pathway || item)
       .filter((p: any) => p && (p.title || p.name));
+
+    if (list.length === 0) {
+      return [
+        {
+          id: "course1",
+          slug: "course1",
+          title: "AI Agent Engineering",
+          shortDescription: "12-Week AI Agent Engineering Certificate Program (Weeks 1 - 12)",
+        },
+        {
+          id: "web-dev",
+          slug: "web-dev",
+          title: "Full Stack Software Engineering",
+          shortDescription: "Modular curriculum: Module 1, Module 2, Module 3 with lecture, question, assignment, live",
+        },
+      ];
+    }
+
+    const hasAgentCourse = list.some(
+      (c: any) =>
+        c.id === "course1" ||
+        (c.title && c.title.toLowerCase().includes("agent"))
+    );
+    if (!hasAgentCourse) {
+      return [
+        {
+          id: "course1",
+          slug: "course1",
+          title: "AI Agent Engineering",
+          shortDescription: "12-Week AI Agent Engineering Certificate Program (Weeks 1 - 12)",
+        },
+        ...list,
+      ];
+    }
+
+    return list;
   }, [myPathways]);
 
 

@@ -10,8 +10,8 @@ export interface LessonItem {
   id: string;
   title: string;
   duration?: string;
-  type: "video" | "quiz" | "assignment" | "coding_test" | "video_test" | "subjective_test" | "folder";
-  category?: "LECTURE" | "PRACTICE" | "TEST" | "FOLDER";
+  type: "video" | "quiz" | "assignment" | "coding_test" | "video_test" | "subjective_test" | "folder" | "live";
+  category?: "LECTURE" | "PRACTICE" | "TEST" | "FOLDER" | "LIVE";
   videoUrl?: string;
   description?: string;
   questions?: QuizQuestion[];
@@ -21,6 +21,10 @@ export interface LessonItem {
   folderId?: string;
   attachments?: Array<{ id: string; name: string; url: string; size?: string }>;
   items?: LessonItem[];
+  liveDate?: string;
+  liveTime?: string;
+  liveMeetingUrl?: string;
+  mentorName?: string;
 }
 
 export interface ModuleSection {
@@ -45,6 +49,941 @@ export interface CourseCurriculum {
 }
 
 const RICK_ROLL_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RDdQw4w9WgXcQ&start_radio=1";
+
+export const AI_AGENT_ENGINEERING_CURRICULUM: CourseCurriculum = {
+  id: "course1",
+  title: "AI Agent Engineering",
+  eyebrow: "12-WEEK AI AGENT ENGINEERING CERTIFICATE PROGRAM • UNISOLE SKILL AI LABS",
+  duration: "12 Weeks (132 Contact Hours)",
+  level: "From Fundamentals to Production",
+  stats: {
+    videos: 12,
+    assessments: 24,
+    resources: 12,
+  },
+  modules: [
+    {
+      id: "week-1",
+      title: "Week 1: What is an AI Agent?",
+      meta: "1 Lecture · 1 Question · 1 Assignment · 1 Live",
+      items: [
+        {
+          id: "w1-lec",
+          title: "Lecture: What is an AI Agent? (Agent Loop & ReAct Pattern)",
+          duration: "24 Mins",
+          type: "video",
+          category: "LECTURE",
+          videoUrl: RICK_ROLL_URL,
+          description: "Key Concepts: Agent loop, LLM vs Agent, ReAct (Think → Act → Observe), workflow vs agent, agent architectures, when not to use an agent.",
+        },
+        {
+          id: "w1-q",
+          title: "Question: What is an AI Agent? (Knowledge Check)",
+          duration: "15 Mins",
+          type: "quiz",
+          category: "PRACTICE",
+          questions: [
+            {
+              id: "q-w1-1",
+              question: "In an agentic loop, what does the ReAct pattern cycle between?",
+              options: [
+                "Think → Act → Observe",
+                "Compile → Build → Deploy",
+                "Prompt → Wait → Output",
+                "Listen → Speak → Sleep",
+              ],
+              correctOptionIndex: 0,
+              explanation: "ReAct iteratively combines reasoning ('Think'), tool execution ('Act'), and environment feedback ('Observe').",
+            },
+            {
+              id: "q-w1-2",
+              question: "What is the primary difference between a hardcoded workflow and an autonomous agent?",
+              options: [
+                "An agent dynamically determines control flow and tool selection based on runtime observations",
+                "A workflow uses GPU tensor cores while agents use CPU only",
+                "Workflows cannot invoke language models",
+                "Agents only execute in cloud environments",
+              ],
+              correctOptionIndex: 0,
+              explanation: "Agents possess non-deterministic control flow where model decisions drive next steps rather than fixed DAGs.",
+            },
+            {
+              id: "q-w1-3",
+              question: "When is it recommended NOT to use an autonomous agent?",
+              options: [
+                "When a task has deterministic, rule-based steps with zero ambiguity",
+                "When you have more than two APIs",
+                "When building web applications",
+                "When response times need to be under 30 seconds",
+              ],
+              correctOptionIndex: 0,
+              explanation: "Deterministic tasks are cheaper, faster, and more reliable when handled by standard procedural code.",
+            },
+          ],
+        },
+        {
+          id: "w1-assign",
+          title: "Assignment: Build Your First ReAct Agent",
+          duration: "90 Mins",
+          type: "assignment",
+          category: "PRACTICE",
+          instructions: "Hands-on Practical Work:\nBuild progressively from a simple LLM app to a tool-using ReAct agent. Mini Project: your first functional AI agent.\n\nDeliverables:\n1. Implement a ReAct loop with Think → Act → Observe stages.\n2. Equip the agent with at least 2 tools (e.g., calculator and search).\n3. Submit your GitHub repository link and verification logs.",
+        },
+        {
+          id: "w1-live",
+          title: "Live: Building Your First ReAct Agent & Architecture Breakdown",
+          duration: "60 Mins",
+          type: "live",
+          category: "LIVE",
+          description: "Live interactive class walking through agent loop mechanics, live coding a tool-calling ReAct agent from scratch, and mentor Q&A.",
+          liveDate: "Saturday",
+          liveTime: "6:00 PM - 7:30 PM IST",
+          mentorName: "Dr. Devendra Sharma & Unisole AI Research Team",
+          liveMeetingUrl: "https://meet.google.com/uni-sole-live",
+        },
+      ],
+    },
+    {
+      id: "week-2",
+      title: "Week 2: Context Engineering I",
+      meta: "1 Lecture · 1 Question · 1 Assignment · 1 Live",
+      items: [
+        {
+          id: "w2-lec",
+          title: "Lecture: Context Engineering I (Roles, Tokenization & Architecture)",
+          duration: "22 Mins",
+          type: "video",
+          category: "LECTURE",
+          videoUrl: RICK_ROLL_URL,
+          description: "Key Concepts: Messages, system/user/tool roles, context window, tokenization, prompt architecture, static vs. dynamic context.",
+        },
+        {
+          id: "w2-q",
+          title: "Question: Context Engineering I (Knowledge Check)",
+          duration: "15 Mins",
+          type: "quiz",
+          category: "PRACTICE",
+          questions: [
+            {
+              id: "q-w2-1",
+              question: "Which message role defines the persistent operational boundaries and constraints of an agent?",
+              options: [
+                "System role",
+                "Tool role",
+                "Assistant role",
+                "User role",
+              ],
+              correctOptionIndex: 0,
+              explanation: "The system role provides foundational directives and behavioural boundaries for LLM execution.",
+            },
+            {
+              id: "q-w2-2",
+              question: "What happens when unmanaged conversation history exceeds the model's context window limit?",
+              options: [
+                "Critical initial instructions are truncated or the API rejects the request",
+                "The model automatically expands its hardware context",
+                "Token pricing is reduced by half",
+                "Latency drops to near zero",
+              ],
+              correctOptionIndex: 0,
+              explanation: "Unmanaged context overflows cause API request failures or loss of system prompt instructions.",
+            },
+          ],
+        },
+        {
+          id: "w2-assign",
+          title: "Assignment: Context-Aware Agent & Context Builder Pipeline",
+          duration: "90 Mins",
+          type: "assignment",
+          category: "PRACTICE",
+          instructions: "Hands-on Practical Work:\nBuild a context-aware agent and a context builder pipeline; observe how context changes model output.\n\nDeliverables:\n1. Construct a dynamic prompt builder that injects user metadata and runtime state.\n2. Test output variability with static vs dynamic context injection.\n3. Submit your GitHub repo with side-by-side benchmark comparison logs.",
+        },
+        {
+          id: "w2-live",
+          title: "Live: Context Window Optimization & Pipeline Teardown",
+          duration: "60 Mins",
+          type: "live",
+          category: "LIVE",
+          description: "Live interactive session dissecting token budgets, role partitioning, and measuring prompt degradation.",
+          liveDate: "Sunday",
+          liveTime: "6:00 PM - 7:30 PM IST",
+          mentorName: "Unisole AI Research Team",
+          liveMeetingUrl: "https://meet.google.com/uni-sole-live",
+        },
+      ],
+    },
+    {
+      id: "week-3",
+      title: "Week 3: Context Engineering II",
+      meta: "1 Lecture · 1 Question · 1 Assignment · 1 Live",
+      items: [
+        {
+          id: "w3-lec",
+          title: "Lecture: Context Engineering II (Prompt Injection & Context Compression)",
+          duration: "26 Mins",
+          type: "video",
+          category: "LECTURE",
+          videoUrl: RICK_ROLL_URL,
+          description: "Key Concepts: Prompt engineering, tool descriptions, prompt injection, defensive prompting, context compression, long conversations.",
+        },
+        {
+          id: "w3-q",
+          title: "Question: Context Engineering II (Knowledge Check)",
+          duration: "15 Mins",
+          type: "quiz",
+          category: "PRACTICE",
+          questions: [
+            {
+              id: "q-w3-1",
+              question: "What is an indirect prompt injection attack in agent systems?",
+              options: [
+                "Adversarial instructions hidden in external data (websites, files, emails) processed by the agent",
+                "A direct SQL injection against Postgres",
+                "Sending an empty prompt string",
+                "Exceeding API rate limits",
+              ],
+              correctOptionIndex: 0,
+              explanation: "Indirect prompt injection occurs when third-party data contains instructions that hijack the agent's control flow.",
+            },
+            {
+              id: "q-w3-2",
+              question: "How does context compression aid in long multi-turn conversations?",
+              options: [
+                "Summarizes or prunes past turns while preserving semantic facts within token budget",
+                "Deletes all past memories permanently",
+                "Converts text into gzip files inside the model",
+                "Encrypts past prompts",
+              ],
+              correctOptionIndex: 0,
+              explanation: "Context compression summarizes previous conversation trajectories to stay within token budgets without losing context.",
+            },
+          ],
+        },
+        {
+          id: "w3-assign",
+          title: "Assignment: Customer Support Agent with Injection Defenses",
+          duration: "90 Mins",
+          type: "assignment",
+          category: "PRACTICE",
+          instructions: "Hands-on Practical Work:\nProject: a production-style customer support agent with business rules and injection defenses — then attack and fix it.\n\nDeliverables:\n1. Build a support agent with strict role boundaries.\n2. Execute 3 distinct prompt injection attacks.\n3. Implement input filtering, delimiter defenses, and fix the vulnerabilities.\n4. Submit GitHub repo and attack/defense evaluation report.",
+        },
+        {
+          id: "w3-live",
+          title: "Live: Red-Teaming & Defending Agentic Systems",
+          duration: "60 Mins",
+          type: "live",
+          category: "LIVE",
+          description: "Live interactive red-teaming lab attacking student agents in real-time and hardening system prompts.",
+          liveDate: "Saturday",
+          liveTime: "6:00 PM - 7:30 PM IST",
+          mentorName: "Unisole Security & AI Team",
+          liveMeetingUrl: "https://meet.google.com/uni-sole-live",
+        },
+      ],
+    },
+    {
+      id: "week-4",
+      title: "Week 4: Memory Engineering",
+      meta: "1 Lecture · 1 Question · 1 Assignment · 1 Live",
+      items: [
+        {
+          id: "w4-lec",
+          title: "Lecture: Memory Engineering (Episodic, Semantic & Lifecycle)",
+          duration: "25 Mins",
+          type: "video",
+          category: "LECTURE",
+          videoUrl: RICK_ROLL_URL,
+          description: "Key Concepts: Short-term vs. long-term memory, episodic vs. semantic memory, memory extraction, retrieval, lifecycle, and conflicts.",
+        },
+        {
+          id: "w4-q",
+          title: "Question: Memory Engineering (Knowledge Check)",
+          duration: "15 Mins",
+          type: "quiz",
+          category: "PRACTICE",
+          questions: [
+            {
+              id: "q-w4-1",
+              question: "What constitutes episodic memory in an AI agent?",
+              options: [
+                "Recollection of specific past events, interactions, and temporal experiences",
+                "General dictionary definitions",
+                "Base model weight matrices",
+                "The operating system file cache",
+              ],
+              correctOptionIndex: 0,
+              explanation: "Episodic memory stores chronologically tagged events and past experiences from specific sessions.",
+            },
+          ],
+        },
+        {
+          id: "w4-assign",
+          title: "Assignment: Personal AI Assistant with Persistent Memory",
+          duration: "90 Mins",
+          type: "assignment",
+          category: "PRACTICE",
+          instructions: "Hands-on Practical Work:\nBuild a personal AI assistant with persistent memory across conversations.\n\nDeliverables:\n1. Implement SQLite or vector-based storage for user preferences.\n2. Automatic memory extraction running at conversation milestones.\n3. Memory retrieval and state hydration across separate browser sessions.\n4. Submit GitHub repository link and demo recording.",
+        },
+        {
+          id: "w4-live",
+          title: "Live: Architecting Long-Term Agentic Memory Banks",
+          duration: "60 Mins",
+          type: "live",
+          category: "LIVE",
+          description: "Live design lab on state hydration, vector memory stores, and memory decay policies.",
+          liveDate: "Sunday",
+          liveTime: "6:00 PM - 7:30 PM IST",
+          mentorName: "Unisole AI Research Team",
+          liveMeetingUrl: "https://meet.google.com/uni-sole-live",
+        },
+      ],
+    },
+    {
+      id: "week-5",
+      title: "Week 5: RAG Engineering",
+      meta: "1 Lecture · 1 Question · 1 Assignment · 1 Live",
+      items: [
+        {
+          id: "w5-lec",
+          title: "Lecture: RAG Engineering (Embeddings, Hybrid Search & Reranking)",
+          duration: "28 Mins",
+          type: "video",
+          category: "LECTURE",
+          videoUrl: RICK_ROLL_URL,
+          description: "Key Concepts: Chunking, embeddings, vector databases, hybrid search, reranking, metadata filtering, retrieval failure modes.",
+        },
+        {
+          id: "w5-q",
+          title: "Question: RAG Engineering (Knowledge Check)",
+          duration: "15 Mins",
+          type: "quiz",
+          category: "PRACTICE",
+          questions: [
+            {
+              id: "q-w5-1",
+              question: "Why is hybrid search (dense vector + sparse BM25) superior to pure vector search?",
+              options: [
+                "It captures both semantic intent and exact keyword/identifier matches",
+                "It eliminates the need for embeddings",
+                "It reduces database memory to zero",
+                "It prevents token usage completely",
+              ],
+              correctOptionIndex: 0,
+              explanation: "Hybrid search merges vector semantic similarity with keyword precision (BM25) for high recall and accuracy.",
+            },
+          ],
+        },
+        {
+          id: "w5-assign",
+          title: "Assignment: Full RAG Pipeline & Chunking Benchmark",
+          duration: "90 Mins",
+          type: "assignment",
+          category: "PRACTICE",
+          instructions: "Hands-on Practical Work:\nBuild a full retrieval-augmented generation pipeline and compare chunking and retrieval strategies.\n\nDeliverables:\n1. Implement document parsing and chunking with variable window sizes.\n2. Index into a vector store and implement metadata filtering.\n3. Run comparative evaluation against naive RAG vs hybrid search + reranking.\n4. Submit repo and benchmarking results table.",
+        },
+        {
+          id: "w5-live",
+          title: "Live: Production RAG Pitfalls & Debugging Failure Modes",
+          duration: "60 Mins",
+          type: "live",
+          category: "LIVE",
+          description: "Live debugging session inspecting silent retrieval failures, needle-in-a-haystack traps, and hybrid search tuning.",
+          liveDate: "Saturday",
+          liveTime: "6:00 PM - 7:30 PM IST",
+          mentorName: "Unisole AI Research Team",
+          liveMeetingUrl: "https://meet.google.com/uni-sole-live",
+        },
+      ],
+    },
+    {
+      id: "week-6",
+      title: "Week 6: Tool Engineering",
+      meta: "1 Lecture · 1 Question · 1 Assignment · 1 Live",
+      items: [
+        {
+          id: "w6-lec",
+          title: "Lecture: Tool Engineering (Schemas, Function Calling & Reliability)",
+          duration: "24 Mins",
+          type: "video",
+          category: "LECTURE",
+          videoUrl: RICK_ROLL_URL,
+          description: "Key Concepts: Tool schemas, function calling, tool selection and reliability, error handling, permissions, and security.",
+        },
+        {
+          id: "w6-q",
+          title: "Question: Tool Engineering (Knowledge Check)",
+          duration: "15 Mins",
+          type: "quiz",
+          category: "PRACTICE",
+          questions: [
+            {
+              id: "q-w6-1",
+              question: "Why must tool argument schemas include clear descriptive docstrings?",
+              options: [
+                "LLMs use schema descriptions to decide which tool to pick and how to format arguments",
+                "Python cannot run functions without them",
+                "They speed up network requests",
+                "They are required by HTML",
+              ],
+              correctOptionIndex: 0,
+              explanation: "Docstrings in tool schemas act as prompts that guide the LLM's tool selection and argument generation.",
+            },
+          ],
+        },
+        {
+          id: "w6-assign",
+          title: "Assignment: Multi-Tool Research Agent",
+          duration: "90 Mins",
+          type: "assignment",
+          category: "PRACTICE",
+          instructions: "Hands-on Practical Work:\nBuild multiple tools (search, calculator, database, API) and a tool-using research agent.\n\nDeliverables:\n1. Define typed JSON Schemas / Pydantic models for 4 distinct tools.\n2. Implement robust error handling and self-correction loops.\n3. Integrate tools into a research agent capable of multi-step inquiries.\n4. Submit GitHub repo and execution logs.",
+        },
+        {
+          id: "w6-live",
+          title: "Live: Building Robust Tool-Calling Runtimes",
+          duration: "60 Mins",
+          type: "live",
+          category: "LIVE",
+          description: "Interactive code-along building high-reliability tool dispatchers and sandboxed API runners.",
+          liveDate: "Sunday",
+          liveTime: "6:00 PM - 7:30 PM IST",
+          mentorName: "Unisole Engineering Team",
+          liveMeetingUrl: "https://meet.google.com/uni-sole-live",
+        },
+      ],
+    },
+    {
+      id: "week-7",
+      title: "Week 7: MCP & Production Tooling",
+      meta: "1 Lecture · 1 Question · 1 Assignment · 1 Live",
+      items: [
+        {
+          id: "w7-lec",
+          title: "Lecture: MCP & Production Tooling (Protocol, Clients & Servers)",
+          duration: "26 Mins",
+          type: "video",
+          category: "LECTURE",
+          videoUrl: RICK_ROLL_URL,
+          description: "Key Concepts: MCP concepts, servers and clients, resources, authentication, permissions, and tool discovery.",
+        },
+        {
+          id: "w7-q",
+          title: "Question: MCP & Production Tooling (Knowledge Check)",
+          duration: "15 Mins",
+          type: "quiz",
+          category: "PRACTICE",
+          questions: [
+            {
+              id: "q-w7-1",
+              question: "What is the primary benefit of the Model Context Protocol (MCP)?",
+              options: [
+                "Standardizes the protocol between host applications and external tool servers",
+                "Replaces all cloud LLMs with local binaries",
+                "Compresses video streams for web browsers",
+                "Automatically deploys React frontends",
+              ],
+              correctOptionIndex: 0,
+              explanation: "MCP provides an open standard for connecting AI clients with diverse external tools and data sources safely.",
+            },
+          ],
+        },
+        {
+          id: "w7-assign",
+          title: "Assignment: Personal AI Work Agent with MCP Tools",
+          duration: "90 Mins",
+          type: "assignment",
+          category: "PRACTICE",
+          instructions: "Hands-on Practical Work:\nConnect and register multiple MCP tools with permission controls. Milestone: a personal AI work agent.\n\nDeliverables:\n1. Configure and connect to at least 2 MCP servers.\n2. Implement permission gates for sensitive actions.\n3. Execute a multi-tool autonomous workflow via MCP client protocol.\n4. Submit GitHub repo and milestone verification video.",
+        },
+        {
+          id: "w7-live",
+          title: "Live: Spinning Up Enterprise MCP Servers & Clients",
+          duration: "60 Mins",
+          type: "live",
+          category: "LIVE",
+          description: "Live lab configuring MCP servers, inspecting protocol handshakes, and building client bridges.",
+          liveDate: "Saturday",
+          liveTime: "6:00 PM - 7:30 PM IST",
+          mentorName: "Unisole AI Research Team",
+          liveMeetingUrl: "https://meet.google.com/uni-sole-live",
+        },
+      ],
+    },
+    {
+      id: "week-8",
+      title: "Week 8: Coding Agents",
+      meta: "1 Lecture · 1 Question · 1 Assignment · 1 Live",
+      items: [
+        {
+          id: "w8-lec",
+          title: "Lecture: Coding Agents (AST Parsing, Sandboxes & Loops)",
+          duration: "30 Mins",
+          type: "video",
+          category: "LECTURE",
+          videoUrl: RICK_ROLL_URL,
+          description: "Key Concepts: Coding agent architecture, repository understanding, code generation, sandboxing, testing, and the agentic coding loop.",
+        },
+        {
+          id: "w8-q",
+          title: "Question: Coding Agents (Knowledge Check)",
+          duration: "15 Mins",
+          type: "quiz",
+          category: "PRACTICE",
+          questions: [
+            {
+              id: "q-w8-1",
+              question: "What are the four core phases of the agentic coding loop?",
+              options: [
+                "Inspect → Edit → Test → Repair",
+                "Fork → Delete → Reinstall → Reboot",
+                "Copy → Paste → Build → Push",
+                "Prompt → Wait → Output → Exit",
+              ],
+              correctOptionIndex: 0,
+              explanation: "Autonomous coding loops inspect the repo, apply diffs, execute tests in sandbox, and repair errors upon failure.",
+            },
+          ],
+        },
+        {
+          id: "w8-assign",
+          title: "Assignment: Autonomous Repository Bug Fixing Coding Agent",
+          duration: "120 Mins",
+          type: "assignment",
+          category: "PRACTICE",
+          instructions: "Hands-on Practical Work:\nProject: a coding agent that inspects a real repository, edits files, runs tests, and fixes errors.\n\nDeliverables:\n1. Build an agent with tools to list files, read code, write diffs, and execute test suites.\n2. Run the agent against a repository with intentionally failing unit tests.\n3. Observe autonomous repair loop until tests pass with code 0.\n4. Submit GitHub repo and terminal recording.",
+        },
+        {
+          id: "w8-live",
+          title: "Live: Building Sandboxed Autonomous Coding Systems",
+          duration: "60 Mins",
+          type: "live",
+          category: "LIVE",
+          description: "Live architecture teardown of modern coding agents (like SWE-bench runners and Claude Code patterns).",
+          liveDate: "Sunday",
+          liveTime: "6:00 PM - 7:30 PM IST",
+          mentorName: "Unisole Engineering Team",
+          liveMeetingUrl: "https://meet.google.com/uni-sole-live",
+        },
+      ],
+    },
+    {
+      id: "week-9",
+      title: "Week 9: Async, Event-Driven & Computer Use",
+      meta: "1 Lecture · 1 Question · 1 Assignment · 1 Live",
+      items: [
+        {
+          id: "w9-lec",
+          title: "Lecture: Async, Event-Driven & Computer Use",
+          duration: "27 Mins",
+          type: "video",
+          category: "LECTURE",
+          videoUrl: RICK_ROLL_URL,
+          description: "Key Concepts: Synchronous vs. asynchronous agents, event-driven architecture, human-in-the-loop, browser automation basics.",
+        },
+        {
+          id: "w9-q",
+          title: "Question: Async & Computer Use (Knowledge Check)",
+          duration: "15 Mins",
+          type: "quiz",
+          category: "PRACTICE",
+          questions: [
+            {
+              id: "q-w9-1",
+              question: "In an event-driven agent architecture, what triggers agent execution?",
+              options: [
+                "Incoming events or webhooks (e.g. GitHub issue, Slack mention, cron timer)",
+                "Continuous busy-waiting polling in while(true)",
+                "Manual developer keyboard clicks only",
+                "Operating system page faults",
+              ],
+              correctOptionIndex: 0,
+              explanation: "Event-driven systems wake up reactively upon webhooks or queue messages rather than wasting compute polling.",
+            },
+          ],
+        },
+        {
+          id: "w9-assign",
+          title: "Assignment: Event-Driven Agent & Browser Automation Mini-Lab",
+          duration: "90 Mins",
+          type: "assignment",
+          category: "PRACTICE",
+          instructions: "Hands-on Practical Work:\nBuild an event-driven agent triggered by an incoming event, plus a controlled browser-automation mini-lab.\n\nDeliverables:\n1. Construct an event listener that parses incoming triggers and spawns an agent run.\n2. Implement a Playwright browser automation script navigating a web page and extracting structured data.\n3. Integrate a human-in-the-loop approval step before executing final action.\n4. Submit GitHub repo and walkthrough demo.",
+        },
+        {
+          id: "w9-live",
+          title: "Live: Playwright Automation & Computer-Use Runtimes",
+          duration: "60 Mins",
+          type: "live",
+          category: "LIVE",
+          description: "Live code-along building controlled Playwright browser agents and handling visual UI feedback loops.",
+          liveDate: "Saturday",
+          liveTime: "6:00 PM - 7:30 PM IST",
+          mentorName: "Unisole Engineering Team",
+          liveMeetingUrl: "https://meet.google.com/uni-sole-live",
+        },
+      ],
+    },
+    {
+      id: "week-10",
+      title: "Week 10: Agent Evaluation",
+      meta: "1 Lecture · 1 Question · 1 Assignment · 1 Live",
+      items: [
+        {
+          id: "w10-lec",
+          title: "Lecture: Agent Evaluation (Benchmarks, Trajectories & LLM-as-Judge)",
+          duration: "25 Mins",
+          type: "video",
+          category: "LECTURE",
+          videoUrl: RICK_ROLL_URL,
+          description: "Key Concepts: Why demos aren't evaluation, benchmarks, trajectory evaluation, LLM-as-judge, reliability, latency, cost, safety.",
+        },
+        {
+          id: "w10-q",
+          title: "Question: Agent Evaluation (Knowledge Check)",
+          duration: "15 Mins",
+          type: "quiz",
+          category: "PRACTICE",
+          questions: [
+            {
+              id: "q-w10-1",
+              question: "Why are cherry-picked single demo runs dangerous for evaluating AI agents?",
+              options: [
+                "Agents exhibit non-deterministic stochastic variance; benchmarks across hundreds of trials are needed to assess reliability",
+                "Video players reduce resolution",
+                "Demos are too short to compile",
+                "LLMs refuse to run on recorded video",
+              ],
+              correctOptionIndex: 0,
+              explanation: "High variance across trials means agents require rigorous multi-run benchmark datasets and trajectory scoring.",
+            },
+          ],
+        },
+        {
+          id: "w10-assign",
+          title: "Assignment: Agent Evaluation Framework & Failure Logger",
+          duration: "90 Mins",
+          type: "assignment",
+          category: "PRACTICE",
+          instructions: "Hands-on Practical Work:\nBuild an evaluation framework for your own agent and use it to find and log failure patterns.\n\nDeliverables:\n1. Create a test suite of 20 diverse benchmark tasks with pass/fail criteria.\n2. Implement automated evaluation harness scoring latency, tool call accuracy, and completion rate.\n3. Log and classify failure patterns (hallucination, loop deadlock, invalid tool argument).\n4. Submit repo and evaluation diagnostics report.",
+        },
+        {
+          id: "w10-live",
+          title: "Live: Building LLM-as-a-Judge & Automated Trajectory Scorer",
+          duration: "60 Mins",
+          type: "live",
+          category: "LIVE",
+          description: "Live lab configuring multi-metric evaluation suites and calibrating LLM judges against gold standard labels.",
+          liveDate: "Sunday",
+          liveTime: "6:00 PM - 7:30 PM IST",
+          mentorName: "Unisole AI Research Team",
+          liveMeetingUrl: "https://meet.google.com/uni-sole-live",
+        },
+      ],
+    },
+    {
+      id: "week-11",
+      title: "Week 11: Agent Improvement",
+      meta: "1 Lecture · 1 Question · 1 Assignment · 1 Live",
+      items: [
+        {
+          id: "w11-lec",
+          title: "Lecture: Agent Improvement (Versioned Comparisons & Evolution)",
+          duration: "24 Mins",
+          type: "video",
+          category: "LECTURE",
+          videoUrl: RICK_ROLL_URL,
+          description: "Key Concepts: When to improve the prompt, context, tools, or the model itself; version comparison; continuous evolution loop.",
+        },
+        {
+          id: "w11-q",
+          title: "Question: Agent Improvement (Knowledge Check)",
+          duration: "15 Mins",
+          type: "quiz",
+          category: "PRACTICE",
+          questions: [
+            {
+              id: "q-w11-1",
+              question: "When an agent fails a benchmark task due to incorrect tool schema parameters, what is the best first fix?",
+              options: [
+                "Improve tool description and parameter schema definitions",
+                "Immediately fine-tune an entirely new foundation model from scratch",
+                "Delete all tests and re-run",
+                "Rewrite the entire agent in C++",
+              ],
+              correctOptionIndex: 0,
+              explanation: "Tool engineering and schema refinement is faster, cheaper, and more deterministic than retraining models.",
+            },
+          ],
+        },
+        {
+          id: "w11-assign",
+          title: "Assignment: Diagnose Failures and Ship Improved Version 2",
+          duration: "90 Mins",
+          type: "assignment",
+          category: "PRACTICE",
+          instructions: "Hands-on Practical Work:\nTake your Week 10 agent, diagnose failures, and ship an improved Version 2 — then compare results.\n\nDeliverables:\n1. Isolate the top 3 failure modes identified in Week 10.\n2. Implement targeted architectural, prompt, or tool improvements.\n3. Run head-to-head comparison between V1 and V2 across your evaluation dataset.\n4. Submit repo and comparative performance charts.",
+        },
+        {
+          id: "w11-live",
+          title: "Live: Iterative Agent Optimization & Head-to-Head Benchmarking",
+          duration: "60 Mins",
+          type: "live",
+          category: "LIVE",
+          description: "Live teardown of student V1 vs V2 results, resolving edge case regressions and tuning heuristics.",
+          liveDate: "Saturday",
+          liveTime: "6:00 PM - 7:30 PM IST",
+          mentorName: "Unisole AI Research Team",
+          liveMeetingUrl: "https://meet.google.com/uni-sole-live",
+        },
+      ],
+    },
+    {
+      id: "week-12",
+      title: "Week 12: Multi-Agent Systems & Capstone",
+      meta: "1 Lecture · 1 Question · 1 Assignment · 1 Live",
+      items: [
+        {
+          id: "w12-lec",
+          title: "Lecture: Multi-Agent Systems & Capstone (Swarm Patterns & Consensus)",
+          duration: "32 Mins",
+          type: "video",
+          category: "LECTURE",
+          videoUrl: RICK_ROLL_URL,
+          description: "Key Concepts: Manager-worker and peer-to-peer patterns, shared vs. independent context, delegation, coordination, failure handling.",
+        },
+        {
+          id: "w12-q",
+          title: "Question: Multi-Agent Systems (Knowledge Check)",
+          duration: "15 Mins",
+          type: "quiz",
+          category: "PRACTICE",
+          questions: [
+            {
+              id: "q-w12-1",
+              question: "In a manager-worker multi-agent architecture, what is the role of the manager agent?",
+              options: [
+                "Decomposes user objectives into sub-tasks, assigns to specialized workers, and synthesizes output",
+                "Executes every single terminal command itself without delegating",
+                "Acts only as a database proxy",
+                "Blocks all outgoing API calls",
+              ],
+              correctOptionIndex: 0,
+              explanation: "Manager agents coordinate planning and task distribution among specialized worker agents.",
+            },
+          ],
+        },
+        {
+          id: "w12-assign",
+          title: "Assignment: Multi-Agent Research System (Capstone)",
+          duration: "180 Mins",
+          type: "assignment",
+          category: "TEST",
+          maxScore: 100,
+          instructions: "Hands-on Practical Work:\nCapstone: a multi-agent research system (manager, researcher, analyst, critic, synthesizer) — presented and defended.\n\nDeliverables:\n1. Implement hierarchical multi-agent coordination with specialized personas.\n2. Inter-agent communication protocols and conflict resolution.\n3. End-to-end automated research workflow with evaluation metrics.\n4. Complete GitHub repository with README architecture diagram, demo video, and capstone presentation slides.",
+        },
+        {
+          id: "w12-live",
+          title: "Live: Capstone Presentation & Live Swarm Defense",
+          duration: "120 Mins",
+          type: "live",
+          category: "LIVE",
+          description: "Live Capstone Defense: Students present and defend their multi-agent systems before the technical mentor panel.",
+          liveDate: "Sunday",
+          liveTime: "5:00 PM - 7:30 PM IST",
+          mentorName: "Unisole Technical Evaluation Panel & Mentors",
+          liveMeetingUrl: "https://meet.google.com/uni-sole-live",
+        },
+      ],
+    },
+  ],
+};
+
+export const GENERIC_MODULE_CURRICULUM: CourseCurriculum = {
+  id: "course-generic",
+  title: "Engineering Curriculum",
+  eyebrow: "MODULAR PROFESSIONAL CERTIFICATE PROGRAM",
+  duration: "8 Modules",
+  level: "Comprehensive",
+  stats: {
+    videos: 8,
+    assessments: 16,
+    resources: 8,
+  },
+  modules: [
+    {
+      id: "mod-1",
+      title: "Module 1: Core Fundamentals & System Architecture",
+      meta: "1 Lecture · 1 Question · 1 Assignment · 1 Live",
+      items: [
+        {
+          id: "m1-lec",
+          title: "Lecture: System Architecture & Core Principles",
+          duration: "20 Mins",
+          type: "video",
+          category: "LECTURE",
+          videoUrl: RICK_ROLL_URL,
+          description: "Core architectural foundations, design trade-offs, and operational principles.",
+        },
+        {
+          id: "m1-q",
+          title: "Question: Module 1 Knowledge Check",
+          duration: "15 Mins",
+          type: "quiz",
+          category: "PRACTICE",
+          questions: [
+            {
+              id: "q-m1-1",
+              question: "What is the primary benefit of modular software architecture?",
+              options: [
+                "Separation of concerns, maintainability, and independent testability",
+                "Faster internet connection speeds",
+                "Elimination of all software bugs automatically",
+                "Removal of data storage requirements",
+              ],
+              correctOptionIndex: 0,
+              explanation: "Modular architectures decouple subsystems for clearer boundaries, testing, and team ownership.",
+            },
+          ],
+        },
+        {
+          id: "m1-assign",
+          title: "Assignment: Foundation Implementation Lab",
+          duration: "60 Mins",
+          type: "assignment",
+          category: "PRACTICE",
+          instructions: "Implement the foundational module specifications and submit your repository link.",
+        },
+        {
+          id: "m1-live",
+          title: "Live: Architecture Deep Dive & Interactive Workshop",
+          duration: "60 Mins",
+          type: "live",
+          category: "LIVE",
+          description: "Live interactive mentoring session covering architectural patterns and Q&A.",
+          liveDate: "Saturday",
+          liveTime: "6:00 PM - 7:00 PM IST",
+          mentorName: "Senior Engineering Mentors",
+          liveMeetingUrl: "https://meet.google.com/uni-sole-live",
+        },
+      ],
+    },
+    {
+      id: "mod-2",
+      title: "Module 2: Component Design & State Management",
+      meta: "1 Lecture · 1 Question · 1 Assignment · 1 Live",
+      items: [
+        {
+          id: "m2-lec",
+          title: "Lecture: Component Design & State Management",
+          duration: "25 Mins",
+          type: "video",
+          category: "LECTURE",
+          videoUrl: RICK_ROLL_URL,
+          description: "Patterns for managing state consistency, side effects, and reusability.",
+        },
+        {
+          id: "m2-q",
+          title: "Question: Module 2 Knowledge Check",
+          duration: "15 Mins",
+          type: "quiz",
+          category: "PRACTICE",
+          questions: [
+            {
+              id: "q-m2-1",
+              question: "Why should side effects be separated from pure rendering logic?",
+              options: [
+                "To ensure deterministic rendering and prevent unwanted re-render loops",
+                "Because browsers cannot parse side effects",
+                "To reduce CSS file size",
+                "To increase font sizes",
+              ],
+              correctOptionIndex: 0,
+              explanation: "Keeping rendering pure ensures predictable UI updates and straightforward debugging.",
+            },
+          ],
+        },
+        {
+          id: "m2-assign",
+          title: "Assignment: Interactive State Management Lab",
+          duration: "60 Mins",
+          type: "assignment",
+          category: "PRACTICE",
+          instructions: "Build and test state management workflows under concurrent conditions.",
+        },
+        {
+          id: "m2-live",
+          title: "Live: Code Review & State Debugging Session",
+          duration: "60 Mins",
+          type: "live",
+          category: "LIVE",
+          description: "Live debugging workshop with peer code reviews and optimization insights.",
+          liveDate: "Sunday",
+          liveTime: "6:00 PM - 7:00 PM IST",
+          mentorName: "Senior Engineering Mentors",
+          liveMeetingUrl: "https://meet.google.com/uni-sole-live",
+        },
+      ],
+    },
+    {
+      id: "mod-3",
+      title: "Module 3: Production APIs & Cloud Deployment",
+      meta: "1 Lecture · 1 Question · 1 Assignment · 1 Live",
+      items: [
+        {
+          id: "m3-lec",
+          title: "Lecture: Production APIs & Cloud Deployment",
+          duration: "22 Mins",
+          type: "video",
+          category: "LECTURE",
+          videoUrl: RICK_ROLL_URL,
+          description: "Containerization, CI/CD pipelines, observability, and scaling.",
+        },
+        {
+          id: "m3-q",
+          title: "Question: Module 3 Knowledge Check",
+          duration: "15 Mins",
+          type: "quiz",
+          category: "PRACTICE",
+          questions: [
+            {
+              id: "q-m3-1",
+              question: "What is the primary function of health check endpoints in production services?",
+              options: [
+                "Allows load balancers and orchestrators to verify service availability before routing traffic",
+                "Encrypts hard drive volumes",
+                "Sends marketing emails to users",
+                "Decreases database query size",
+              ],
+              correctOptionIndex: 0,
+              explanation: "Health checks signal whether an instance is healthy and ready to serve live traffic.",
+            },
+          ],
+        },
+        {
+          id: "m3-assign",
+          title: "Assignment: Production Deployment Milestone",
+          duration: "90 Mins",
+          type: "assignment",
+          category: "TEST",
+          maxScore: 100,
+          instructions: "Deploy the full-stack system to staging or production with automated CI/CD and health checks.",
+        },
+        {
+          id: "m3-live",
+          title: "Live: Production Deployment & Capstone Defense",
+          duration: "60 Mins",
+          type: "live",
+          category: "LIVE",
+          description: "Live capstone review and evaluation before the mentor panel.",
+          liveDate: "Saturday",
+          liveTime: "6:00 PM - 7:00 PM IST",
+          mentorName: "Senior Engineering Mentors",
+          liveMeetingUrl: "https://meet.google.com/uni-sole-live",
+        },
+      ],
+    },
+  ],
+};
 
 export const GENAI_CURRICULUM: CourseCurriculum = {
   id: "cs-genai",
@@ -1497,12 +2436,21 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
 };
 
 export function getCurriculum(courseId?: string): CourseCurriculum {
-  if (!courseId) return GENAI_CURRICULUM;
+  if (!courseId) return AI_AGENT_ENGINEERING_CURRICULUM;
   const normalized = courseId.toLowerCase();
   if (normalized.includes("common") || normalized.includes("entrepreneur") || normalized.includes("incubator")) {
     return INCUBATOR_CURRICULUM;
   }
-  return GENAI_CURRICULUM;
+  if (
+    normalized === "course1" ||
+    normalized.includes("agent") ||
+    normalized.includes("genai") ||
+    normalized === "cs-genai" ||
+    normalized === "cs-agentic"
+  ) {
+    return AI_AGENT_ENGINEERING_CURRICULUM;
+  }
+  return GENERIC_MODULE_CURRICULUM;
 }
 
 export function getEmbedVideoUrl(url?: string): string {
