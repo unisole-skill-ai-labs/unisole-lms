@@ -98,8 +98,11 @@ export default function EditCoursePage() {
 
   // Seamlessly merge backend modules with canonical curriculum so Course Manager always has 100% synced view
   const displayModules = useMemo(() => {
-    if (courseModules && courseModules.length > 0) {
-      return courseModules;
+    const valid = (courseModules || []).filter(
+      (m: any) => m && m.title && !m.title.toLowerCase().includes("intro to ai")
+    );
+    if (valid.length >= 12) {
+      return valid;
     }
     return (canonical.modules || []).map((m, idx) => ({
       moduleId: m.id || `mod_agent_w${idx + 1}`,

@@ -102,8 +102,16 @@ export default function LmsPlayerPage() {
   // Build modules dynamically from backend DB API or fallback to canonical curriculum
   const modules: ModuleSection[] = useMemo(() => {
     const allCourseModules = courses.flatMap((c: any) => c.modules || []);
-    if (allCourseModules.length > 0) {
-      return allCourseModules.map((m: any, idx: number) => {
+    // Strictly filter out any obsolete dummy module like "Intro to AI Agents"
+    const validCourseModules = allCourseModules.filter(
+      (m: any) =>
+        m &&
+        m.title &&
+        !m.title.toLowerCase().includes("intro to ai")
+    );
+
+    if (validCourseModules.length >= 12) {
+      return validCourseModules.map((m: any, idx: number) => {
         const backendLessons = m.lessons || [];
         const videoCount = backendLessons.filter(
           (l: any) =>
