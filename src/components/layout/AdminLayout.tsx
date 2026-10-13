@@ -9,6 +9,7 @@ import {
   Calendar,
   FolderArchive,
   Users,
+  UserCheck,
   ExternalLink,
   LogOut,
   Sun,
@@ -61,6 +62,9 @@ export default function AdminLayout() {
       : []),
     ...(isProgramManager
       ? [{ name: "Program Manager", path: "/admin/courses", icon: BookOpen, badge: "Courses" }]
+      : []),
+    ...(isMentor
+      ? [{ name: "Mentor View", path: "/admin/mentor-view", icon: UserCheck }]
       : []),
     { name: "Calendar", path: "/admin/calendar", icon: Calendar },
     { name: "Students", path: "/admin/students", icon: Users },

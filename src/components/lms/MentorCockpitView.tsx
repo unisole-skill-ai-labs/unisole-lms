@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Users,
   CheckCircle2,
@@ -60,6 +61,7 @@ interface MentorCockpitProps {
   mentees: Mentee[];
   milestones?: any;
   selectedMenteeId?: string | null;
+  initialViewMode?: "dashboard" | "student";
   onGradeSubmission?: (menteeId: string, submissionId: string, score: number, feedback: string) => void;
 }
 
@@ -67,10 +69,26 @@ export default function MentorCockpitView({
   mentor,
   mentees = [],
   selectedMenteeId,
+  initialViewMode,
 }: MentorCockpitProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isMentorViewPath = location.pathname.includes("mentor-view");
+  const defaultMode = initialViewMode || (isMentorViewPath ? "student" : "dashboard");
+
   // Toggle between "All Students (Dashboard)" and "Single Student View"
-  const [viewMode, setViewMode] = useState<"dashboard" | "student">("dashboard");
+  const [viewMode, setViewMode] = useState<"dashboard" | "student">(defaultMode);
   const [currentMenteeId, setCurrentMenteeId] = useState<string>("");
+
+  useEffect(() => {
+    if (initialViewMode) {
+      setViewMode(initialViewMode);
+    } else if (location.pathname.includes("mentor-view")) {
+      setViewMode("student");
+    } else if (location.pathname.includes("submissions")) {
+      setViewMode("dashboard");
+    }
+  }, [initialViewMode, location.pathname]);
 
   useEffect(() => {
     if (selectedMenteeId && mentees.some((m) => m.id === selectedMenteeId)) {
@@ -133,7 +151,12 @@ export default function MentorCockpitView({
           <div className="flex items-center gap-2.5 flex-wrap">
             <button
               type="button"
-              onClick={() => setViewMode("dashboard")}
+              onClick={() => {
+                setViewMode("dashboard");
+                if (location.pathname.includes("mentor-view")) {
+                  navigate("/admin/submissions");
+                }
+              }}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                 viewMode === "dashboard"
                   ? "bg-sky-500 text-white border-sky-500 shadow-xs"
@@ -144,7 +167,12 @@ export default function MentorCockpitView({
             </button>
             <button
               type="button"
-              onClick={() => setViewMode("student")}
+              onClick={() => {
+                setViewMode("student");
+                if (!location.pathname.includes("mentor-view")) {
+                  navigate("/admin/mentor-view");
+                }
+              }}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                 viewMode === "student"
                   ? "bg-sky-500 text-white border-sky-500 shadow-xs"
@@ -259,6 +287,9 @@ export default function MentorCockpitView({
                           onClick={() => {
                             setCurrentMenteeId(mentee.id);
                             setViewMode("student");
+                            if (!location.pathname.includes("mentor-view")) {
+                              navigate("/admin/mentor-view");
+                            }
                           }}
                           className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 transition-colors cursor-pointer"
                         >

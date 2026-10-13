@@ -63,6 +63,7 @@ export default function App() {
         <Route path="courses" element={<AdminCoursesPage />} />
         <Route path="courses/:courseId" element={<EditCoursePage />} />
         <Route path="submissions" element={<SubmissionsPage />} />
+        <Route path="mentor-view" element={<SubmissionsPage initialMode="student" />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="files" element={<FilesPage />} />
         <Route path="students" element={<StudentsPage />} />

@@ -13,7 +13,11 @@ import {
 } from "../../store/apiSlice";
 import MentorCockpitView from "../../components/lms/MentorCockpitView";
 
-export default function SubmissionsPage() {
+interface SubmissionsPageProps {
+  initialMode?: "dashboard" | "student";
+}
+
+export default function SubmissionsPage({ initialMode }: SubmissionsPageProps = {}) {
   const { user } = useSelector((state: any) => state.auth);
 
   const userRoles: string[] = useMemo(() => {
@@ -148,6 +152,7 @@ export default function SubmissionsPage() {
             }
           }
           selectedMenteeId={selectedMenteeId}
+          initialViewMode={initialMode}
           onGradeSubmission={handleGradeSubmission}
         />
       ) : (
