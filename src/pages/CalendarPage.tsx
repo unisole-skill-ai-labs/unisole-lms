@@ -104,9 +104,10 @@ export default function CalendarPage() {
   }, [user]);
 
   const isAdmin = userRoles.includes("SUPER_ADMIN") || userRoles.includes("ADMIN");
-  const isProgramManager = userRoles.includes("PROGRAM_MANAGER");
+  const isCourseManager =
+    userRoles.includes("COURSE_MANAGER") || userRoles.includes("PROGRAM_MANAGER");
   const isMentor = userRoles.includes("MENTOR");
-  const canManageEvents = isAdmin || isProgramManager || isMentor;
+  const canManageEvents = isAdmin || isCourseManager || isMentor;
 
   // View States
   const [viewMode, setViewMode] = useState<"week" | "month" | "day">("week");

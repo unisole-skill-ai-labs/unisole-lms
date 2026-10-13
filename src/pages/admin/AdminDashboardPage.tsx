@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
   BookOpen,
@@ -29,6 +29,17 @@ import {
 
 export default function AdminDashboardPage() {
   const { user } = useSelector((state: any) => state.auth);
+
+  const userRole = (user?.role || "").toUpperCase();
+  const metaRoles: string[] = Array.isArray(user?.metadata?.roles)
+    ? user.metadata.roles.map((r: any) => String(r).toUpperCase())
+    : [];
+  const allRoles = [userRole, ...metaRoles];
+  const isAdmin = allRoles.includes("SUPER_ADMIN") || allRoles.includes("ADMIN");
+
+  if (!isAdmin) {
+    return <Navigate to="/admin/courses" replace />;
+  }
 
   // Velocity Period Filter (Weekly, Monthly, Yearly)
   const [velocityPeriod, setVelocityPeriod] = useState<"Weekly" | "Monthly" | "Yearly">("Monthly");

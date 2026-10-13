@@ -41,27 +41,26 @@ export default function AdminLayout() {
   const isSuperAdmin = allRoles.includes("SUPER_ADMIN");
   const isAdmin = isSuperAdmin || allRoles.includes("ADMIN");
   const isMentor = isAdmin || allRoles.includes("MENTOR");
-  const isProgramManager =
+  const isCourseManager =
     isAdmin ||
+    allRoles.includes("COURSE_MANAGER") ||
     allRoles.includes("PROGRAM_MANAGER") ||
     allRoles.includes("MEMBER") ||
     allRoles.includes("COURSE_AUTHOR") ||
     (!allRoles.includes("MENTOR") && allRoles.length <= 1); // default author if not explicitly mentor-only
 
-  const hasBoth = isMentor && isProgramManager;
+  const hasBoth = isMentor && isCourseManager;
 
   // Build nav items dynamically based on roles
   const navItems = [
-    ...(isProgramManager && !hasBoth
-      ? [{ name: "Dashboard", path: "/admin", icon: LayoutDashboard, badge: "1", end: true }]
-      : isProgramManager
+    ...(isAdmin
       ? [{ name: "Admin Overview", path: "/admin", icon: LayoutGrid, end: true }]
       : []),
     ...(isMentor
-      ? [{ name: "Dashboard", path: "/admin/submissions", icon: LayoutDashboard, badge: isMentor && !isProgramManager ? "Active" : "Mentor" }]
+      ? [{ name: "Dashboard", path: "/admin/submissions", icon: LayoutDashboard, badge: isMentor && !isCourseManager ? "Active" : "Mentor" }]
       : []),
-    ...(isProgramManager
-      ? [{ name: "Program Manager", path: "/admin/courses", icon: BookOpen, badge: "Courses" }]
+    ...(isCourseManager
+      ? [{ name: "Course Manager", path: "/admin/courses", icon: BookOpen, badge: "Courses" }]
       : []),
     ...(isMentor
       ? [{ name: "Mentor View", path: "/admin/mentor-view", icon: UserCheck }]
@@ -75,10 +74,10 @@ export default function AdminLayout() {
     : isAdmin
     ? "Admin"
     : hasBoth
-    ? "Program Mgr & Mentor"
+    ? "Course Mgr & Mentor"
     : isMentor
     ? "Lead Mentor"
-    : "Program Manager";
+    : "Course Manager";
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#070A11] text-slate-800 dark:text-slate-100 flex flex-col md:flex-row antialiased">
@@ -120,7 +119,7 @@ export default function AdminLayout() {
       >
         {/* Brand Header */}
         <div className="p-5 border-b border-slate-100 dark:border-slate-800/80 hidden md:flex items-center justify-between">
-          <Link to="/admin" className="flex items-center gap-2.5 group">
+          <Link to={isAdmin ? "/admin" : isCourseManager ? "/admin/courses" : "/admin/submissions"} className="flex items-center gap-2.5 group">
             <div className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-sky-500 flex items-center justify-center text-white dark:text-slate-950 font-bold text-sm shadow-sm group-hover:scale-105 transition-transform">
               <LayoutGrid className="w-4 h-4" />
             </div>

@@ -41,8 +41,8 @@ export default function StudentsPage() {
   const isMentor =
     userRoles.includes("MENTOR") && !isAdmin;
 
-  const isProgramManager =
-    userRoles.includes("PROGRAM_MANAGER") && !isAdmin;
+  const isCourseManager =
+    (userRoles.includes("COURSE_MANAGER") || userRoles.includes("PROGRAM_MANAGER")) && !isAdmin;
 
   const [selectedCourseId, setSelectedCourseId] = useState<string>("ALL");
   const [search, setSearch] = useState("");
@@ -136,7 +136,7 @@ export default function StudentsPage() {
   // Client-side quick filter
   const filteredStudents = useMemo(() => {
     return students.filter((st: any) => {
-      if (isProgramManager && (!st.enrolledCourses || st.enrolledCourses.length === 0)) {
+      if (isCourseManager && (!st.enrolledCourses || st.enrolledCourses.length === 0)) {
         return false;
       }
 
@@ -155,7 +155,7 @@ export default function StudentsPage() {
 
       return nameMatch || phoneMatch || emailMatch || mentorMatch || courseMatch;
     });
-  }, [students, search, isProgramManager]);
+  }, [students, search, isCourseManager]);
 
   const totalEnrolledCount = students.filter(
     (s: any) => s.enrolledCourses && s.enrolledCourses.length > 0
@@ -173,7 +173,7 @@ export default function StudentsPage() {
             <span>
               {isMentor
                 ? "My Assigned Mentees"
-                : isProgramManager
+                : isCourseManager
                 ? "Mentorship Cohort Roster"
                 : "Enrolled Students & Mentor Allocations"}
             </span>
@@ -183,8 +183,8 @@ export default function StudentsPage() {
               ? "Platform Admin view: Manage learner enrollments and assign dedicated mentors to mentees."
               : isMentor
               ? "Mentor view: Dedicated learners assigned to your mentorship cohort for 1-on-1 guidance."
-              : isProgramManager
-              ? "Program Manager view: Tracking all enrolled students who have active mentor assignments."
+              : isCourseManager
+              ? "Course Manager view: Tracking all enrolled students who have active mentor assignments."
               : "Directory of enrolled students and assigned academic mentors."}
           </p>
         </div>
@@ -202,7 +202,7 @@ export default function StudentsPage() {
             <span>
               {isMentor
                 ? `My Mentees: ${students.length}`
-                : isProgramManager
+                : isCourseManager
                 ? `Mentored Cohort: ${students.length}`
                 : `Enrolled Students: ${totalEnrolledCount}`}
             </span>
@@ -272,7 +272,7 @@ export default function StudentsPage() {
                   <td colSpan={5} className="p-12 text-center text-slate-400">
                     {isMentor
                       ? "You currently have no assigned mentees. Your administrator will allocate students to your mentorship cohort."
-                      : isProgramManager
+                      : isCourseManager
                       ? "No students with active mentor assignments found."
                       : "No enrolled students matching your criteria."}
                   </td>

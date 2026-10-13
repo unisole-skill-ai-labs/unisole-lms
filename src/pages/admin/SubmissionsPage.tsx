@@ -31,7 +31,8 @@ export default function SubmissionsPage({ initialMode }: SubmissionsPageProps = 
   }, [user]);
 
   const isAdmin = userRoles.includes("SUPER_ADMIN") || userRoles.includes("ADMIN");
-  const isProgramManager = userRoles.includes("PROGRAM_MANAGER") && !isAdmin;
+  const isCourseManager =
+    (userRoles.includes("COURSE_MANAGER") || userRoles.includes("PROGRAM_MANAGER")) && !isAdmin;
   const isMentor = userRoles.includes("MENTOR") && !isAdmin;
 
   const [activeTab, setActiveTab] = useState<"cockpit" | "table">("cockpit");
@@ -39,7 +40,7 @@ export default function SubmissionsPage({ initialMode }: SubmissionsPageProps = 
   const [search, setSearch] = useState("");
   const [selectedMentorId, setSelectedMentorId] = useState<string>("ALL");
 
-  // Fetch live mentors from DB (for Program Manager & Admin)
+  // Fetch live mentors from DB (for Course Manager & Admin)
   const { data: mentors = [] } = useGetAdminMentorsQuery(undefined, {
     skip: isMentor,
   });
@@ -92,8 +93,8 @@ export default function SubmissionsPage({ initialMode }: SubmissionsPageProps = 
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Mentor Selector for Program Manager & Admin */}
-          {(isProgramManager || isAdmin) && (
+          {/* Mentor Selector for Course Manager & Admin */}
+          {(isCourseManager || isAdmin) && (
             <div className="flex items-center gap-2 bg-white dark:bg-[#0B1120] px-3.5 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 text-xs shadow-2xs">
               <User className="w-3.5 h-3.5 text-sky-500 shrink-0" />
               <select
