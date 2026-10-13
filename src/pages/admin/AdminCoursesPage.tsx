@@ -29,7 +29,12 @@ export default function AdminCoursesPage() {
     : [];
   const allRoles = [userRole, ...metaRoles];
   const isAdmin = allRoles.includes("SUPER_ADMIN") || allRoles.includes("ADMIN");
-  const isMentor = allRoles.includes("MENTOR");
+  const isCourseManager =
+    isAdmin ||
+    allRoles.includes("COURSE_MANAGER") ||
+    allRoles.includes("PROGRAM_MANAGER") ||
+    allRoles.includes("COURSE_AUTHOR");
+  const isMentor = !isCourseManager && allRoles.includes("MENTOR");
 
   if (isMentor && !isAdmin) {
     return <Navigate to="/admin/submissions" replace />;

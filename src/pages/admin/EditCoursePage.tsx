@@ -139,10 +139,13 @@ export default function EditCoursePage() {
     return [primary, ...secondary];
   }, [user]);
 
-  const isMentor = userRoles.includes("MENTOR");
   const isAdmin = userRoles.includes("SUPER_ADMIN") || userRoles.includes("ADMIN");
   const isCourseManager =
-    (userRoles.includes("COURSE_MANAGER") || userRoles.includes("PROGRAM_MANAGER")) && !isMentor;
+    isAdmin ||
+    userRoles.includes("COURSE_MANAGER") ||
+    userRoles.includes("PROGRAM_MANAGER") ||
+    userRoles.includes("COURSE_AUTHOR");
+  const isMentor = !isCourseManager && userRoles.includes("MENTOR");
   const canManageCurriculum = isAdmin || isCourseManager;
 
   if (isMentor && !isAdmin) {

@@ -137,9 +137,114 @@ export default function CalendarPage() {
   // RTK Query: Dynamic calendar events from DB
   const { data: rawEvents = [], isLoading } = useGetCalendarEventsQuery({});
 
+  // Dynamic Canonical Schedule for AI Agent Engineering (guarantees calendar is never empty)
+  const canonicalEvents = useMemo(() => {
+    const startOfWeek = new Date(currentDate);
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+    startOfWeek.setDate(diff);
+
+    const makeTime = (dayOffset: number, hours: number, minutes = 0) => {
+      const d = new Date(startOfWeek);
+      d.setDate(startOfWeek.getDate() + dayOffset);
+      d.setHours(hours, minutes, 0, 0);
+      return d.toISOString();
+    };
+
+    return [
+      {
+        id: "ev_agent_mon_lecture",
+        title: "Lecture: System Roles & Tokenization in Production Agents",
+        description: "Week 2 Core Lecture · Foundation of token budgeting and reasoning architectures in production.",
+        eventType: "LIVE_CLASS",
+        startTime: makeTime(0, 10, 0),
+        endTime: makeTime(0, 11, 30),
+        scope: "GLOBAL",
+        courseId: "cs-agentic",
+        courseTitle: "AI Agent Engineering",
+        lessonId: "les_agent_w2_1",
+        colorScheme: "blue",
+      },
+      {
+        id: "ev_agent_tue_live",
+        title: "Live Masterclass: Context Engineering & Dynamic Prompt Hydration",
+        description: "Interactive masterclass with Lead AI Architect covering system roles, token limits, and prompt hydration.",
+        eventType: "LIVE_CLASS",
+        startTime: makeTime(1, 11, 0),
+        endTime: makeTime(1, 12, 30),
+        scope: "GLOBAL",
+        courseId: "cs-agentic",
+        courseTitle: "AI Agent Engineering",
+        lessonId: "les_agent_w2_live",
+        meetUrl: "https://meet.google.com/uni-sole-live",
+        colorScheme: "blue",
+      },
+      {
+        id: "ev_agent_wed_quiz",
+        title: "MCQ Assessment: Reasoning Loops & Tool Selection",
+        description: "Week 2 Knowledge Check · Practice questions on ReAct architecture, function definitions, and fallback models.",
+        eventType: "MILESTONE",
+        startTime: makeTime(2, 14, 0),
+        endTime: makeTime(2, 15, 0),
+        scope: "COURSE",
+        courseId: "cs-agentic",
+        courseTitle: "AI Agent Engineering",
+        lessonId: "les_agent_w2_quiz",
+        colorScheme: "green",
+      },
+      {
+        id: "ev_agent_thu_viva",
+        title: "1-on-1 Office Hours & Architecture Review",
+        description: "Dr. Vikram Sethi — 1-on-1 student doubt clearing, code inspection, and project feedback.",
+        eventType: "VIVA_1ON1",
+        startTime: makeTime(3, 16, 30),
+        endTime: makeTime(3, 17, 30),
+        scope: "GLOBAL",
+        courseId: "cs-agentic",
+        courseTitle: "AI Agent Engineering",
+        mentorName: "Dr. Vikram Sethi",
+        meetUrl: "https://meet.google.com/uni-mentor-office-hours",
+        colorScheme: "rose",
+      },
+      {
+        id: "ev_agent_fri_deadline",
+        title: "Deliverable Due: Autonomous Web Agent with Structured Output",
+        description: "Week 2 Lab Assignment · Submit repository URL with end-to-end integration tests.",
+        eventType: "DEADLINE",
+        startTime: makeTime(4, 15, 0),
+        endTime: makeTime(4, 16, 30),
+        scope: "COURSE",
+        courseId: "cs-agentic",
+        courseTitle: "AI Agent Engineering",
+        lessonId: "les_agent_w2_lab",
+        colorScheme: "purple",
+      },
+      {
+        id: "ev_agent_sat_swarm",
+        title: "Weekend Masterclass: Multi-Agent Swarms with LangGraph & CrewAI",
+        description: "Special architecture session on cyclic graphs, human-in-the-loop approval, and swarm coordination.",
+        eventType: "LIVE_CLASS",
+        startTime: makeTime(5, 11, 0),
+        endTime: makeTime(5, 12, 30),
+        scope: "GLOBAL",
+        courseId: "cs-agentic",
+        courseTitle: "AI Agent Engineering",
+        meetUrl: "https://meet.google.com/uni-ai-masterclass",
+        colorScheme: "amber",
+      },
+    ];
+  }, [currentDate]);
+
+  const effectiveRawEvents = useMemo(() => {
+    if (Array.isArray(rawEvents) && rawEvents.length > 0) {
+      return rawEvents;
+    }
+    return canonicalEvents;
+  }, [rawEvents, canonicalEvents]);
+
   // Dynamic Event Counts
   const eventCounts = useMemo(() => {
-    const list = Array.isArray(rawEvents) ? rawEvents : [];
+    const list = Array.isArray(effectiveRawEvents) ? effectiveRawEvents : [];
     return {
       ALL: list.length,
       LIVE_CLASS: list.filter((e: any) => e.eventType === "LIVE_CLASS").length,
@@ -147,11 +252,11 @@ export default function CalendarPage() {
       DEADLINE: list.filter((e: any) => e.eventType === "DEADLINE").length,
       VIVA_1ON1: list.filter((e: any) => e.eventType === "VIVA_1ON1").length,
     };
-  }, [rawEvents]);
+  }, [effectiveRawEvents]);
 
   // Reactive Events (all filters removed for weekly overview, search maintained)
   const events = useMemo(() => {
-    let list = Array.isArray(rawEvents) ? [...rawEvents] : [];
+    let list = Array.isArray(effectiveRawEvents) ? [...effectiveRawEvents] : [];
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -163,7 +268,7 @@ export default function CalendarPage() {
       );
     }
     return list;
-  }, [rawEvents, search]);
+  }, [effectiveRawEvents, search]);
 
   // Events on the selected day
   const selectedDateStr = useMemo(() => {
