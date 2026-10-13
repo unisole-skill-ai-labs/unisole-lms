@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
   BookOpen,
@@ -22,7 +22,20 @@ import {
 
 export default function AdminCoursesPage() {
   const { user } = useSelector((state: any) => state.auth);
-  const { data: courses = [], isLoading, refetch } = useGetAdminCoursesQuery(undefined);
+
+  const userRole = (user?.role || "").toUpperCase();
+  const metaRoles: string[] = Array.isArray(user?.metadata?.roles)
+    ? user.metadata.roles.map((r: any) => String(r).toUpperCase())
+    : [];
+  const allRoles = [userRole, ...metaRoles];
+  const isAdmin = allRoles.includes("SUPER_ADMIN") || allRoles.includes("ADMIN");
+  const isMentor = allRoles.includes("MENTOR");
+
+  if (isMentor && !isAdmin) {
+    return <Navigate to="/admin/submissions" replace />;
+  }
+
+  const { data: rawCourses = [], isLoading, refetch } = useGetAdminCoursesQuery(undefined);
   const [createCourse, { isLoading: isCreating }] = useCreateAdminCourseMutation();
 
   const [search, setSearch] = useState("");
@@ -35,7 +48,26 @@ export default function AdminCoursesPage() {
   const [shortDescription, setShortDescription] = useState("");
   const [formError, setFormError] = useState("");
 
-  const isAdmin = ["ADMIN", "SUPER_ADMIN"].includes(user?.role || "");
+  // Enforce ONLY the AI Agent Engineering course across the LMS
+  const filteredFromApi = rawCourses.filter((c: any) =>
+    c.slug === "cs-agentic" ||
+    c.slug === "course1" ||
+    (c.title && c.title.toLowerCase().includes("ai agent"))
+  );
+
+  const canonicalCourse = {
+    id: "cs-agentic",
+    title: "AI Agent Engineering",
+    slug: "cs-agentic",
+    shortDescription: "12-Week AI Agent Engineering Certificate Program (Weeks 1 - 12)",
+    description: "Design and deploy autonomous AI agents with reasoning loops, dynamic tool calling, stateful graphs in LangGraph, multi-agent swarms with CrewAI, and Model Context Protocol (MCP).",
+    pricePaise: 299900,
+    mrpPaise: 999900,
+    status: "PUBLISHED",
+    isActive: true,
+  };
+
+  const courses = filteredFromApi.length > 0 ? filteredFromApi : [canonicalCourse];
 
   const handleTitleChange = (val: string) => {
     setTitle(val);

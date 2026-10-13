@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { Navigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
   Search,
@@ -34,6 +35,10 @@ export default function SubmissionsPage({ initialMode }: SubmissionsPageProps = 
   const isCourseManager =
     (userRoles.includes("COURSE_MANAGER") || userRoles.includes("PROGRAM_MANAGER")) && !isAdmin;
   const isMentor = userRoles.includes("MENTOR") && !isAdmin;
+
+  if (isCourseManager) {
+    return <Navigate to="/admin/courses" replace />;
+  }
 
   const [activeTab, setActiveTab] = useState<"cockpit" | "table">("cockpit");
   const [filter, setFilter] = useState<"ALL" | "PENDING" | "APPROVED" | "CHANGES_REQUESTED">("ALL");

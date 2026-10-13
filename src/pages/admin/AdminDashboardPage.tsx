@@ -36,8 +36,12 @@ export default function AdminDashboardPage() {
     : [];
   const allRoles = [userRole, ...metaRoles];
   const isAdmin = allRoles.includes("SUPER_ADMIN") || allRoles.includes("ADMIN");
+  const isMentor = allRoles.includes("MENTOR");
 
   if (!isAdmin) {
+    if (isMentor) {
+      return <Navigate to="/admin/submissions" replace />;
+    }
     return <Navigate to="/admin/courses" replace />;
   }
 

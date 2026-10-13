@@ -107,7 +107,7 @@ export default function CalendarPage() {
   const isCourseManager =
     userRoles.includes("COURSE_MANAGER") || userRoles.includes("PROGRAM_MANAGER");
   const isMentor = userRoles.includes("MENTOR");
-  const canManageEvents = isAdmin || isCourseManager || isMentor;
+  const canManageEvents = isAdmin || isCourseManager;
 
   // View States
   const [viewMode, setViewMode] = useState<"week" | "month" | "day">("week");

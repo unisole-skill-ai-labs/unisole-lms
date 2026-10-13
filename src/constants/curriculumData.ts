@@ -25,6 +25,10 @@ export interface LessonItem {
   liveTime?: string;
   liveMeetingUrl?: string;
   mentorName?: string;
+  unlockAt?: string | null;
+  lockAt?: string | null;
+  isLocked?: boolean;
+  isScheduleLocked?: boolean;
 }
 
 export interface ModuleSection {
@@ -32,6 +36,10 @@ export interface ModuleSection {
   title: string;
   meta: string;
   items: LessonItem[];
+  unlockAt?: string | null;
+  lockAt?: string | null;
+  isLocked?: boolean;
+  isScheduleLocked?: boolean;
 }
 
 export interface CourseCurriculum {

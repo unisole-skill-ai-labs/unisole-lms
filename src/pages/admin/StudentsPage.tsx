@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { Navigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
   Users,
@@ -43,6 +44,13 @@ export default function StudentsPage() {
 
   const isCourseManager =
     (userRoles.includes("COURSE_MANAGER") || userRoles.includes("PROGRAM_MANAGER")) && !isAdmin;
+
+  if (!isAdmin) {
+    if (isCourseManager) {
+      return <Navigate to="/admin/courses" replace />;
+    }
+    return <Navigate to="/admin/submissions" replace />;
+  }
 
   const [selectedCourseId, setSelectedCourseId] = useState<string>("ALL");
   const [search, setSearch] = useState("");

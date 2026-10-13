@@ -179,12 +179,12 @@ export default function MentorCockpitView({
                   : "bg-white dark:bg-[#070A11] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700"
               }`}
             >
-              Mentor View
+              Student View
             </button>
           </div>
         </div>
 
-        {/* When in Mentor View: Show the Student Dropdown Selector */}
+        {/* When in Student View: Show the Student Dropdown Selector */}
         {viewMode === "student" && (
           <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-wrap w-full sm:w-auto">

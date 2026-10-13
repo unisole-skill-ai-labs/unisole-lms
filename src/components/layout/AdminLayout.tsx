@@ -40,44 +40,42 @@ export default function AdminLayout() {
 
   const isSuperAdmin = allRoles.includes("SUPER_ADMIN");
   const isAdmin = isSuperAdmin || allRoles.includes("ADMIN");
-  const isMentor = isAdmin || allRoles.includes("MENTOR");
   const isCourseManager =
     isAdmin ||
     allRoles.includes("COURSE_MANAGER") ||
     allRoles.includes("PROGRAM_MANAGER") ||
-    allRoles.includes("MEMBER") ||
-    allRoles.includes("COURSE_AUTHOR") ||
-    (!allRoles.includes("MENTOR") && allRoles.length <= 1); // default author if not explicitly mentor-only
+    allRoles.includes("COURSE_AUTHOR");
+  const isMentor = !isCourseManager && allRoles.includes("MENTOR");
 
-  const hasBoth = isMentor && isCourseManager;
-
-  // Build nav items dynamically based on roles
+  // Build nav items dynamically based on roles: Course Manager only sees Course Manager & Calendar
   const navItems = [
     ...(isAdmin
       ? [{ name: "Admin Overview", path: "/admin", icon: LayoutGrid, end: true }]
       : []),
-    ...(isMentor
-      ? [{ name: "Dashboard", path: "/admin/submissions", icon: LayoutDashboard, badge: isMentor && !isCourseManager ? "Active" : "Mentor" }]
-      : []),
     ...(isCourseManager
       ? [{ name: "Course Manager", path: "/admin/courses", icon: BookOpen, badge: "Courses" }]
       : []),
-    ...(isMentor
-      ? [{ name: "Mentor View", path: "/admin/mentor-view", icon: UserCheck }]
+    ...(isMentor && !isCourseManager
+      ? [{ name: "Dashboard", path: "/admin/submissions", icon: LayoutDashboard, badge: "Active" }]
+      : []),
+    ...(isMentor && !isCourseManager
+      ? [{ name: "Student View", path: "/admin/mentor-view", icon: UserCheck }]
       : []),
     { name: "Calendar", path: "/admin/calendar", icon: Calendar },
-    { name: "Students", path: "/admin/students", icon: Users },
+    ...(isAdmin
+      ? [{ name: "Students", path: "/admin/students", icon: Users }]
+      : []),
   ];
 
   const roleLabel = isSuperAdmin
     ? "Super Admin"
     : isAdmin
     ? "Admin"
-    : hasBoth
-    ? "Course Mgr & Mentor"
+    : isCourseManager
+    ? "Course Manager"
     : isMentor
     ? "Lead Mentor"
-    : "Course Manager";
+    : "Staff Member";
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#070A11] text-slate-800 dark:text-slate-100 flex flex-col md:flex-row antialiased">
@@ -141,19 +139,21 @@ export default function AdminLayout() {
           </button>
         </div>
 
-        {/* Quick Switch to Student View */}
-        <div className="px-4 pt-4 pb-2">
-          <Link
-            to="/enrolled"
-            className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-sky-700 dark:text-sky-300 bg-sky-50/70 dark:bg-sky-950/40 hover:bg-sky-100 dark:hover:bg-sky-900/60 rounded-xl transition-colors border border-sky-200/60 dark:border-sky-800/50"
-          >
-            <span className="flex items-center gap-2">
-              <ExternalLink className="w-3.5 h-3.5" />
-              Student View
-            </span>
-            <span className="text-[10px] text-sky-600 dark:text-sky-400 font-bold">Exit</span>
-          </Link>
-        </div>
+        {/* Quick Switch to Student View - Only for full Administrators */}
+        {isAdmin && (
+          <div className="px-4 pt-4 pb-2">
+            <Link
+              to="/enrolled"
+              className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-sky-700 dark:text-sky-300 bg-sky-50/70 dark:bg-sky-950/40 hover:bg-sky-100 dark:hover:bg-sky-900/60 rounded-xl transition-colors border border-sky-200/60 dark:border-sky-800/50"
+            >
+              <span className="flex items-center gap-2">
+                <ExternalLink className="w-3.5 h-3.5" />
+                Student View
+              </span>
+              <span className="text-[10px] text-sky-600 dark:text-sky-400 font-bold">Exit</span>
+            </Link>
+          </div>
+        )}
 
         {/* Main Navigation Links */}
         <nav className="px-3 py-2 space-y-1">

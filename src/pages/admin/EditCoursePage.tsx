@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, Navigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
   ArrowLeft,
@@ -47,6 +47,10 @@ import {
   GripVertical,
   MoveUpRight,
   CornerDownRight,
+  Lock,
+  Unlock,
+  Edit3,
+  Calendar,
 } from "lucide-react";
 import {
   useGetAdminCourseByIdQuery,
@@ -55,6 +59,7 @@ import {
   useDetachAdminCourseModuleMutation,
   useReorderAdminCourseModulesMutation,
   useCreateAdminModuleMutation,
+  useUpdateAdminModuleMutation,
   useGetAdminModuleLessonsQuery,
   useAttachAdminModuleLessonMutation,
   useDetachAdminModuleLessonMutation,
@@ -73,9 +78,13 @@ import { useAutosave } from "../../utils/useAutosave";
 import { LessonType, ContentStatus, QuizQuestion } from "../../types";
 import RichEditor from "../../components/ui/RichEditor";
 import { renderMarkdownToHtml } from "../../utils/formatContent";
+import { getCurriculum } from "../../constants/curriculumData";
 
 export default function EditCoursePage() {
   const { courseId = "" } = useParams();
+
+  // Active canonical curriculum fallback (guarantees Course Manager always sees 12 modules & activities)
+  const canonical = useMemo(() => getCurriculum(courseId), [courseId]);
 
   // Queries
   const { data: course, isLoading: isCourseLoading } = useGetAdminCourseByIdQuery(courseId, {
@@ -87,8 +96,26 @@ export default function EditCoursePage() {
     { skip: !courseId, refetchOnMountOrArgChange: true }
   );
 
+  // Seamlessly merge backend modules with canonical curriculum so Course Manager always has 100% synced view
+  const displayModules = useMemo(() => {
+    if (courseModules && courseModules.length > 0) {
+      return courseModules;
+    }
+    return (canonical.modules || []).map((m, idx) => ({
+      moduleId: m.id || `mod_agent_w${idx + 1}`,
+      title: m.title,
+      slug: `cs-agentic-week-${idx + 1}`,
+      position: idx + 1,
+      unlockAt: m.unlockAt || null,
+      lockAt: m.lockAt || null,
+      status: "PUBLISHED",
+      items: m.items || [],
+    }));
+  }, [courseModules, canonical]);
+
   // Mutations
   const [createModule] = useCreateAdminModuleMutation();
+  const [updateModuleApi] = useUpdateAdminModuleMutation();
   const [attachModule] = useAttachAdminCourseModuleMutation();
   const [detachModule] = useDetachAdminCourseModuleMutation();
   const [reorderModulesApi] = useReorderAdminCourseModulesMutation();
@@ -112,7 +139,15 @@ export default function EditCoursePage() {
     return [primary, ...secondary];
   }, [user]);
 
+  const isMentor = userRoles.includes("MENTOR");
   const isAdmin = userRoles.includes("SUPER_ADMIN") || userRoles.includes("ADMIN");
+  const isCourseManager =
+    (userRoles.includes("COURSE_MANAGER") || userRoles.includes("PROGRAM_MANAGER")) && !isMentor;
+  const canManageCurriculum = isAdmin || isCourseManager;
+
+  if (isMentor && !isAdmin) {
+    return <Navigate to="/admin/submissions" replace />;
+  }
 
   const [showMentorsModal, setShowMentorsModal] = useState(false);
   const [cohortMentorId, setCohortMentorId] = useState("");
@@ -160,14 +195,18 @@ export default function EditCoursePage() {
   // Selected State
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
-  const [newChapterTitle, setNewChapterTitle] = useState("");
-  const [showAddChapter, setShowAddChapter] = useState(false);
+  const [newModuleTitle, setNewModuleTitle] = useState("");
+  const [newModuleUnlockAt, setNewModuleUnlockAt] = useState("");
+  const [newModuleLockAt, setNewModuleLockAt] = useState("");
+  const [showAddModule, setShowAddModule] = useState(false);
   const [newLessonTitle, setNewLessonTitle] = useState("");
   const [addingLessonForModuleId, setAddingLessonForModuleId] = useState<string | null>(null);
 
   // Active Lesson Form State
   const [lessonTitle, setLessonTitle] = useState("");
   const [lessonStatus, setLessonStatus] = useState<ContentStatus>("DRAFT");
+  const [lessonUnlockAt, setLessonUnlockAt] = useState("");
+  const [lessonLockAt, setLessonLockAt] = useState("");
   const [isFreePreview, setIsFreePreview] = useState(false);
   const [curriculumMode, setCurriculumMode] = useState<"LECTURE" | "PRACTICE" | "TEST" | "FOLDER">("LECTURE");
   const [practiceType, setPracticeType] = useState<"MCQ" | "PROJECT">("MCQ");
@@ -238,17 +277,45 @@ export default function EditCoursePage() {
     { skip: !activeLessonId }
   );
 
-  // Populate editor when active lesson changes
-  useEffect(() => {
-    if (activeLessonData) {
-      setLessonTitle(activeLessonData.title || "");
-      setLessonStatus(activeLessonData.status || "DRAFT");
-      setDurationMinutes(activeLessonData.durationMinutes || 15);
-      setVideoUrl(activeLessonData.videoUrl || "");
+  // Find fallback lesson if not in DB
+  const fallbackLesson = useMemo(() => {
+    if (!activeLessonId) return null;
+    for (const mod of canonical.modules) {
+      const found = (mod.items || []).find((item) => item.id === activeLessonId);
+      if (found) return found;
+    }
+    return null;
+  }, [activeLessonId, canonical]);
 
-      // Try to parse structured content
-      try {
-        if (activeLessonData.content && activeLessonData.content.startsWith("{")) {
+  // Auto-select first activity when opening course so editor is immediately populated
+  useEffect(() => {
+    if (!activeLessonId && displayModules.length > 0) {
+      const firstMod = displayModules[0];
+      const firstItem = (firstMod.items && firstMod.items[0]) || (canonical.modules[0]?.items && canonical.modules[0].items[0]);
+      if (firstItem?.id) {
+        setActiveLessonId(firstItem.id);
+      }
+    }
+  }, [displayModules, activeLessonId, canonical]);
+
+  // Populate editor when active lesson changes (from backend or canonical fallback)
+  useEffect(() => {
+    const dataToUse = activeLessonData || fallbackLesson;
+    if (dataToUse) {
+      setLessonTitle(dataToUse.title || "");
+      setLessonStatus((dataToUse.status as ContentStatus) || "PUBLISHED");
+      setDurationMinutes(
+        typeof dataToUse.durationMinutes === "number"
+          ? dataToUse.durationMinutes
+          : parseInt(dataToUse.duration || "45", 10) || 45
+      );
+      setVideoUrl(dataToUse.videoUrl || "");
+      setLessonUnlockAt(dataToUse.unlockAt ? new Date(dataToUse.unlockAt).toISOString().slice(0, 16) : "");
+      setLessonLockAt(dataToUse.lockAt ? new Date(dataToUse.lockAt).toISOString().slice(0, 16) : "");
+
+      // Try to parse structured content from activeLessonData
+      if (activeLessonData?.content && activeLessonData.content.startsWith("{")) {
+        try {
           const parsed = JSON.parse(activeLessonData.content);
           if (parsed.curriculumMode) {
             setCurriculumMode(parsed.curriculumMode);
@@ -313,21 +380,41 @@ export default function EditCoursePage() {
           if (parsed.attachments) {
             setAttachments(parsed.attachments);
           }
-        } else {
-          const raw = activeLessonData.content || activeLessonData.description || "";
+        } catch {
+          const raw = activeLessonData.content || "";
           setContentMarkdown(raw);
           setContentHtml(renderMarkdownToHtml(raw));
-          setLessonType("READING");
           setCurriculumMode("LECTURE");
         }
-      } catch {
-        const raw = activeLessonData.content || "";
-        setContentMarkdown(raw);
-        setContentHtml(renderMarkdownToHtml(raw));
-        setCurriculumMode("LECTURE");
+      } else if (fallbackLesson) {
+        const type = fallbackLesson.type || "video";
+        if (type === "video") {
+          setCurriculumMode("LECTURE");
+          setLessonType("READING");
+          setVideoUrl(fallbackLesson.videoUrl || "");
+          setContentMarkdown(fallbackLesson.description || "");
+        } else if (type === "quiz") {
+          setCurriculumMode("PRACTICE");
+          setPracticeType("MCQ");
+          setLessonType("QUIZ");
+          if (fallbackLesson.questions && fallbackLesson.questions.length > 0) {
+            setQuestions(fallbackLesson.questions);
+          }
+        } else if (type === "assignment") {
+          setCurriculumMode("PRACTICE");
+          setPracticeType("PROJECT");
+          setLessonType("ASSIGNMENT");
+          if (fallbackLesson.instructions) {
+            setAssignmentInstructions(fallbackLesson.instructions);
+          }
+        } else if (type === "live") {
+          setCurriculumMode("LECTURE");
+          setLessonType("READING");
+          setContentMarkdown(fallbackLesson.description || "");
+        }
       }
     }
-  }, [activeLessonData]);
+  }, [activeLessonData, fallbackLesson]);
 
   // Aggregate formData for autosave
   const isLec = curriculumMode === "LECTURE";
@@ -358,6 +445,8 @@ export default function EditCoursePage() {
     status: lessonStatus,
     durationMinutes,
     videoUrl,
+    unlockAt: lessonUnlockAt,
+    lockAt: lessonLockAt,
     type: resolvedType,
     category: resolvedCategory,
     curriculumMode,
@@ -426,6 +515,8 @@ export default function EditCoursePage() {
         status: currentData.status,
         durationMinutes: currentData.durationMinutes,
         videoUrl: currentData.videoUrl,
+        unlockAt: currentData.unlockAt ? new Date(currentData.unlockAt).toISOString() : null,
+        lockAt: currentData.lockAt ? new Date(currentData.lockAt).toISOString() : null,
         content: payloadContent,
         description: currentData.contentMarkdown
           ? currentData.contentMarkdown.replace(/<[^>]*>/g, "").slice(0, 200)
@@ -466,17 +557,19 @@ export default function EditCoursePage() {
     setCodingTestCases((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  // Create & attach a new Chapter (Module)
-  const handleAddChapter = async (e: React.FormEvent) => {
+  // Create & attach a new Module
+  const handleAddModule = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newChapterTitle.trim()) return;
+    const titleToUse = newModuleTitle.trim() || `Module ${(courseModules?.length || 0) + 1}`;
 
     try {
-      const slug = `${course?.slug || "course"}-ch-${Date.now()}`;
+      const slug = `${course?.slug || "course"}-mod-${Date.now()}`;
       const createdMod = await createModule({
-        title: newChapterTitle.trim(),
+        title: titleToUse,
         slug,
         status: "DRAFT",
+        unlockAt: newModuleUnlockAt ? new Date(newModuleUnlockAt).toISOString() : null,
+        lockAt: newModuleLockAt ? new Date(newModuleLockAt).toISOString() : null,
       }).unwrap();
 
       const nextPosition = (courseModules?.length || 0) + 1;
@@ -486,19 +579,46 @@ export default function EditCoursePage() {
         position: nextPosition,
       }).unwrap();
 
-      setNewChapterTitle("");
-      setShowAddChapter(false);
+      setNewModuleTitle("");
+      setNewModuleUnlockAt("");
+      setNewModuleLockAt("");
+      setShowAddModule(false);
       refetchModules();
     } catch (err) {
-      console.error("Failed to add chapter:", err);
+      console.error("Failed to add module:", err);
     }
   };
 
-  // Clear all chapters from this course
+  const handleRenameModule = async (moduleId: string, title: string) => {
+    if (!title.trim()) return;
+    try {
+      await updateModuleApi({ id: moduleId, body: { title: title.trim() } }).unwrap();
+      refetchModules();
+    } catch (err) {
+      console.error("Failed to rename module:", err);
+    }
+  };
+
+  const handleSetModuleSchedule = async (moduleId: string, unlockAt: string | null, lockAt: string | null) => {
+    try {
+      await updateModuleApi({
+        id: moduleId,
+        body: {
+          unlockAt: unlockAt ? new Date(unlockAt).toISOString() : null,
+          lockAt: lockAt ? new Date(lockAt).toISOString() : null,
+        },
+      }).unwrap();
+      refetchModules();
+    } catch (err) {
+      console.error("Failed to update module schedule:", err);
+    }
+  };
+
+  // Clear all modules from this course
   const handleClearAllChapters = async () => {
     if (
       !window.confirm(
-        "Are you sure you want to remove all chapters and lessons from this course? You can manually add new ones."
+        "Are you sure you want to remove all modules and lessons from this course? You can manually add new ones."
       )
     ) {
       return;
@@ -508,7 +628,7 @@ export default function EditCoursePage() {
       setActiveLessonId(null);
       refetchModules();
     } catch (err) {
-      console.error("Failed to clear chapters:", err);
+      console.error("Failed to clear modules:", err);
     }
   };
 
@@ -933,74 +1053,96 @@ export default function EditCoursePage() {
             </button>
           )}
 
-          {/* Course Mentors & Cohort Cockpit */}
-          <button
-            type="button"
-            onClick={() => setShowMentorsModal(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 dark:hover:bg-purple-900/40 border border-purple-200/60 dark:border-purple-800/60 rounded-xl transition-all shadow-xs cursor-pointer"
-            title="Manage mentors for enrolled students in this course"
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span>Course Mentors & Cohort</span>
-          </button>
+          {/* Course Mentors & Cohort Cockpit - Restricted to Super Admin / Admin */}
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setShowMentorsModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 dark:hover:bg-purple-900/40 border border-purple-200/60 dark:border-purple-800/60 rounded-xl transition-all shadow-xs cursor-pointer"
+              title="Manage mentors for enrolled students in this course"
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Course Mentors & Cohort</span>
+            </button>
+          )}
 
-          {/* Student View Link */}
-          <Link
-            to="/enrolled"
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-slate-950 bg-sky-400 hover:bg-sky-300 rounded-xl transition-all shadow-xs cursor-pointer"
-          >
-            <Eye className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>Student View</span>
-          </Link>
+          {/* Student View Link - Restricted to Super Admin / Admin */}
+          {isAdmin && (
+            <Link
+              to="/enrolled"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-slate-950 bg-sky-400 hover:bg-sky-300 rounded-xl transition-all shadow-xs cursor-pointer"
+            >
+              <Eye className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Student View</span>
+            </Link>
+          )}
         </div>
       </div>
 
       {/* Main Split-Screen Workspace */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        {/* Left Column (30%): Chapters & Lessons Outline */}
+        {/* Left Column (30%): Modules & Activities Outline */}
         <div className="w-full md:w-80 lg:w-96 border-r border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0B1120] flex flex-col md:h-[calc(100vh-56px)] overflow-y-auto">
           <div className="p-4 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Chapters & Lessons
+              Modules & Activities
             </span>
             <div className="flex items-center gap-1.5">
-              {courseModules.length > 0 && (
+              {displayModules.length > 0 && canManageCurriculum && (
                 <button
                   type="button"
                   onClick={handleClearAllChapters}
                   className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
-                  title="Remove all existing / dummy chapters"
+                  title="Remove all existing modules"
                 >
                   <Trash2 className="w-3 h-3 stroke-[2]" />
                   <span>Clear All</span>
                 </button>
               )}
-              <button
-                type="button"
-                onClick={() => setShowAddChapter(true)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded-lg transition-colors cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Add Chapter</span>
-              </button>
+              {canManageCurriculum && (
+                <button
+                  type="button"
+                  onClick={() => setShowAddModule(true)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded-lg transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Add Module</span>
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Inline Add Chapter Form */}
-          {showAddChapter && (
-            <form onSubmit={handleAddChapter} className="p-3 bg-slate-50 dark:bg-[#070A11] border-b border-slate-200/80 dark:border-slate-800/80 space-y-2">
+          {/* Inline Add Module Form */}
+          {showAddModule && (
+            <form onSubmit={handleAddModule} className="p-3 bg-slate-50 dark:bg-[#070A11] border-b border-slate-200/80 dark:border-slate-800/80 space-y-2.5">
               <input
                 type="text"
                 autoFocus
-                placeholder="Chapter title..."
-                value={newChapterTitle}
-                onChange={(e) => setNewChapterTitle(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] focus:outline-none focus:ring-2 focus:ring-sky-500/40"
+                placeholder={`Module ${displayModules.length + 1} title (or custom name)...`}
+                value={newModuleTitle}
+                onChange={(e) => setNewModuleTitle(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] focus:outline-none focus:ring-2 focus:ring-sky-500/40 text-slate-900 dark:text-slate-100"
               />
-              <div className="flex items-center justify-end gap-1.5">
+              <div className="space-y-1">
+                <label className="block text-[10px] font-semibold text-slate-400">
+                  Optional Unlock Date & Time:
+                </label>
+                <input
+                  type="datetime-local"
+                  value={newModuleUnlockAt}
+                  onChange={(e) => setNewModuleUnlockAt(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
+                />
+              </div>
+              <div className="flex items-center justify-end gap-1.5 pt-1">
                 <button
                   type="button"
-                  onClick={() => setShowAddChapter(false)}
+                  onClick={() => {
+                    setShowAddModule(false);
+                    setNewModuleTitle("");
+                    setNewModuleUnlockAt("");
+                    setNewModuleLockAt("");
+                  }}
                   className="px-2.5 py-1 text-xs font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer"
                 >
                   Cancel
@@ -1009,47 +1151,62 @@ export default function EditCoursePage() {
                   type="submit"
                   className="px-3 py-1 text-xs font-bold text-slate-950 bg-sky-400 hover:bg-sky-300 rounded-lg shadow-xs cursor-pointer"
                 >
-                  Add Chapter
+                  Create Module
                 </button>
               </div>
             </form>
           )}
 
-          {/* Chapters & Lessons Tree */}
+          {/* Modules & Activities Tree */}
           <div className="p-3 space-y-3 flex-1">
-            {courseModules.length === 0 ? (
+            {displayModules.length === 0 ? (
               <div className="py-12 text-center text-xs text-slate-400 space-y-2">
-                <p>No chapters in this course yet.</p>
-                <button
-                  onClick={() => setShowAddChapter(true)}
-                  className="text-sky-600 dark:text-sky-400 font-bold hover:underline cursor-pointer"
-                >
-                  + Add First Chapter
-                </button>
+                <p>No modules in this course yet.</p>
+                {canManageCurriculum && (
+                  <button
+                    onClick={() => setShowAddModule(true)}
+                    className="text-sky-600 dark:text-sky-400 font-bold hover:underline cursor-pointer"
+                  >
+                    + Add First Module
+                  </button>
+                )}
               </div>
             ) : (
-              courseModules.map((cMod: any, idx: number) => (
-                <ChapterSection
-                  key={cMod.moduleId}
-                  moduleId={cMod.moduleId}
-                  moduleTitle={cMod.title}
-                  position={idx + 1}
-                  isFirst={idx === 0}
-                  isLast={idx === courseModules.length - 1}
-                  allModules={courseModules}
-                  activeLessonId={activeLessonId}
-                  isDragging={draggedChapterIdx === idx}
-                  isDragOver={dragOverChapterIdx === idx}
-                  onDragStart={(e) => handleChapterDragStart(e, idx)}
-                  onDragOver={(e) => handleChapterDragOver(e, idx)}
-                  onDrop={(e) => handleChapterDrop(e, idx)}
-                  onSelectLesson={(lessonId) => setActiveLessonId(lessonId)}
-                  onDeleteChapter={() => handleDeleteChapter(cMod.moduleId)}
-                  onAddLessonWithType={(typeKey, customTitle, targetFolderId) =>
-                    handleAddLessonWithType(cMod.moduleId, typeKey, customTitle, targetFolderId)
-                  }
-                />
-              ))
+              displayModules.map((cMod: any, idx: number) => {
+                const fallbackMod = canonical.modules.find(
+                  (cm, cIdx) => cm.id === cMod.moduleId || cIdx === idx || cm.title === cMod.title
+                );
+                return (
+                  <ChapterSection
+                    key={cMod.moduleId}
+                    moduleId={cMod.moduleId}
+                    moduleTitle={cMod.title}
+                    moduleUnlockAt={cMod.unlockAt}
+                    moduleLockAt={cMod.lockAt}
+                    position={idx + 1}
+                    isFirst={idx === 0}
+                    isLast={idx === displayModules.length - 1}
+                    allModules={displayModules}
+                    fallbackItems={cMod.items || fallbackMod?.items || []}
+                    activeLessonId={activeLessonId}
+                    canManageCurriculum={canManageCurriculum}
+                    isDragging={draggedChapterIdx === idx}
+                    isDragOver={dragOverChapterIdx === idx}
+                    onDragStart={(e) => handleChapterDragStart(e, idx)}
+                    onDragOver={(e) => handleChapterDragOver(e, idx)}
+                    onDrop={(e) => handleChapterDrop(e, idx)}
+                    onSelectLesson={(lessonId) => setActiveLessonId(lessonId)}
+                    onDeleteChapter={() => handleDeleteChapter(cMod.moduleId)}
+                    onRenameModule={(newTitle) => handleRenameModule(cMod.moduleId, newTitle)}
+                    onUpdateModuleSchedule={(unlockAt, lockAt) =>
+                      handleSetModuleSchedule(cMod.moduleId, unlockAt, lockAt)
+                    }
+                    onAddLessonWithType={(typeKey, customTitle, targetFolderId) =>
+                      handleAddLessonWithType(cMod.moduleId, typeKey, customTitle, targetFolderId)
+                    }
+                  />
+                );
+              })
             )}
           </div>
         </div>
@@ -1186,6 +1343,81 @@ export default function EditCoursePage() {
                     </div>
                   </div>
                 )}
+
+                {/* Activity Availability & Timed Unlock Schedule */}
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800/60">
+                  <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-[#070A11]/60 border border-slate-200/80 dark:border-slate-800/80 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center">
+                          {lessonUnlockAt ? <Lock className="w-3.5 h-3.5 text-amber-500" /> : <Unlock className="w-3.5 h-3.5 text-emerald-500" />}
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 flex-wrap">
+                            <span>Availability & Time Lock Schedule</span>
+                            {lessonUnlockAt ? (
+                              new Date(lessonUnlockAt).getTime() > Date.now() ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                  Scheduled: Locked until {new Date(lessonUnlockAt).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                  Live & Unlocked (since {new Date(lessonUnlockAt).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })})
+                                </span>
+                              )
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                Always Unlocked
+                              </span>
+                            )}
+                          </h4>
+                          <p className="text-[11px] text-slate-400">
+                            Set an unlock date/time. Learners see this activity locked until the scheduled time passes, then it automatically unlocks.
+                          </p>
+                        </div>
+                      </div>
+                      {(lessonUnlockAt || lessonLockAt) && canManageCurriculum && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLessonUnlockAt("");
+                            setLessonLockAt("");
+                          }}
+                          className="text-[11px] font-semibold text-rose-500 hover:text-rose-600 self-start sm:self-auto cursor-pointer"
+                        >
+                          Clear Schedule
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                          Unlock Date & Time (Opens for students)
+                        </label>
+                        <input
+                          type="datetime-local"
+                          disabled={!canManageCurriculum}
+                          value={lessonUnlockAt}
+                          onChange={(e) => setLessonUnlockAt(e.target.value)}
+                          className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                          Auto-Lock Date & Time (Optional deadline)
+                        </label>
+                        <input
+                          type="datetime-local"
+                          disabled={!canManageCurriculum}
+                          value={lessonLockAt}
+                          onChange={(e) => setLessonLockAt(e.target.value)}
+                          className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* ──────────────── MODE: FOLDER (RESOURCES CONTAINER) ──────────────── */}
@@ -2124,17 +2356,23 @@ export default function EditCoursePage() {
   );
 }
 
-// ──────────────── SUBCOMPONENT: Chapter Section with Lessons & Nested Folders ────────────────
+// ──────────────── SUBCOMPONENT: Module Section with Activities & Nested Folders ────────────────
 interface ChapterSectionProps {
   moduleId: string;
   moduleTitle?: string;
+  moduleUnlockAt?: string | null;
+  moduleLockAt?: string | null;
   position: number;
   isFirst: boolean;
   isLast: boolean;
   allModules: any[];
+  fallbackItems?: any[];
   activeLessonId: string | null;
+  canManageCurriculum?: boolean;
   onSelectLesson: (id: string) => void;
   onDeleteChapter: () => void;
+  onRenameModule?: (newTitle: string) => void;
+  onUpdateModuleSchedule?: (unlockAt: string | null, lockAt: string | null) => void;
   onAddLessonWithType: (
     typeKey:
       | "LECTURE_VIDEO"
@@ -2159,11 +2397,17 @@ interface ChapterSectionProps {
 function ChapterSection({
   moduleId,
   moduleTitle,
+  moduleUnlockAt,
+  moduleLockAt,
   position,
   allModules,
+  fallbackItems = [],
   activeLessonId,
+  canManageCurriculum = true,
   onSelectLesson,
   onDeleteChapter,
+  onRenameModule,
+  onUpdateModuleSchedule,
   onAddLessonWithType,
   isDragging = false,
   isDragOver = false,
@@ -2189,6 +2433,26 @@ function ChapterSection({
   const [movingLessonId, setMovingLessonId] = useState<string | null>(null);
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
 
+  // Module rename & scheduling state
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [tempTitle, setTempTitle] = useState(moduleTitle || "");
+  const [showSchedulePopover, setShowSchedulePopover] = useState(false);
+  const [modUnlockInput, setModUnlockInput] = useState(
+    moduleUnlockAt ? new Date(moduleUnlockAt).toISOString().slice(0, 16) : ""
+  );
+  const [modLockInput, setModLockInput] = useState(
+    moduleLockAt ? new Date(moduleLockAt).toISOString().slice(0, 16) : ""
+  );
+
+  useEffect(() => {
+    setTempTitle(moduleTitle || "");
+  }, [moduleTitle]);
+
+  useEffect(() => {
+    setModUnlockInput(moduleUnlockAt ? new Date(moduleUnlockAt).toISOString().slice(0, 16) : "");
+    setModLockInput(moduleLockAt ? new Date(moduleLockAt).toISOString().slice(0, 16) : "");
+  }, [moduleUnlockAt, moduleLockAt]);
+
   // Drag state for lessons & folders
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
@@ -2212,9 +2476,37 @@ function ChapterSection({
     };
   }, [showAddMenu, activeFolderAddMenuId]);
 
+  // Compute effective lessons (from DB or canonical curriculum fallback)
+  const effectiveLessons = useMemo(() => {
+    if (moduleLessons && moduleLessons.length > 0) return moduleLessons;
+    return (fallbackItems || []).map((fi: any, idx: number) => ({
+      lessonId: fi.id,
+      id: fi.id,
+      title: fi.title,
+      position: idx + 1,
+      status: "PUBLISHED",
+      durationMinutes: parseInt(fi.duration || "45", 10) || 45,
+      videoUrl: fi.videoUrl,
+      type: fi.type === "quiz" ? "QUIZ" : fi.type === "assignment" ? "ASSIGNMENT" : "READING",
+      content: JSON.stringify({
+        category: fi.type === "video" ? "LECTURE" : fi.type === "quiz" ? "PRACTICE" : fi.type === "assignment" ? "PRACTICE" : "LIVE",
+        type: fi.type,
+        videoUrl: fi.videoUrl,
+        quiz: fi.questions ? { passingScorePercent: 70, questions: fi.questions } : undefined,
+        questions: fi.questions,
+        assignment: fi.instructions ? { instructions: fi.instructions, allowedTypes: ["URL", "GITHUB"], maxPoints: 100 } : undefined,
+        liveDate: fi.liveDate,
+        liveTime: fi.liveTime,
+        mentorName: fi.mentorName,
+        contentMarkdown: fi.description,
+      }),
+      description: fi.description,
+    }));
+  }, [moduleLessons, fallbackItems]);
+
   // Parse all lesson items and build folder hierarchy
   const { parsedLessons, foldersMap, rootLessons, folderChildrenMap } = useMemo(() => {
-    const parsed = moduleLessons.map((les: any) => {
+    const parsed = effectiveLessons.map((les: any) => {
       let parsedContent: any = {};
       try {
         if (les.content && typeof les.content === "string" && les.content.startsWith("{")) {
@@ -2268,7 +2560,7 @@ function ChapterSection({
       rootLessons: roots,
       folderChildrenMap: fChildren,
     };
-  }, [moduleLessons]);
+  }, [effectiveLessons]);
 
   const toggleFolder = (folderId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -2359,7 +2651,7 @@ function ChapterSection({
     }
 
     // Reorder array
-    const currentOrder = moduleLessons.map((l: any) => l.lessonId);
+    const currentOrder = effectiveLessons.map((l: any) => l.lessonId);
     const sourceIdx = currentOrder.indexOf(sourceLessonId);
     const targetIdx = currentOrder.indexOf(targetLessonId);
 
@@ -2528,7 +2820,7 @@ function ChapterSection({
     >
       <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800/80">
         <span className="text-[10px] font-black tracking-wider uppercase text-sky-600 dark:text-sky-400">
-          {targetFolderId ? "Add Inside Folder" : "Select Content Type"}
+          {targetFolderId ? "Add Inside Folder" : "Add Activity to Module"}
         </span>
         <button
           type="button"
@@ -2724,60 +3016,215 @@ function ChapterSection({
           : "border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0B1120] shadow-2xs"
       }`}
     >
-      {/* Chapter Header (Drag handle, Title, + Add, Delete) */}
+      {/* Module Header (Drag handle, Title inline edit, Schedule lock popover, + Activity, Delete) */}
       <div className="p-3 flex items-center justify-between bg-slate-50/70 dark:bg-[#070A11]/60 border-b border-slate-100 dark:border-slate-800/60 gap-2">
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
           <div
-            title="Drag to reorder chapter"
+            title="Drag to reorder module"
             className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-0.5"
           >
             <GripVertical className="w-4 h-4 stroke-[2.2]" />
           </div>
 
-          <button
-            type="button"
-            onClick={() => setCollapsed(!collapsed)}
-            className="flex items-center gap-1.5 text-left truncate flex-1 min-w-0 cursor-pointer"
-          >
-            {collapsed ? (
-              <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
-            )}
-            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-              Chapter {position}{moduleTitle ? ` — ${moduleTitle}` : ""}
-            </span>
-          </button>
+          {isEditingTitle ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (tempTitle.trim() && onRenameModule) {
+                  onRenameModule(tempTitle.trim());
+                }
+                setIsEditingTitle(false);
+              }}
+              className="flex items-center gap-1.5 flex-1 min-w-0"
+            >
+              <input
+                type="text"
+                value={tempTitle}
+                autoFocus
+                onChange={(e) => setTempTitle(e.target.value)}
+                className="px-2 py-0.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/40 flex-1 min-w-0"
+              />
+              <button
+                type="submit"
+                className="p-1 rounded bg-sky-500 text-white hover:bg-sky-400 cursor-pointer"
+                title="Save title"
+              >
+                <Check className="w-3 h-3 stroke-[2.5]" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTempTitle(moduleTitle || "");
+                  setIsEditingTitle(false);
+                }}
+                className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                title="Cancel"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </form>
+          ) : (
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              <button
+                type="button"
+                onClick={() => setCollapsed(!collapsed)}
+                className="flex items-center gap-1 text-left truncate flex-1 min-w-0 cursor-pointer"
+              >
+                {collapsed ? (
+                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                )}
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                  Module {position}{moduleTitle && moduleTitle !== `Module ${position}` ? ` — ${moduleTitle}` : ""}
+                </span>
+              </button>
+
+              {canManageCurriculum && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingTitle(true)}
+                  title="Rename module"
+                  className="p-1 rounded-md text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors cursor-pointer"
+                >
+                  <Edit3 className="w-3 h-3 stroke-[2.2]" />
+                </button>
+              )}
+
+              {/* Module Schedule Lock Badge & Popover */}
+              <div className="relative">
+                {canManageCurriculum ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowSchedulePopover(!showSchedulePopover)}
+                    title="Set module lock / unlock schedule"
+                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors cursor-pointer border ${
+                      moduleUnlockAt
+                        ? new Date(moduleUnlockAt).getTime() > Date.now()
+                          ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20"
+                          : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 hover:text-sky-500 hover:border-sky-500/30"
+                    }`}
+                  >
+                    <Lock className="w-2.5 h-2.5" />
+                    <span>
+                      {moduleUnlockAt
+                        ? new Date(moduleUnlockAt).getTime() > Date.now()
+                          ? `Unlocks ${new Date(moduleUnlockAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+                          : "Live"
+                        : "Schedule"}
+                    </span>
+                  </button>
+                ) : moduleUnlockAt ? (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/30">
+                    <Lock className="w-2.5 h-2.5" />
+                    <span>{new Date(moduleUnlockAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+                  </span>
+                ) : null}
+
+                {/* Schedule Popover */}
+                {showSchedulePopover && (
+                  <div className="absolute left-0 top-full mt-1.5 w-64 p-3 bg-white dark:bg-[#0B1120] rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl z-50 space-y-2.5 animate-fade-in">
+                    <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Module Release Schedule
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowSchedulePopover(false)}
+                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
+                        Unlock Date & Time:
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={modUnlockInput}
+                        onChange={(e) => setModUnlockInput(e.target.value)}
+                        className="w-full px-2 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#070A11] text-slate-900 dark:text-slate-100"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
+                        Auto-Lock Date & Time (Optional):
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={modLockInput}
+                        onChange={(e) => setModLockInput(e.target.value)}
+                        className="w-full px-2 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#070A11] text-slate-900 dark:text-slate-100"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setModUnlockInput("");
+                          setModLockInput("");
+                          onUpdateModuleSchedule?.(null, null);
+                          setShowSchedulePopover(false);
+                        }}
+                        className="text-[10px] font-semibold text-rose-500 hover:underline cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onUpdateModuleSchedule?.(
+                            modUnlockInput ? new Date(modUnlockInput).toISOString() : null,
+                            modLockInput ? new Date(modLockInput).toISOString() : null
+                          );
+                          setShowSchedulePopover(false);
+                        }}
+                        className="px-2.5 py-1 text-xs font-bold text-slate-950 bg-sky-400 hover:bg-sky-300 rounded-lg shadow-xs cursor-pointer"
+                      >
+                        Save Schedule
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Chapter Actions: + Add & Delete (Zero Arrow Buttons) */}
+        {/* Module Actions: + Activity & Delete */}
         <div className="flex items-center gap-1 shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              if (collapsed) setCollapsed(false);
-              setActiveFolderAddMenuId(null);
-              setShowAddMenu(!showAddMenu);
-            }}
-            title="Add content to chapter"
-            className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer shadow-2xs ${
-              showAddMenu
-                ? "bg-sky-500 text-white border-sky-500"
-                : "bg-sky-50 dark:bg-sky-500/15 text-sky-600 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-500/25 border-sky-200/80 dark:border-sky-500/30"
-            }`}
-          >
-            <Plus className="w-3 h-3 stroke-[3]" />
-            <span>Add</span>
-          </button>
+          {canManageCurriculum && (
+            <button
+              type="button"
+              onClick={() => {
+                if (collapsed) setCollapsed(false);
+                setActiveFolderAddMenuId(null);
+                setShowAddMenu(!showAddMenu);
+              }}
+              title="Add activity to this module"
+              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer shadow-2xs ${
+                showAddMenu
+                  ? "bg-sky-500 text-white border-sky-500"
+                  : "bg-sky-50 dark:bg-sky-500/15 text-sky-600 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-500/25 border-sky-200/80 dark:border-sky-500/30"
+              }`}
+            >
+              <Plus className="w-3 h-3 stroke-[3]" />
+              <span>Activity</span>
+            </button>
+          )}
 
-          <button
-            type="button"
-            onClick={onDeleteChapter}
-            title="Delete this chapter"
-            className="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          {canManageCurriculum && (
+            <button
+              type="button"
+              onClick={onDeleteChapter}
+              title="Delete this module"
+              className="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -2954,6 +3401,19 @@ function ChapterSection({
                                     <span className="text-xs font-semibold truncate flex-1">
                                       {cDisplayTitle}
                                     </span>
+                                    {cLes.unlockAt && (
+                                      <span
+                                        title={`Unlocks at ${new Date(cLes.unlockAt).toLocaleString()}`}
+                                        className={`inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[8px] font-bold shrink-0 ${
+                                          new Date(cLes.unlockAt).getTime() > Date.now()
+                                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                                            : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                                        }`}
+                                      >
+                                        <Lock className="w-2 h-2" />
+                                        <span>{new Date(cLes.unlockAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+                                      </span>
+                                    )}
                                     <span
                                       className={`text-[8px] font-mono uppercase px-1.5 py-0.5 rounded-full shrink-0 ${cBadge.bg}`}
                                     >
@@ -3024,6 +3484,19 @@ function ChapterSection({
                       <span className="text-xs font-semibold truncate flex-1">
                         {displayTitle}
                       </span>
+                      {item.unlockAt && (
+                        <span
+                          title={`Unlocks at ${new Date(item.unlockAt).toLocaleString()}`}
+                          className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold shrink-0 ${
+                            new Date(item.unlockAt).getTime() > Date.now()
+                              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                              : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                          }`}
+                        >
+                          <Lock className="w-2.5 h-2.5" />
+                          <span>{new Date(item.unlockAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+                        </span>
+                      )}
                       <span
                         className={`text-[9px] font-mono uppercase px-1.5 py-0.5 rounded-full shrink-0 ${badge.bg}`}
                       >

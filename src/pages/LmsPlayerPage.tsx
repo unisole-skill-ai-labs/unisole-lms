@@ -40,6 +40,8 @@ import {
   FileArchive,
   Download,
   Layers,
+  Lock,
+  Calendar,
 } from "lucide-react";
 import {
   useGetPathwayContentQuery,
@@ -140,10 +142,15 @@ export default function LmsPlayerPage() {
         if (metaParts.length === 0) {
           metaParts.push("4 Lessons");
         }
+        const isModLocked = !!(m.isLocked || (m.unlockAt && new Date(m.unlockAt).getTime() > Date.now()));
         return {
           id: m.id || `mod-${idx}`,
-          title: m.title || `Week ${idx + 1}`,
+          title: m.title || `Module ${idx + 1}`,
           meta: metaParts.join(" · "),
+          unlockAt: m.unlockAt || null,
+          lockAt: m.lockAt || null,
+          isLocked: isModLocked,
+          isScheduleLocked: !!(m.unlockAt && new Date(m.unlockAt).getTime() > Date.now()),
           items: backendLessons.map((l: any, lIdx: number) => {
             // Try parse structured json content if available
             let parsedContent: any = null;
@@ -288,12 +295,23 @@ export default function LmsPlayerPage() {
               ? ("TEST" as const)
               : ("PRACTICE" as const);
 
+            const isLessonLocked = !!(
+              l.isLocked ||
+              l.isScheduleLocked ||
+              (l.unlockAt && new Date(l.unlockAt).getTime() > Date.now()) ||
+              isModLocked
+            );
+
             return {
               id: l.id || `item-${idx}-${lIdx}`,
               title: l.title || `${idx + 1}.${lIdx + 1} Lesson`,
               duration: l.durationMinutes ? `${l.durationMinutes} Mins` : `${lIdx * 3 + 12} Mins`,
               type: resolvedType,
               category: resolvedCategory,
+              unlockAt: l.unlockAt || null,
+              lockAt: l.lockAt || null,
+              isLocked: isLessonLocked,
+              isScheduleLocked: !!(l.unlockAt && new Date(l.unlockAt).getTime() > Date.now()),
               folderId: l.folderId || parsedContent?.folderId || undefined,
               videoUrl: l.videoUrl || parsedContent?.videoUrl || "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RDdQw4w9WgXcQ&start_radio=1",
               description: l.description || parsedContent?.contentMarkdown,
@@ -800,10 +818,26 @@ export default function LmsPlayerPage() {
                       className="bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-4.5 shadow-2xs hover:border-sky-500/40 dark:hover:border-sky-500/40 hover:shadow-xs transition-all flex items-center justify-between cursor-pointer group"
                     >
                       <div className="pr-3 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-sky-500 transition-colors">
                             {mod.title}
                           </h3>
+                          {mod.isLocked && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                              <Lock className="w-2.5 h-2.5" />
+                              <span>
+                                Locked
+                                {mod.unlockAt
+                                  ? ` · Unlocks ${new Date(mod.unlockAt).toLocaleString(undefined, {
+                                      month: "short",
+                                      day: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}`
+                                  : ""}
+                              </span>
+                            </span>
+                          )}
                           {isModCompleted && (
                             <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
                           )}
@@ -971,6 +1005,12 @@ export default function LmsPlayerPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
+                        {item.isLocked && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                            <Lock className="w-2.5 h-2.5" />
+                            <span>Locked</span>
+                          </span>
+                        )}
                         {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
                         <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-teal-500 group-hover:translate-x-0.5 transition-transform" />
                       </div>
@@ -1009,10 +1049,16 @@ export default function LmsPlayerPage() {
                         </div>
 
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-sky-600 dark:group-hover:text-sky-300 transition-colors">
                               {item.title}
                             </h3>
+                            {item.isLocked && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                <Lock className="w-2.5 h-2.5" />
+                                <span>Locked{item.unlockAt ? ` · Unlocks ${new Date(item.unlockAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}` : ""}</span>
+                              </span>
+                            )}
                             {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
                           </div>
                           {item.duration && (
@@ -1060,13 +1106,19 @@ export default function LmsPlayerPage() {
                         </div>
 
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors">
                               {item.title}
                             </h3>
                             <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-300">
                               Question MCQ
                             </span>
+                            {item.isLocked && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                <Lock className="w-2.5 h-2.5" />
+                                <span>Locked{item.unlockAt ? ` · Unlocks ${new Date(item.unlockAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}` : ""}</span>
+                              </span>
+                            )}
                             {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
                           </div>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate font-medium">
@@ -1122,7 +1174,7 @@ export default function LmsPlayerPage() {
                         </div>
 
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-sky-600 dark:group-hover:text-sky-300 transition-colors">
                               {item.title}
                             </h3>
@@ -1135,6 +1187,12 @@ export default function LmsPlayerPage() {
                                 ? "Subjective Test"
                                 : "Practical Project"}
                             </span>
+                            {item.isLocked && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                <Lock className="w-2.5 h-2.5" />
+                                <span>Locked{item.unlockAt ? ` · Unlocks ${new Date(item.unlockAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}` : ""}</span>
+                              </span>
+                            )}
                             {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
                           </div>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate font-medium">
@@ -1180,7 +1238,7 @@ export default function LmsPlayerPage() {
                         </div>
 
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">
                               {item.title}
                             </h3>
@@ -1188,6 +1246,12 @@ export default function LmsPlayerPage() {
                               <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                               Live Class
                             </span>
+                            {item.isLocked && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                <Lock className="w-2.5 h-2.5" />
+                                <span>Locked{item.unlockAt ? ` · Unlocks ${new Date(item.unlockAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}` : ""}</span>
+                              </span>
+                            )}
                             {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
                           </div>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate font-medium">
@@ -1236,8 +1300,73 @@ export default function LmsPlayerPage() {
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-[#F8FAFC] dark:bg-[#070A11] text-slate-900 dark:text-slate-100 flex flex-col justify-between animate-fade-in">
       <div>
-        {/* FOLDER & RESOURCES HUB VIEW */}
-        {isFolder && (
+        {/* SCHEDULED LOCKED ACTIVITY VIEW */}
+        {selectedLesson?.isLocked ? (
+          <div className="bg-white dark:bg-[#0B1120] border-b border-slate-200/80 dark:border-sky-500/20 py-16">
+            <div className="max-w-2xl mx-auto px-4 sm:px-6 text-center space-y-6">
+              <button
+                onClick={() => setCurrentView("chapter")}
+                className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white cursor-pointer px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] transition-all"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back to Module Curriculum</span>
+              </button>
+
+              <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-amber-500/20 to-orange-500/10 border border-amber-500/30 text-amber-500 flex items-center justify-center mx-auto shadow-lg shadow-amber-500/10">
+                <Lock className="w-8 h-8 stroke-[2.2]" />
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-[11px] font-extrabold uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                  Scheduled Release Content
+                </span>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white">
+                  {selectedLesson.title}
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+                  This activity has been scheduled by course managers and is locked for learners. It will automatically unlock once the scheduled release time arrives.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#070A11] border border-slate-200/80 dark:border-slate-800/80 max-w-md mx-auto space-y-2 text-left">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400">Curriculum Module:</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">{selectedModule?.title}</span>
+                </div>
+                {selectedLesson.unlockAt && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">Scheduled Unlock:</span>
+                    <span className="font-bold text-amber-600 dark:text-amber-400 font-mono">
+                      {new Date(selectedLesson.unlockAt).toLocaleString(undefined, {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400">Status:</span>
+                  <span className="font-bold text-amber-500 flex items-center gap-1">
+                    <Lock className="w-3 h-3" />
+                    <span>Time Locked</span>
+                  </span>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={() => setCurrentView("chapter")}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs shadow-md shadow-sky-500/20 cursor-pointer"
+                >
+                  Explore Other Activities
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* FOLDER & RESOURCES HUB VIEW */}
+            {isFolder && (
           <div className="bg-white dark:bg-[#0B1120] border-b border-slate-200/80 dark:border-sky-500/20 py-8">
             <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 space-y-6">
               <div className="flex items-center justify-between">
@@ -1809,6 +1938,8 @@ export default function LmsPlayerPage() {
               )}
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
 
