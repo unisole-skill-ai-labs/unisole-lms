@@ -85,7 +85,7 @@ export default function SubmissionsPage() {
         <div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
             <Award className="w-5 h-5 text-sky-500" />
-            <span>Mentor View</span>
+            <span>Dashboard</span>
           </h1>
         </div>
 
@@ -121,7 +121,7 @@ export default function SubmissionsPage() {
                   : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white"
               }`}
             >
-              Mentor View
+              Dashboard
             </button>
             <button
               onClick={() => setActiveTab("table")}

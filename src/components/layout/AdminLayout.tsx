@@ -51,14 +51,16 @@ export default function AdminLayout() {
 
   // Build nav items dynamically based on roles
   const navItems = [
-    ...(isProgramManager
+    ...(isProgramManager && !hasBoth
       ? [{ name: "Dashboard", path: "/admin", icon: LayoutDashboard, badge: "1", end: true }]
+      : isProgramManager
+      ? [{ name: "Admin Overview", path: "/admin", icon: LayoutGrid, end: true }]
+      : []),
+    ...(isMentor
+      ? [{ name: "Dashboard", path: "/admin/submissions", icon: LayoutDashboard, badge: isMentor && !isProgramManager ? "Active" : "Mentor" }]
       : []),
     ...(isProgramManager
       ? [{ name: "Program Manager", path: "/admin/courses", icon: BookOpen, badge: "Courses" }]
-      : []),
-    ...(isMentor
-      ? [{ name: "Mentor View", path: "/admin/submissions", icon: ClipboardCheck, badge: "Active" }]
       : []),
     { name: "Calendar", path: "/admin/calendar", icon: Calendar },
     { name: "Students", path: "/admin/students", icon: Users },
