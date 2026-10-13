@@ -31,18 +31,20 @@ export default function CatalogPage() {
     return ids;
   }, [myPathways]);
 
-  // Client-side filtering
+  // Client-side filtering: strictly only AI Agent Engineering course
   const filteredPathways = useMemo(() => {
-    return pathways.filter((p: any) => {
-      const matchCat = selectedCategory
-        ? (p.categories || []).some((c: any) => c.id === selectedCategory || c.name === selectedCategory)
-        : true;
-      const matchSearch = searchTerm
-        ? p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (p.shortDescription && p.shortDescription.toLowerCase().includes(searchTerm.toLowerCase()))
-        : true;
-      return matchCat && matchSearch;
-    });
+    return pathways
+      .filter((p: any) => p.slug === "cs-agentic" || p.id === "cs-agentic" || (p.title && p.title.toLowerCase().includes("ai agent")))
+      .filter((p: any) => {
+        const matchCat = selectedCategory
+          ? (p.categories || []).some((c: any) => c.id === selectedCategory || c.name === selectedCategory)
+          : true;
+        const matchSearch = searchTerm
+          ? p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (p.shortDescription && p.shortDescription.toLowerCase().includes(searchTerm.toLowerCase()))
+          : true;
+        return matchCat && matchSearch;
+      });
   }, [pathways, selectedCategory, searchTerm]);
 
   return (

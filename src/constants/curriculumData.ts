@@ -2444,21 +2444,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
 };
 
 export function getCurriculum(courseId?: string): CourseCurriculum {
-  if (!courseId) return AI_AGENT_ENGINEERING_CURRICULUM;
-  const normalized = courseId.toLowerCase();
-  if (normalized.includes("common") || normalized.includes("entrepreneur") || normalized.includes("incubator")) {
-    return INCUBATOR_CURRICULUM;
-  }
-  if (
-    normalized === "course1" ||
-    normalized.includes("agent") ||
-    normalized.includes("genai") ||
-    normalized === "cs-genai" ||
-    normalized === "cs-agentic"
-  ) {
-    return AI_AGENT_ENGINEERING_CURRICULUM;
-  }
-  return GENERIC_MODULE_CURRICULUM;
+  return AI_AGENT_ENGINEERING_CURRICULUM;
 }
 
 export function getEmbedVideoUrl(url?: string): string {

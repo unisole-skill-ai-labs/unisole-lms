@@ -10,7 +10,18 @@ import MacFolderIcon from "../components/ui/MacFolderIcon";
 export default function EnrolledCoursesPage() {
   const { data: myPathways = [], isLoading } = useGetMyPathwaysQuery(undefined);
 
-  const totalEnrolled = myPathways.length;
+  // Filter strictly to AI Agent Engineering
+  const displayCourses = myPathways.filter((item: any) => {
+    const p = item.pathway || item;
+    return (
+      p?.slug === "cs-agentic" ||
+      p?.slug === "course1" ||
+      p?.id === "cs-agentic" ||
+      (p?.title && p.title.toLowerCase().includes("ai agent"))
+    );
+  });
+
+  const totalEnrolled = displayCourses.length;
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 animate-fade-in">
@@ -60,7 +71,7 @@ export default function EnrolledCoursesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-          {myPathways.map((item: any) => {
+          {displayCourses.map((item: any) => {
             const pathway = item.pathway || item;
             if (!pathway) return null;
             const title = pathway.title || pathway.name || "";
