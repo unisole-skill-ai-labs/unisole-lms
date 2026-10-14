@@ -15,6 +15,11 @@ import {
   Send,
   AlertCircle,
   Sparkles,
+  Mail,
+  Phone,
+  Code2,
+  FileText,
+  Calendar,
 } from "lucide-react";
 
 export interface MenteeCourse {
@@ -435,267 +440,373 @@ export default function MentorCockpitView({
       {/* 4. STUDENT DETAIL SLIDE-OVER DRAWER (Details on Demand)        */}
       {/* ───────────────────────────────────────────────────────────── */}
       {activeDrawerStudent && (
-        <div className="fixed inset-0 z-50 overflow-hidden animate-fade-in font-sans">
+        <div className="fixed inset-0 z-50 overflow-hidden font-sans">
           {/* Backdrop */}
           <div
-            className="absolute inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs transition-opacity duration-300"
             onClick={handleCloseStudentDrawer}
           />
 
           {/* Drawer Body */}
-          <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-            <div className="w-screen max-w-lg bg-white dark:bg-[#0B1120] border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col">
-              {/* Drawer Top Header */}
-              <div className="p-5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center font-bold text-sky-600 dark:text-sky-400 text-xs">
-                    {activeDrawerStudent.name?.charAt(0).toUpperCase() || "S"}
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
-                      {activeDrawerStudent.name}
-                    </h3>
-                    <p className="text-[11px] text-slate-400 truncate">
-                      {activeDrawerStudent.college}
-                    </p>
-                  </div>
+          <div className="fixed inset-y-0 right-0 w-full max-w-[460px] bg-white dark:bg-[#0B1120] border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col z-50 animate-in slide-in-from-right duration-200">
+            {/* Drawer Top Header */}
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between bg-slate-50/50 dark:bg-[#080D1A]">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center font-bold text-sky-600 dark:text-sky-400 text-sm shrink-0">
+                  {activeDrawerStudent.name?.charAt(0).toUpperCase() || "S"}
                 </div>
-
-                <button
-                  type="button"
-                  onClick={handleCloseStudentDrawer}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white truncate">
+                    {activeDrawerStudent.name}
+                  </h3>
+                  <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                    {activeDrawerStudent.college || "Govt Degree College"}
+                  </p>
+                </div>
               </div>
 
-              {/* Drawer Content */}
-              <div className="flex-1 overflow-y-auto p-5 space-y-5 text-xs">
-                {/* Contact info bar */}
-                <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-slate-50 dark:bg-[#070A11] border border-slate-100 dark:border-slate-800/80 text-[11px]">
-                  <div>
-                    <span className="text-slate-400 block">Email</span>
-                    <span className="font-semibold text-slate-700 dark:text-slate-300 truncate block mt-0.5">
-                      {activeDrawerStudent.email || "No email"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block">Phone</span>
-                    <span className="font-semibold text-slate-700 dark:text-slate-300 truncate block mt-0.5">
-                      {activeDrawerStudent.phone || "No phone"}
-                    </span>
-                  </div>
-                </div>
+              <button
+                type="button"
+                onClick={handleCloseStudentDrawer}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                title="Close drawer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-                {/* Enrolled Courses */}
-                <div className="space-y-3">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-                    <span>Enrolled Pathway</span>
-                    <span className="text-sky-600 dark:text-sky-400 font-bold">
-                      {activeDrawerStudent.progressPercent || 0}% Complete
-                    </span>
-                  </div>
-
-                  {(activeDrawerStudent.enrolledCourses || []).map((course) => (
-                    <div
-                      key={course.courseId}
-                      className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#070A11] space-y-3 shadow-2xs"
+            {/* Drawer Content */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-6 text-xs">
+              {/* Contact info pills */}
+              {(activeDrawerStudent.email || activeDrawerStudent.phone) && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {activeDrawerStudent.email && (
+                    <a
+                      href={`mailto:${activeDrawerStudent.email}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:text-sky-600 text-[11px] font-medium transition-colors"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                          <GraduationCap className="w-4 h-4 text-sky-500" />
-                          <span>{course.courseTitle}</span>
-                        </div>
-                      </div>
+                      <Mail className="w-3.5 h-3.5 text-slate-400" />
+                      <span className="truncate max-w-[200px]">{activeDrawerStudent.email}</span>
+                    </a>
+                  )}
+                  {activeDrawerStudent.phone && (
+                    <a
+                      href={`tel:${activeDrawerStudent.phone}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:text-sky-600 text-[11px] font-medium transition-colors"
+                    >
+                      <Phone className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{activeDrawerStudent.phone}</span>
+                    </a>
+                  )}
+                </div>
+              )}
 
-                      {/* Missed deliverables */}
-                      {course.missed && course.missed.length > 0 && (
-                        <div className="space-y-1.5 pt-1">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-rose-500">
-                            Overdue Deliverables
-                          </span>
-                          <ul className="space-y-1.5">
-                            {course.missed.map((m) => (
-                              <li
-                                key={m.id}
-                                className="p-2 rounded-lg bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200/40 dark:border-rose-800/40 text-[11px] text-rose-700 dark:text-rose-300 flex items-center justify-between"
-                              >
-                                <span className="font-semibold truncate">{m.title}</span>
-                                {m.dueDate && (
-                                  <span className="text-[10px] text-rose-500 shrink-0 font-mono">
-                                    Due {new Date(m.dueDate).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
-                                  </span>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Upcoming touchpoints */}
-                      {course.upcoming && course.upcoming.length > 0 && (
-                        <div className="space-y-1.5 pt-1">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-sky-500">
-                            Upcoming Live Sessions
-                          </span>
-                          <ul className="space-y-1.5">
-                            {course.upcoming.map((u) => (
-                              <li
-                                key={u.id}
-                                className="p-2 rounded-lg bg-sky-50/50 dark:bg-sky-950/20 border border-sky-200/40 dark:border-sky-800/40 text-[11px] text-sky-800 dark:text-sky-200 flex items-center justify-between"
-                              >
-                                <div className="min-w-0 pr-2">
-                                  <div className="font-semibold truncate">{u.title}</div>
-                                  {u.date && (
-                                    <div className="text-[10px] text-sky-500 mt-0.5">
-                                      {new Date(u.date).toLocaleDateString("en-IN", { month: "short", day: "numeric" })} •{" "}
-                                      {new Date(u.date).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}
-                                    </div>
-                                  )}
-                                </div>
-                                {u.meetUrl && (
-                                  <a
-                                    href={u.meetUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded bg-sky-500 text-white hover:bg-sky-600 shrink-0"
-                                  >
-                                    <Video className="w-3 h-3" />
-                                    <span>Meet</span>
-                                  </a>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {!course.missed?.length && !course.upcoming?.length && (
-                        <div className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-medium">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>All milestones up to date</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+              {/* Enrolled Courses */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  <span>Enrolled Pathway</span>
+                  <span className="text-sky-600 dark:text-sky-400 font-bold">
+                    {activeDrawerStudent.progressPercent || 0}% Complete
+                  </span>
                 </div>
 
-                {/* Submissions & Quick Grading */}
-                <div className="space-y-3 pt-2">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-                    <span>Recent Submissions</span>
-                    <span>{activeDrawerStudent.submissions?.length || 0} Total</span>
-                  </div>
+                {(activeDrawerStudent.enrolledCourses || []).map((course) => (
+                  <div
+                    key={course.courseId}
+                    className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-[#070A11] space-y-3 shadow-2xs"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2 text-xs">
+                        <GraduationCap className="w-4 h-4 text-sky-500 shrink-0" />
+                        <span className="truncate">{course.courseTitle}</span>
+                      </div>
+                    </div>
 
-                  {activeDrawerStudent.submissions && activeDrawerStudent.submissions.length > 0 ? (
-                    <div className="space-y-2">
-                      {activeDrawerStudent.submissions.map((sub: any) => (
+                    {/* Progress bar */}
+                    <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                      <div
+                        className="h-full bg-sky-500 rounded-full transition-all duration-300"
+                        style={{ width: `${activeDrawerStudent.progressPercent || 0}%` }}
+                      />
+                    </div>
+
+                    {/* Missed deliverables */}
+                    {course.missed && course.missed.length > 0 && (
+                      <div className="space-y-1.5 pt-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-rose-500">
+                          Overdue Deliverables
+                        </span>
+                        <ul className="space-y-1.5">
+                          {course.missed.map((m) => (
+                            <li
+                              key={m.id}
+                              className="p-2 rounded-lg bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200/40 dark:border-rose-800/40 text-[11px] text-rose-700 dark:text-rose-300 flex items-center justify-between"
+                            >
+                              <span className="font-semibold truncate">{m.title}</span>
+                              {m.dueDate && (
+                                <span className="text-[10px] text-rose-500 shrink-0 font-mono">
+                                  Due {new Date(m.dueDate).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
+                                </span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Upcoming touchpoints */}
+                    {course.upcoming && course.upcoming.length > 0 && (
+                      <div className="space-y-1.5 pt-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-sky-500">
+                          Upcoming Live Sessions
+                        </span>
+                        <ul className="space-y-1.5">
+                          {course.upcoming.map((u) => (
+                            <li
+                              key={u.id}
+                              className="p-2 rounded-lg bg-sky-50/50 dark:bg-sky-950/20 border border-sky-200/40 dark:border-sky-800/40 text-[11px] text-sky-800 dark:text-sky-200 flex items-center justify-between"
+                            >
+                              <div className="min-w-0 pr-2">
+                                <div className="font-semibold truncate">{u.title}</div>
+                                {u.date && (
+                                  <div className="text-[10px] text-sky-500 mt-0.5">
+                                    {new Date(u.date).toLocaleDateString("en-IN", { month: "short", day: "numeric" })} •{" "}
+                                    {new Date(u.date).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}
+                                  </div>
+                                )}
+                              </div>
+                              {u.meetUrl && (
+                                <a
+                                  href={u.meetUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-lg bg-sky-500 text-white hover:bg-sky-600 shrink-0 shadow-2xs"
+                                >
+                                  <Video className="w-3 h-3" />
+                                  <span>Meet</span>
+                                </a>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {!course.missed?.length && !course.upcoming?.length && (
+                      <div className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-medium">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>All milestones up to date</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Submissions & Quick Grading */}
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
+                  <span className="uppercase tracking-wider text-[11px]">Recent Submissions</span>
+                  <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+                    {activeDrawerStudent.submissions?.length || 0} Total
+                  </span>
+                </div>
+
+                {activeDrawerStudent.submissions && activeDrawerStudent.submissions.length > 0 ? (
+                  <div className="space-y-3">
+                    {activeDrawerStudent.submissions.map((sub: any) => {
+                      const isGraded = sub.status === "GRADED" || sub.status === "APPROVED";
+                      const isPending =
+                        sub.status === "SUBMITTED" || sub.status === "UNDER_REVIEW" || sub.status === "PENDING";
+                      const isQuiz =
+                        sub.title?.toLowerCase().includes("quiz") || sub.title?.toLowerCase().includes("mcq");
+                      const isPractical =
+                        sub.title?.toLowerCase().includes("practical") ||
+                        sub.title?.toLowerCase().includes("code") ||
+                        sub.title?.toLowerCase().includes("react");
+
+                      return (
                         <div
                           key={sub.id}
-                          className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#070A11] space-y-2"
+                          className="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-[#070A11] p-4 shadow-2xs space-y-3 transition-all hover:border-slate-300 dark:hover:border-slate-700"
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <div className="font-bold text-slate-800 dark:text-slate-100">
-                                {sub.title || sub.lessonId || "Assignment Submission"}
+                          {/* Header: Type icon, title, and clean status badge */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-2.5 min-w-0">
+                              <div
+                                className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                                  isQuiz
+                                    ? "bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400"
+                                    : isPractical
+                                    ? "bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-400"
+                                    : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
+                                }`}
+                              >
+                                {isQuiz ? (
+                                  <FileCheck2 className="w-4 h-4" />
+                                ) : isPractical ? (
+                                  <Code2 className="w-4 h-4" />
+                                ) : (
+                                  <FileText className="w-4 h-4" />
+                                )}
                               </div>
-                              <div className="text-[10px] text-slate-400 mt-0.5">
-                                Submitted {sub.createdAt ? new Date(sub.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric" }) : "Recently"}
+                              <div className="min-w-0">
+                                <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 leading-snug break-words">
+                                  {sub.title || sub.lessonId || "Assignment Submission"}
+                                </h4>
+                                <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-400">
+                                  <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                                  <span>
+                                    {sub.createdAt
+                                      ? new Date(sub.createdAt).toLocaleDateString("en-IN", {
+                                          month: "short",
+                                          day: "numeric",
+                                        })
+                                      : "Recently"}
+                                  </span>
+                                  {isGraded && typeof sub.score === "number" && (
+                                    <>
+                                      <span>•</span>
+                                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                        Score: {sub.score}/10
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                            <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                                sub.status === "GRADED" || sub.status === "APPROVED"
-                                  ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60"
-                                  : "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60"
-                              }`}
-                            >
-                              {sub.status || "PENDING"}
-                            </span>
+
+                            {/* Status Badge */}
+                            <div className="shrink-0">
+                              {isGraded ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/50">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                  Graded
+                                </span>
+                              ) : isPending ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/50">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                  Pending Review
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                  {sub.status || "Submitted"}
+                                </span>
+                              )}
+                            </div>
                           </div>
 
-                          {sub.submissionUrl && (
-                            <a
-                              href={sub.submissionUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-sky-600 dark:text-sky-400 hover:underline"
-                            >
-                              <span>View Code / Deliverable</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
+                          {/* Mentor feedback if present */}
+                          {sub.mentorFeedback && (
+                            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300">
+                              <span className="font-bold text-slate-700 dark:text-slate-200 block mb-0.5">
+                                Mentor Feedback:
+                              </span>
+                              <p className="italic">"{sub.mentorFeedback}"</p>
+                            </div>
                           )}
 
-                          {/* Quick Grading Action */}
-                          {gradingSubId === sub.id ? (
-                            <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2 mt-2">
+                          {/* Clean Action Toolbar (Never Cluttered, Clearly Separated) */}
+                          <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-800/70">
+                            <div>
+                              {sub.submissionUrl ? (
+                                <a
+                                  href={sub.submissionUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                                >
+                                  <span>View Code / Deliverable</span>
+                                  <ExternalLink className="w-3 h-3 text-slate-400" />
+                                </a>
+                              ) : (
+                                <span className="text-[11px] text-slate-400 italic">No external link</span>
+                              )}
+                            </div>
+
+                            <div>
+                              {gradingSubId !== sub.id && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setGradingSubId(sub.id);
+                                    setGradeScore(sub.score ?? 10);
+                                    setGradeFeedback(sub.mentorFeedback || "");
+                                  }}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                    isGraded
+                                      ? "text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700"
+                                      : "bg-sky-500 hover:bg-sky-600 text-white shadow-2xs"
+                                  }`}
+                                >
+                                  <FileCheck2 className="w-3.5 h-3.5" />
+                                  <span>{isGraded ? "Edit Evaluation" : "Evaluate"}</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Quick Grading Drawer Panel when opened */}
+                          {gradingSubId === sub.id && (
+                            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3 mt-2">
                               <div className="flex items-center justify-between">
-                                <span className="font-bold text-[11px] text-slate-700 dark:text-slate-200">
-                                  Score (out of 10):
+                                <span className="font-bold text-xs text-slate-800 dark:text-slate-100">
+                                  Evaluation & Feedback
                                 </span>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={10}
-                                  value={gradeScore}
-                                  onChange={(e) => setGradeScore(Number(e.target.value))}
-                                  className="w-16 px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-right font-bold"
-                                />
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[11px] font-medium text-slate-500">Score (0–10):</span>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={10}
+                                    value={gradeScore}
+                                    onChange={(e) => setGradeScore(Number(e.target.value))}
+                                    className="w-14 px-2 py-1 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-right font-bold focus:ring-1 focus:ring-sky-500"
+                                  />
+                                </div>
                               </div>
-                              <input
-                                type="text"
-                                placeholder="Mentor feedback / comments..."
+
+                              <textarea
+                                rows={2}
+                                placeholder="Provide constructive feedback for the mentee..."
                                 value={gradeFeedback}
                                 onChange={(e) => setGradeFeedback(e.target.value)}
-                                className="w-full px-2.5 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950"
+                                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-sky-500 resize-none"
                               />
-                              <div className="flex items-center justify-end gap-1.5 pt-1">
+
+                              <div className="flex items-center justify-end gap-2">
                                 <button
                                   type="button"
                                   onClick={() => setGradingSubId(null)}
-                                  className="px-2.5 py-1 text-xs text-slate-500 hover:text-slate-800 dark:hover:text-white"
+                                  className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer"
                                 >
                                   Cancel
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleExecuteGrade(sub.id)}
-                                  className="px-3 py-1 text-xs font-bold bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition-colors flex items-center gap-1"
+                                  className="px-3.5 py-1.5 text-xs font-bold bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
                                 >
                                   <Send className="w-3 h-3" />
-                                  <span>Submit Grade</span>
+                                  <span>Save Evaluation</span>
                                 </button>
                               </div>
+
                               {gradeFeedbackMsg && (
-                                <p className="text-[10px] text-emerald-500 font-bold text-center mt-1">
+                                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold text-center">
                                   {gradeFeedbackMsg}
                                 </p>
                               )}
                             </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setGradingSubId(sub.id);
-                                setGradeScore(sub.score ?? 10);
-                                setGradeFeedback(sub.mentorFeedback || "");
-                              }}
-                              className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 mt-1 cursor-pointer"
-                            >
-                              <FileCheck2 className="w-3.5 h-3.5 text-sky-500" />
-                              <span>{sub.status === "GRADED" ? "Edit Evaluation" : "Evaluate Submission"}</span>
-                            </button>
                           )}
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-400 text-xs">
-                      No submissions uploaded yet.
-                    </div>
-                  )}
-                </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-6 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-400 text-xs">
+                    No submissions uploaded yet.
+                  </div>
+                )}
               </div>
             </div>
           </div>
