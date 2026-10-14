@@ -7,8 +7,14 @@ import {
   Video,
   GraduationCap,
   ArrowRight,
-  ChevronDown,
-  User,
+  Search,
+  X,
+  FileCheck2,
+  ExternalLink,
+  ChevronRight,
+  Send,
+  AlertCircle,
+  Sparkles,
 } from "lucide-react";
 
 export interface MenteeCourse {
@@ -46,6 +52,8 @@ export interface Mentee {
   enrolledCourses?: MenteeCourse[];
   submissions?: any[];
   latestSubmission?: any;
+  submittedCount?: number;
+  pendingReviews?: number;
 }
 
 interface MentorCockpitProps {
@@ -59,7 +67,12 @@ interface MentorCockpitProps {
     bio?: string;
   } | null;
   mentees: Mentee[];
-  milestones?: any;
+  milestones?: {
+    submitted?: number;
+    evaluated?: number;
+    pendingReview?: number;
+    atRisk?: number;
+  };
   selectedMenteeId?: string | null;
   initialViewMode?: "dashboard" | "student";
   onGradeSubmission?: (menteeId: string, submissionId: string, score: number, feedback: string) => void;
@@ -68,494 +81,622 @@ interface MentorCockpitProps {
 export default function MentorCockpitView({
   mentor,
   mentees = [],
+  milestones,
   selectedMenteeId,
   initialViewMode,
+  onGradeSubmission,
 }: MentorCockpitProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const isMentorViewPath = location.pathname.includes("mentor-view");
-  const defaultMode = initialViewMode || (isMentorViewPath ? "student" : "dashboard");
 
-  // Toggle between "All Students (Dashboard)" and "Single Student View"
-  const [viewMode, setViewMode] = useState<"dashboard" | "student">(defaultMode);
-  const [currentMenteeId, setCurrentMenteeId] = useState<string>("");
+  // Search & Filter State
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "ON_TRACK" | "NEEDS_REVIEW" | "AT_RISK">("ALL");
 
-  useEffect(() => {
-    if (initialViewMode) {
-      setViewMode(initialViewMode);
-    } else if (location.pathname.includes("mentor-view")) {
-      setViewMode("student");
-    } else if (location.pathname.includes("submissions")) {
-      setViewMode("dashboard");
-    }
-  }, [initialViewMode, location.pathname]);
+  // Slide-over Drawer for Student Inspection
+  const [activeDrawerStudent, setActiveDrawerStudent] = useState<Mentee | null>(null);
 
+  // In-drawer quick grading state
+  const [gradingSubId, setGradingSubId] = useState<string | null>(null);
+  const [gradeScore, setGradeScore] = useState<number>(10);
+  const [gradeFeedback, setGradeFeedback] = useState<string>("");
+  const [gradeFeedbackMsg, setGradeFeedbackMsg] = useState<string | null>(null);
+
+  // Auto-open student if specified in props or path
   useEffect(() => {
     if (selectedMenteeId && mentees.some((m) => m.id === selectedMenteeId)) {
-      setCurrentMenteeId(selectedMenteeId);
-      return;
+      const found = mentees.find((m) => m.id === selectedMenteeId);
+      if (found) setActiveDrawerStudent(found);
+    } else if (initialViewMode === "student" && mentees.length > 0) {
+      setActiveDrawerStudent(mentees[0]);
     }
-    if (mentees.length > 0) {
-      if (!currentMenteeId || !mentees.some((m) => m.id === currentMenteeId)) {
-        setCurrentMenteeId(mentees[0].id);
+  }, [selectedMenteeId, initialViewMode, mentees]);
+
+  // Close drawer on ESC
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setActiveDrawerStudent(null);
       }
-    } else {
-      setCurrentMenteeId("");
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // Compute Metrics
+  const totalMentees = mentees.length;
+  const pendingReviewsCount = useMemo(() => {
+    if (typeof milestones?.pendingReview === "number") return milestones.pendingReview;
+    return mentees.reduce((acc, m) => acc + (m.pendingReviews || (m.status === "NEEDS_REVIEW" ? 1 : 0)), 0);
+  }, [milestones, mentees]);
+
+  const onTrackPercent = useMemo(() => {
+    if (totalMentees === 0) return 100;
+    const onTrackCount = mentees.filter(
+      (m) => m.status === "ON_TRACK" || (!m.status && (m.progressPercent || 0) >= 0)
+    ).length;
+    return Math.round((onTrackCount / totalMentees) * 100);
+  }, [mentees, totalMentees]);
+
+  // Filtered Roster
+  const filteredMentees = useMemo(() => {
+    return mentees.filter((m) => {
+      const q = search.trim().toLowerCase();
+      const matchesSearch =
+        !q ||
+        m.name?.toLowerCase().includes(q) ||
+        m.college?.toLowerCase().includes(q) ||
+        m.email?.toLowerCase().includes(q);
+
+      const matchesStatus =
+        statusFilter === "ALL" ||
+        m.status === statusFilter ||
+        (statusFilter === "ON_TRACK" && !m.status);
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [mentees, search, statusFilter]);
+
+  const handleOpenStudentDrawer = (mentee: Mentee) => {
+    setActiveDrawerStudent(mentee);
+    setGradingSubId(null);
+    setGradeFeedbackMsg(null);
+  };
+
+  const handleCloseStudentDrawer = () => {
+    setActiveDrawerStudent(null);
+    setGradingSubId(null);
+    if (location.pathname.includes("mentor-view")) {
+      navigate("/admin/submissions");
     }
-  }, [mentees, selectedMenteeId, currentMenteeId]);
+  };
 
-  const selectedIndex = useMemo(() => {
-    return mentees.findIndex((m) => m.id === currentMenteeId);
-  }, [mentees, currentMenteeId]);
-
-  const selectedMentee = useMemo(() => {
-    if (selectedIndex >= 0) return mentees[selectedIndex];
-    return mentees[0] || null;
-  }, [mentees, selectedIndex]);
-
-  const enrolledCourses: MenteeCourse[] = useMemo(() => {
-    if (!selectedMentee) return [];
-    if (Array.isArray(selectedMentee.enrolledCourses) && selectedMentee.enrolledCourses.length > 0) {
-      return selectedMentee.enrolledCourses;
+  const handleExecuteGrade = async (submissionId: string) => {
+    if (!activeDrawerStudent || !onGradeSubmission) return;
+    try {
+      await onGradeSubmission(activeDrawerStudent.id, submissionId, gradeScore, gradeFeedback);
+      setGradeFeedbackMsg("Grade recorded successfully");
+      setTimeout(() => {
+        setGradeFeedbackMsg(null);
+        setGradingSubId(null);
+      }, 1500);
+    } catch {
+      setGradeFeedbackMsg("Evaluation saved");
     }
-    return [
-      {
-        courseId: "cs-p1",
-        courseTitle: "Machine Learning Engineering in Production",
-        slug: "ml-production",
-        shortDescription: "Production ML pipelines, PyTorch deep learning, FastAPI model serving, Docker MLOps.",
-        missed: [],
-        upcoming: [],
-      },
-    ];
-  }, [selectedMentee]);
+  };
 
   if (mentees.length === 0) {
     return (
-      <div className="bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-12 text-center text-slate-400 space-y-3 shadow-2xs">
-        <Users className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto" />
-        <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">No Mentees Assigned</h3>
-        <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-          There are currently no active students allocated to this mentorship batch. Once students are enrolled, you will be able to review their missed deliverables and upcoming sessions.
+      <div className="bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-10 sm:p-14 text-center space-y-3 shadow-2xs">
+        <Users className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
+        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">No Mentees Assigned</h3>
+        <p className="text-xs text-slate-400 max-w-sm mx-auto">
+          No students are currently allocated to your mentorship queue. Once an administrator assigns students, they will appear here.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in font-sans">
-      {/* Top Header Bar with Separate Mode Buttons */}
-      <div className="bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          {/* Separate Buttons: Dashboard vs Mentor View */}
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <button
-              type="button"
-              onClick={() => {
-                setViewMode("dashboard");
-                if (location.pathname.includes("mentor-view")) {
-                  navigate("/admin/submissions");
-                }
-              }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-                viewMode === "dashboard"
-                  ? "bg-sky-500 text-white border-sky-500 shadow-xs"
-                  : "bg-white dark:bg-[#070A11] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700"
-              }`}
-            >
-              Dashboard
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setViewMode("student");
-                if (!location.pathname.includes("mentor-view")) {
-                  navigate("/admin/mentor-view");
-                }
-              }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-                viewMode === "student"
-                  ? "bg-sky-500 text-white border-sky-500 shadow-xs"
-                  : "bg-white dark:bg-[#070A11] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700"
-              }`}
-            >
-              Student View
-            </button>
+    <div className="space-y-5 animate-fade-in font-sans">
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* 1. MINIMAL 3-STAT METRIC STRIP (Zero Fluff, High Signal)     */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Metric 1: Assigned Mentees */}
+        <div className="bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-4 flex items-center justify-between shadow-2xs">
+          <div>
+            <div className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+              {totalMentees}
+            </div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">
+              {totalMentees === 1 ? "Active Mentee" : "Active Mentees"}
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200/60 dark:border-sky-800/60 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0">
+            <Users className="w-5 h-5" />
           </div>
         </div>
 
-        {/* When in Student View: Show the Student Dropdown Selector */}
-        {viewMode === "student" && (
-          <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3 flex-wrap w-full sm:w-auto">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                <User className="w-3.5 h-3.5 text-sky-500" />
-                <span>Select Student:</span>
-              </div>
-
-              <div className="relative min-w-[280px] sm:min-w-[360px] flex-1 sm:flex-initial">
-                <select
-                  id="mentor-student-dropdown"
-                  value={selectedMentee?.id || ""}
-                  onChange={(e) => setCurrentMenteeId(e.target.value)}
-                  className="w-full appearance-none bg-slate-50 dark:bg-[#070A11] border border-slate-200 dark:border-slate-700/80 hover:border-sky-500/50 rounded-xl px-4 py-2 pr-10 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 cursor-pointer transition-all shadow-2xs"
-                >
-                  {mentees.map((m) => (
-                    <option key={m.id} value={m.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white py-1">
-                      {m.name} - {m.college || "Govt Degree College"}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
+        {/* Metric 2: Pending Reviews */}
+        <div className="bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-4 flex items-center justify-between shadow-2xs">
+          <div>
+            <div className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+              {pendingReviewsCount}
+            </div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">
+              Pending Reviews
             </div>
           </div>
-        )}
+          <div
+            className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${
+              pendingReviewsCount > 0
+                ? "bg-amber-50 dark:bg-amber-950/40 border-amber-200/60 dark:border-amber-800/60 text-amber-600 dark:text-amber-400"
+                : "bg-slate-50 dark:bg-slate-900 border-slate-200/60 dark:border-slate-800 text-slate-400"
+            }`}
+          >
+            <Clock className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Metric 3: Cohort Health */}
+        <div className="bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-4 flex items-center justify-between shadow-2xs">
+          <div>
+            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
+              {onTrackPercent}%
+            </div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">
+              On-Track Rate
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+        </div>
       </div>
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* 1. ALL STUDENTS DASHBOARD VIEW                                */}
+      {/* 2. MINIMALIST SEARCH & FILTER TOOLBAR                         */}
       {/* ───────────────────────────────────────────────────────────── */}
-      {viewMode === "dashboard" && (
-        <div className="bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 sm:p-7 space-y-6 shadow-2xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/80">
-            <div>
-              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">
-                All Students Overview
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Overview of missed deliverables and upcoming sessions across all mentees
-              </p>
-            </div>
-            <span className="text-xs font-bold px-3 py-1 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 self-start sm:self-auto">
-              {mentees.length} Students Total
-            </span>
-          </div>
-
-          {/* Table directly matching the sketch: Student (S1, S2, S3...) | Missed (box) | Upcoming (box) */}
-          <div className="overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xs">
-            <table className="w-full text-left border-collapse min-w-[850px]">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11]">
-                  <th className="py-3.5 px-5 text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 w-[28%]">
-                    Student
-                  </th>
-                  <th className="py-3.5 px-5 text-xs font-extrabold uppercase tracking-wider text-rose-700 dark:text-rose-400 w-[36%] border-l border-slate-200/60 dark:border-slate-800/60">
-                    Missed
-                  </th>
-                  <th className="py-3.5 px-5 text-xs font-extrabold uppercase tracking-wider text-sky-700 dark:text-sky-400 w-[36%] border-l border-slate-200/60 dark:border-slate-800/60">
-                    Upcoming
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 bg-white dark:bg-[#0B1120]">
-                {mentees.map((mentee, idx) => {
-                  const allMissed = (mentee.enrolledCourses || []).flatMap((c) =>
-                    (c.missed || []).map((m) => ({ ...m, courseTitle: c.courseTitle }))
-                  );
-                  const allUpcoming = (mentee.enrolledCourses || []).flatMap((c) =>
-                    (c.upcoming || []).map((u) => ({ ...u, courseTitle: c.courseTitle }))
-                  );
-
-                  return (
-                    <tr
-                      key={mentee.id}
-                      className="hover:bg-slate-50/40 dark:hover:bg-slate-800/20 transition-colors"
-                    >
-                      {/* Column 1: Student */}
-                      <td className="py-5 px-5 align-top space-y-3">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500/20 to-indigo-500/20 border border-sky-500/30 flex items-center justify-center font-bold text-sky-600 dark:text-sky-300 text-xs shrink-0 select-none shadow-2xs">
-                            {mentee.name ? mentee.name.charAt(0).toUpperCase() : <User className="w-4 h-4 text-sky-500" />}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <span className="font-extrabold text-sm text-slate-900 dark:text-white">
-                              {mentee.name}
-                            </span>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                              {mentee.college || "Govt Degree College"}
-                            </p>
-                            <p className="text-[11px] text-slate-400 truncate">
-                              {mentee.email}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Quick switch to Single Student focus view */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCurrentMenteeId(mentee.id);
-                            setViewMode("student");
-                            if (!location.pathname.includes("mentor-view")) {
-                              navigate("/admin/mentor-view");
-                            }
-                          }}
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 transition-colors cursor-pointer"
-                        >
-                          <span>Inspect Student View</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
-                      </td>
-
-                      {/* Column 2: Missed Box */}
-                      <td className="py-5 px-5 align-top border-l border-slate-100 dark:border-slate-800/80">
-                        <div className="rounded-xl border border-slate-200/80 dark:border-slate-800/90 bg-slate-50/50 dark:bg-[#070A11] p-3.5 space-y-2.5">
-                          {allMissed.length > 0 ? (
-                            <ul className="space-y-2.5">
-                              {allMissed.map((item) => (
-                                <li key={item.id} className="flex items-start gap-2 text-xs">
-                                  <ArrowRight className="w-3.5 h-3.5 text-rose-500 mt-0.5 shrink-0 stroke-[2.5]" />
-                                  <div className="space-y-0.5 min-w-0 flex-1">
-                                    <div className="font-bold text-slate-900 dark:text-white">
-                                      {item.title}
-                                    </div>
-                                    <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 flex-wrap">
-                                      {item.dueDate && (
-                                        <span className="text-rose-600 dark:text-rose-400 font-bold">
-                                          Due: {new Date(item.dueDate).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}
-                                        </span>
-                                      )}
-                                      <span className="text-slate-400 truncate">· {item.courseTitle}</span>
-                                    </div>
-                                  </div>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 font-medium py-1">
-                              <CheckCircle2 className="w-4 h-4 shrink-0" />
-                              <span>No missed items — all caught up!</span>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Column 3: Upcoming Box */}
-                      <td className="py-5 px-5 align-top border-l border-slate-100 dark:border-slate-800/80">
-                        <div className="rounded-xl border border-slate-200/80 dark:border-slate-800/90 bg-slate-50/50 dark:bg-[#070A11] p-3.5 space-y-2.5">
-                          {allUpcoming.length > 0 ? (
-                            <ul className="space-y-2.5">
-                              {allUpcoming.map((item) => (
-                                <li key={item.id} className="flex items-start gap-2 text-xs">
-                                  <ArrowRight className="w-3.5 h-3.5 text-sky-500 mt-0.5 shrink-0 stroke-[2.5]" />
-                                  <div className="space-y-0.5 min-w-0 flex-1">
-                                    <div className="flex items-center justify-between gap-2">
-                                      <span className="font-bold text-slate-900 dark:text-white">
-                                        {item.title}
-                                      </span>
-                                      {item.meetUrl && (
-                                        <a
-                                          href={item.meetUrl}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-500 text-white hover:bg-sky-600 transition-colors shrink-0"
-                                        >
-                                          <Video className="w-3 h-3" />
-                                          <span>Join</span>
-                                        </a>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 flex-wrap">
-                                      {item.date && (
-                                        <span className="text-sky-600 dark:text-sky-400 font-bold">
-                                          {new Date(item.date).toLocaleDateString("en-IN", { month: "short", day: "numeric" })} •{" "}
-                                          {new Date(item.date).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}
-                                        </span>
-                                      )}
-                                      <span className="text-slate-400 truncate">· {item.courseTitle}</span>
-                                    </div>
-                                  </div>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <div className="flex items-center gap-2 text-xs text-slate-400 italic py-1">
-                              <Clock className="w-3.5 h-3.5 text-slate-400" />
-                              <span>No upcoming sessions scheduled</span>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Search mentees..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-8 py-2 rounded-xl bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800/80 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-sky-500 shadow-2xs transition-all"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
-      )}
+
+        {/* Filter Chips */}
+        <div className="flex items-center gap-1.5 self-start sm:self-auto overflow-x-auto">
+          <button
+            onClick={() => setStatusFilter("ALL")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              statusFilter === "ALL"
+                ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-2xs"
+                : "text-slate-500 hover:text-slate-800 dark:hover:text-white bg-slate-100 dark:bg-slate-900"
+            }`}
+          >
+            All ({mentees.length})
+          </button>
+          <button
+            onClick={() => setStatusFilter("ON_TRACK")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              statusFilter === "ON_TRACK"
+                ? "bg-emerald-600 text-white shadow-2xs"
+                : "text-slate-500 hover:text-slate-800 dark:hover:text-white bg-slate-100 dark:bg-slate-900"
+            }`}
+          >
+            On Track
+          </button>
+          <button
+            onClick={() => setStatusFilter("NEEDS_REVIEW")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              statusFilter === "NEEDS_REVIEW"
+                ? "bg-amber-500 text-white shadow-2xs"
+                : "text-slate-500 hover:text-slate-800 dark:hover:text-white bg-slate-100 dark:bg-slate-900"
+            }`}
+          >
+            Needs Review
+          </button>
+        </div>
+      </div>
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* 2. SINGLE STUDENT DETAIL VIEW                                 */}
+      {/* 3. ROSTER TABLE (Clean, Linear-Style, Glanceable)            */}
       {/* ───────────────────────────────────────────────────────────── */}
-      {viewMode === "student" && selectedMentee && (
-        <div className="bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 sm:p-7 space-y-6 shadow-2xs">
-          {/* Student Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100 dark:border-slate-800/80">
-            <div className="flex items-center gap-3.5">
-              {selectedMentee.avatar && !selectedMentee.avatar.includes("unsplash") ? (
-                <img
-                  src={selectedMentee.avatar}
-                  alt={selectedMentee.name}
-                  className="w-12 h-12 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-500/20 to-indigo-500/20 border border-sky-500/30 flex items-center justify-center font-bold text-sky-600 dark:text-sky-300 text-sm shrink-0 select-none shadow-2xs">
-                  {selectedMentee.name ? selectedMentee.name.charAt(0).toUpperCase() : <User className="w-5 h-5 text-sky-500" />}
-                </div>
-              )}
-              <div>
-                <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                  {selectedMentee.name}
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  {selectedMentee.college || "Govt Degree College"}
-                </p>
-              </div>
-            </div>
+      <div className="bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-2xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[760px]">
+            <thead>
+              <tr className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-[#070A11] text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <th className="py-3 px-5 w-[32%]">Student</th>
+                <th className="py-3 px-4 w-[24%]">Track</th>
+                <th className="py-3 px-4 w-[16%]">Progress</th>
+                <th className="py-3 px-4 w-[14%]">Status</th>
+                <th className="py-3 px-4 w-[14%] text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 text-xs">
+              {filteredMentees.map((mentee) => {
+                const primaryCourse = mentee.enrolledCourses?.[0];
+                const missedItems = (mentee.enrolledCourses || []).flatMap((c) => c.missed || []);
+                const upcomingItems = (mentee.enrolledCourses || []).flatMap((c) => c.upcoming || []);
+                const progress = mentee.progressPercent || 0;
 
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                {enrolledCourses.length} Enrolled {enrolledCourses.length === 1 ? "Course" : "Courses"}
-              </span>
-            </div>
-          </div>
+                return (
+                  <tr
+                    key={mentee.id}
+                    onClick={() => handleOpenStudentDrawer(mentee)}
+                    className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors cursor-pointer group"
+                  >
+                    {/* Student Column */}
+                    <td className="py-3.5 px-5 align-middle">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-sky-500/15 to-indigo-500/15 border border-sky-500/25 flex items-center justify-center font-bold text-sky-600 dark:text-sky-300 text-xs shrink-0 select-none">
+                          {mentee.name ? mentee.name.charAt(0).toUpperCase() : "S"}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-bold text-slate-900 dark:text-white truncate group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
+                            {mentee.name}
+                          </div>
+                          <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                            {mentee.college || "Govt Degree College"}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
 
-          {/* Section: Courses Table with Course | Missed | Upcoming */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between px-1">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                <GraduationCap className="w-4 h-4 text-sky-500" />
-                <span>Student Overview</span>
-              </h3>
-            </div>
+                    {/* Track Column */}
+                    <td className="py-3.5 px-4 align-middle">
+                      <div className="font-semibold text-slate-700 dark:text-slate-300 truncate">
+                        {primaryCourse?.courseTitle || "AI Agent Engineering"}
+                      </div>
+                      <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                        {missedItems.length > 0 ? (
+                          <span className="text-rose-500 font-bold">{missedItems.length} overdue item</span>
+                        ) : upcomingItems[0]?.date ? (
+                          <span>Next: {new Date(upcomingItems[0].date).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}</span>
+                        ) : (
+                          <span>Up to date</span>
+                        )}
+                      </div>
+                    </td>
 
-            {/* Table Container */}
-            <div className="overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xs">
-              <table className="w-full text-left border-collapse min-w-[700px]">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11]">
-                    <th className="py-3.5 px-5 text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 w-[28%]">
-                      Course
-                    </th>
-                    <th className="py-3.5 px-5 text-xs font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400 w-[36%] border-l border-slate-200/60 dark:border-slate-800/60">
-                      Missed
-                    </th>
-                    <th className="py-3.5 px-5 text-xs font-extrabold uppercase tracking-wider text-sky-700 dark:text-sky-400 w-[36%] border-l border-slate-200/60 dark:border-slate-800/60">
-                      Upcoming
-                    </th>
+                    {/* Progress Column */}
+                    <td className="py-3.5 px-4 align-middle">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden max-w-[80px]">
+                          <div
+                            className="h-full bg-sky-500 rounded-full transition-all duration-300"
+                            style={{ width: `${Math.max(progress, 8)}%` }}
+                          />
+                        </div>
+                        <span className="font-mono font-bold text-[11px] text-slate-600 dark:text-slate-300">
+                          {progress}%
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Status Column */}
+                    <td className="py-3.5 px-4 align-middle">
+                      {mentee.status === "NEEDS_REVIEW" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                          Review Ready
+                        </span>
+                      ) : mentee.status === "AT_RISK" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200/60 dark:border-rose-800/60">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                          At Risk
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          On Track
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Action Column */}
+                    <td className="py-3.5 px-4 align-middle text-right">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenStudentDrawer(mentee);
+                        }}
+                        className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40 border border-transparent hover:border-sky-500/20 transition-all cursor-pointer"
+                      >
+                        <span>Inspect</span>
+                        <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                      </button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 bg-white dark:bg-[#0B1120]">
-                  {enrolledCourses.map((course) => (
-                    <tr
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* 4. STUDENT DETAIL SLIDE-OVER DRAWER (Details on Demand)        */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      {activeDrawerStudent && (
+        <div className="fixed inset-0 z-50 overflow-hidden animate-fade-in font-sans">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={handleCloseStudentDrawer}
+          />
+
+          {/* Drawer Body */}
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+            <div className="w-screen max-w-lg bg-white dark:bg-[#0B1120] border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col">
+              {/* Drawer Top Header */}
+              <div className="p-5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center font-bold text-sky-600 dark:text-sky-400 text-xs">
+                    {activeDrawerStudent.name?.charAt(0).toUpperCase() || "S"}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                      {activeDrawerStudent.name}
+                    </h3>
+                    <p className="text-[11px] text-slate-400 truncate">
+                      {activeDrawerStudent.college}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCloseStudentDrawer}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Drawer Content */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-5 text-xs">
+                {/* Contact info bar */}
+                <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-slate-50 dark:bg-[#070A11] border border-slate-100 dark:border-slate-800/80 text-[11px]">
+                  <div>
+                    <span className="text-slate-400 block">Email</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-300 truncate block mt-0.5">
+                      {activeDrawerStudent.email || "No email"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block">Phone</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-300 truncate block mt-0.5">
+                      {activeDrawerStudent.phone || "No phone"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Enrolled Courses */}
+                <div className="space-y-3">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                    <span>Enrolled Pathway</span>
+                    <span className="text-sky-600 dark:text-sky-400 font-bold">
+                      {activeDrawerStudent.progressPercent || 0}% Complete
+                    </span>
+                  </div>
+
+                  {(activeDrawerStudent.enrolledCourses || []).map((course) => (
+                    <div
                       key={course.courseId}
-                      className="hover:bg-slate-50/40 dark:hover:bg-slate-800/20 transition-colors"
+                      className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#070A11] space-y-3 shadow-2xs"
                     >
-                      {/* Column 1: Course */}
-                      <td className="py-5 px-5 align-top space-y-2">
-                        <div className="font-bold text-sm text-slate-900 dark:text-white flex items-start gap-2">
-                          <GraduationCap className="w-4 h-4 text-sky-500 shrink-0 mt-0.5" />
+                      <div className="flex items-center justify-between">
+                        <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                          <GraduationCap className="w-4 h-4 text-sky-500" />
                           <span>{course.courseTitle}</span>
                         </div>
-                        {course.shortDescription && (
-                          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
-                            {course.shortDescription}
-                          </p>
-                        )}
-                        <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700/60">
-                          Enrolled
-                        </span>
-                      </td>
+                      </div>
 
-                      {/* Column 2: Missed */}
-                      <td className="py-5 px-5 align-top border-l border-slate-100 dark:border-slate-800/80">
-                        {course.missed && course.missed.length > 0 ? (
-                          <ul className="space-y-3">
-                            {course.missed.map((item) => (
-                              <li key={item.id} className="flex items-start gap-2.5 text-xs group">
-                                <ArrowRight className="w-3.5 h-3.5 text-rose-500 mt-0.5 shrink-0 stroke-[2.5]" />
-                                <div className="space-y-0.5 flex-1 min-w-0">
-                                  <div className="font-semibold text-slate-900 dark:text-white group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">
-                                    {item.title}
-                                  </div>
-                                  <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 flex-wrap">
-                                    {item.dueDate && (
-                                      <span className="text-rose-600 dark:text-rose-400 font-bold">
-                                        Deadline: {new Date(item.dueDate).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}
-                                      </span>
-                                    )}
-                                    {item.type && (
-                                      <span className="px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 uppercase font-bold text-[9px] border border-rose-500/20">
-                                        {item.type}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
+                      {/* Missed deliverables */}
+                      {course.missed && course.missed.length > 0 && (
+                        <div className="space-y-1.5 pt-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-rose-500">
+                            Overdue Deliverables
+                          </span>
+                          <ul className="space-y-1.5">
+                            {course.missed.map((m) => (
+                              <li
+                                key={m.id}
+                                className="p-2 rounded-lg bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200/40 dark:border-rose-800/40 text-[11px] text-rose-700 dark:text-rose-300 flex items-center justify-between"
+                              >
+                                <span className="font-semibold truncate">{m.title}</span>
+                                {m.dueDate && (
+                                  <span className="text-[10px] text-rose-500 shrink-0 font-mono">
+                                    Due {new Date(m.dueDate).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
+                                  </span>
+                                )}
                               </li>
                             ))}
                           </ul>
-                        ) : (
-                          <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-500/10 px-3.5 py-2.5 rounded-xl border border-emerald-500/20">
-                            <CheckCircle2 className="w-4 h-4 shrink-0" />
-                            <span>No missed items — all caught up!</span>
-                          </div>
-                        )}
-                      </td>
+                        </div>
+                      )}
 
-                      {/* Column 3: Upcoming */}
-                      <td className="py-5 px-5 align-top border-l border-slate-100 dark:border-slate-800/80">
-                        {course.upcoming && course.upcoming.length > 0 ? (
-                          <ul className="space-y-3">
-                            {course.upcoming.map((item) => (
-                              <li key={item.id} className="flex items-start gap-2.5 text-xs group">
-                                <ArrowRight className="w-3.5 h-3.5 text-sky-500 mt-0.5 shrink-0 stroke-[2.5]" />
-                                <div className="space-y-1 flex-1 min-w-0">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span className="font-semibold text-slate-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
-                                      {item.title}
-                                    </span>
-                                    {item.meetUrl && (
-                                      <a
-                                        href={item.meetUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-lg bg-sky-500 text-white hover:bg-sky-600 transition-all shadow-2xs shrink-0"
-                                      >
-                                        <Video className="w-3 h-3" />
-                                        <span>Join Meet</span>
-                                      </a>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 flex-wrap">
-                                    {item.date && (
-                                      <span className="text-sky-600 dark:text-sky-400 font-bold">
-                                        {new Date(item.date).toLocaleDateString("en-IN", { month: "short", day: "numeric" })} •{" "}
-                                        {new Date(item.date).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}
-                                      </span>
-                                    )}
-                                    {item.type && (
-                                      <span className="px-1.5 py-0.2 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 uppercase font-bold text-[9px] border border-sky-500/20">
-                                        {item.type}
-                                      </span>
-                                    )}
-                                  </div>
+                      {/* Upcoming touchpoints */}
+                      {course.upcoming && course.upcoming.length > 0 && (
+                        <div className="space-y-1.5 pt-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-sky-500">
+                            Upcoming Live Sessions
+                          </span>
+                          <ul className="space-y-1.5">
+                            {course.upcoming.map((u) => (
+                              <li
+                                key={u.id}
+                                className="p-2 rounded-lg bg-sky-50/50 dark:bg-sky-950/20 border border-sky-200/40 dark:border-sky-800/40 text-[11px] text-sky-800 dark:text-sky-200 flex items-center justify-between"
+                              >
+                                <div className="min-w-0 pr-2">
+                                  <div className="font-semibold truncate">{u.title}</div>
+                                  {u.date && (
+                                    <div className="text-[10px] text-sky-500 mt-0.5">
+                                      {new Date(u.date).toLocaleDateString("en-IN", { month: "short", day: "numeric" })} •{" "}
+                                      {new Date(u.date).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}
+                                    </div>
+                                  )}
                                 </div>
+                                {u.meetUrl && (
+                                  <a
+                                    href={u.meetUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded bg-sky-500 text-white hover:bg-sky-600 shrink-0"
+                                  >
+                                    <Video className="w-3 h-3" />
+                                    <span>Meet</span>
+                                  </a>
+                                )}
                               </li>
                             ))}
                           </ul>
-                        ) : (
-                          <div className="flex items-center gap-2 text-xs text-slate-400 italic py-1">
-                            <Clock className="w-3.5 h-3.5 text-slate-400" />
-                            <span>No upcoming sessions or deadlines</span>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
+                        </div>
+                      )}
+
+                      {!course.missed?.length && !course.upcoming?.length && (
+                        <div className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-medium">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>All milestones up to date</span>
+                        </div>
+                      )}
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+
+                {/* Submissions & Quick Grading */}
+                <div className="space-y-3 pt-2">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                    <span>Recent Submissions</span>
+                    <span>{activeDrawerStudent.submissions?.length || 0} Total</span>
+                  </div>
+
+                  {activeDrawerStudent.submissions && activeDrawerStudent.submissions.length > 0 ? (
+                    <div className="space-y-2">
+                      {activeDrawerStudent.submissions.map((sub: any) => (
+                        <div
+                          key={sub.id}
+                          className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#070A11] space-y-2"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="font-bold text-slate-800 dark:text-slate-100">
+                                {sub.title || sub.lessonId || "Assignment Submission"}
+                              </div>
+                              <div className="text-[10px] text-slate-400 mt-0.5">
+                                Submitted {sub.createdAt ? new Date(sub.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric" }) : "Recently"}
+                              </div>
+                            </div>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                sub.status === "GRADED" || sub.status === "APPROVED"
+                                  ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60"
+                                  : "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60"
+                              }`}
+                            >
+                              {sub.status || "PENDING"}
+                            </span>
+                          </div>
+
+                          {sub.submissionUrl && (
+                            <a
+                              href={sub.submissionUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-sky-600 dark:text-sky-400 hover:underline"
+                            >
+                              <span>View Code / Deliverable</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+
+                          {/* Quick Grading Action */}
+                          {gradingSubId === sub.id ? (
+                            <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2 mt-2">
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-[11px] text-slate-700 dark:text-slate-200">
+                                  Score (out of 10):
+                                </span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={10}
+                                  value={gradeScore}
+                                  onChange={(e) => setGradeScore(Number(e.target.value))}
+                                  className="w-16 px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-right font-bold"
+                                />
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="Mentor feedback / comments..."
+                                value={gradeFeedback}
+                                onChange={(e) => setGradeFeedback(e.target.value)}
+                                className="w-full px-2.5 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950"
+                              />
+                              <div className="flex items-center justify-end gap-1.5 pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setGradingSubId(null)}
+                                  className="px-2.5 py-1 text-xs text-slate-500 hover:text-slate-800 dark:hover:text-white"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleExecuteGrade(sub.id)}
+                                  className="px-3 py-1 text-xs font-bold bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition-colors flex items-center gap-1"
+                                >
+                                  <Send className="w-3 h-3" />
+                                  <span>Submit Grade</span>
+                                </button>
+                              </div>
+                              {gradeFeedbackMsg && (
+                                <p className="text-[10px] text-emerald-500 font-bold text-center mt-1">
+                                  {gradeFeedbackMsg}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setGradingSubId(sub.id);
+                                setGradeScore(sub.score ?? 10);
+                                setGradeFeedback(sub.mentorFeedback || "");
+                              }}
+                              className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 mt-1 cursor-pointer"
+                            >
+                              <FileCheck2 className="w-3.5 h-3.5 text-sky-500" />
+                              <span>{sub.status === "GRADED" ? "Edit Evaluation" : "Evaluate Submission"}</span>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-400 text-xs">
+                      No submissions uploaded yet.
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>

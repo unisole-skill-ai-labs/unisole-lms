@@ -93,8 +93,11 @@ export default function SubmissionsPage({ initialMode }: SubmissionsPageProps = 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800/80">
         <div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Dashboard
+            Mentor Cockpit
           </h1>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Cohort progress, active deliverables, and evaluations
+          </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -129,7 +132,7 @@ export default function SubmissionsPage({ initialMode }: SubmissionsPageProps = 
                   : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white"
               }`}
             >
-              Dashboard
+              Overview
             </button>
             <button
               onClick={() => setActiveTab("table")}
@@ -139,7 +142,7 @@ export default function SubmissionsPage({ initialMode }: SubmissionsPageProps = 
                   : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white"
               }`}
             >
-              Submissions Audit ({submissionsAudit.length})
+              Submissions ({submissionsAudit.length})
             </button>
           </div>
         </div>
