@@ -91,7 +91,7 @@ export default function EditCoursePage() {
     skip: !courseId,
     refetchOnMountOrArgChange: true,
   });
-  const { data: courseModules = [], refetch: refetchModules } = useGetAdminCourseModulesQuery(
+  const { data: courseModules = [], isLoading: isModulesLoading, refetch: refetchModules } = useGetAdminCourseModulesQuery(
     courseId,
     { skip: !courseId, refetchOnMountOrArgChange: true }
   );
@@ -995,7 +995,7 @@ export default function EditCoursePage() {
     setAttachments((prev) => prev.filter((a) => a.id !== id));
   };
 
-  if (isCourseLoading) {
+  if (isCourseLoading || isModulesLoading) {
     return (
       <div className="p-16 text-center text-xs text-slate-400">
         Loading course editor...

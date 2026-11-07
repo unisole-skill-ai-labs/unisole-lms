@@ -19,9 +19,11 @@ export default function CatalogPage() {
 
   const { data: pathways = [], isLoading: isPathwaysLoading } = useGetPublicPathwaysQuery(undefined);
   const { data: categories = [] } = useGetCategoriesQuery(undefined);
-  const { data: myPathways = [] } = useGetMyPathwaysQuery(undefined, {
+  const { data: myPathways = [], isLoading: isMyPathwaysLoading } = useGetMyPathwaysQuery(undefined, {
     skip: !isAuthenticated,
   });
+
+  const isCatalogLoading = isPathwaysLoading || (isAuthenticated && isMyPathwaysLoading);
 
   const enrolledPathwayIds = useMemo(() => {
     const ids = new Set();
@@ -97,7 +99,7 @@ export default function CatalogPage() {
       />
 
       {/* Pathways Grid */}
-      {isPathwaysLoading ? (
+      {isCatalogLoading ? (
         <Spinner label="Loading pathways catalog..." size="lg" />
       ) : filteredPathways.length === 0 ? (
         <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/80 dark:border-zinc-800 p-12 text-center space-y-3 max-w-md mx-auto shadow-xs">

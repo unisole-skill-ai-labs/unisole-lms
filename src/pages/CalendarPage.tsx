@@ -236,11 +236,20 @@ export default function CalendarPage() {
   }, [currentDate]);
 
   const effectiveRawEvents = useMemo(() => {
-    if (Array.isArray(rawEvents) && rawEvents.length > 0) {
-      return rawEvents;
+    if (isLoading) {
+      return [];
     }
-    return canonicalEvents;
-  }, [rawEvents, canonicalEvents]);
+    const dbList = Array.isArray(rawEvents) ? rawEvents : [];
+    // Combine live DB events with canonical schedule for the active week so learner calendar is continuous
+    const combined = [...dbList];
+    const existingIds = new Set(dbList.map((e: any) => e.id));
+    canonicalEvents.forEach((ce) => {
+      if (!existingIds.has(ce.id)) {
+        combined.push(ce);
+      }
+    });
+    return combined;
+  }, [isLoading, rawEvents, canonicalEvents]);
 
   // Dynamic Event Counts
   const eventCounts = useMemo(() => {
@@ -518,9 +527,13 @@ export default function CalendarPage() {
               {formattedMonth}
             </h2>
             <p className="text-[11px] text-slate-400 font-medium">
-              {viewMode === "month"
-                ? `${events.length} event${events.length === 1 ? "" : "s"} scheduled`
-                : formattedDateRange}
+              {isLoading ? (
+                <span className="inline-block w-24 h-3 bg-slate-200 dark:bg-slate-800 rounded animate-pulse align-middle" />
+              ) : viewMode === "month" ? (
+                `${events.length} event${events.length === 1 ? "" : "s"} scheduled`
+              ) : (
+                formattedDateRange
+              )}
             </p>
           </div>
         </div>
@@ -579,7 +592,35 @@ export default function CalendarPage() {
       </div>
 
       {/* Main Calendar View Area */}
-      {viewMode === "week" && (
+      {isLoading ? (
+        <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0B1120] overflow-hidden shadow-2xs p-4 sm:p-6 space-y-4">
+          <div className="grid grid-cols-8 gap-2 border-b border-slate-100 dark:border-slate-800/80 pb-3">
+            <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+            {[...Array(7)].map((_, i) => (
+              <div key={i} className="h-4 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+            ))}
+          </div>
+          <div className="grid grid-cols-8 gap-2 h-96">
+            <div className="space-y-4">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="h-3 bg-slate-100 dark:bg-slate-800/60 rounded w-10 ml-auto animate-pulse" />
+              ))}
+            </div>
+            {[...Array(7)].map((_, col) => (
+              <div key={col} className="space-y-3 p-1">
+                {col % 2 === 0 && (
+                  <div className="h-16 bg-sky-50 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/40 rounded-xl animate-pulse" />
+                )}
+                {col % 3 === 1 && (
+                  <div className="h-12 bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/40 rounded-xl animate-pulse" />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <>
+          {viewMode === "week" && (
         <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0B1120] overflow-x-auto shadow-2xs">
           <div className="min-w-[700px]">
             {/* Day Headers */}
@@ -1145,6 +1186,8 @@ export default function CalendarPage() {
               })}
           </div>
         </div>
+      )}
+        </>
       )}
 
 

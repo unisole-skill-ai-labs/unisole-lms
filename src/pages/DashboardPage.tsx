@@ -58,18 +58,13 @@ export default function DashboardPage() {
       .filter((p: any) => p && (p.title || p.name));
 
     if (list.length === 0) {
+      if (isPathwaysLoading) return [];
       return [
         {
-          id: "course1",
-          slug: "course1",
+          id: "cs-agentic",
+          slug: "cs-agentic",
           title: "AI Agent Engineering",
           shortDescription: "12-Week AI Agent Engineering Certificate Program (Weeks 1 - 12)",
-        },
-        {
-          id: "web-dev",
-          slug: "web-dev",
-          title: "Full Stack Software Engineering",
-          shortDescription: "Modular curriculum: Module 1, Module 2, Module 3 with lecture, question, assignment, live",
         },
       ];
     }
@@ -77,13 +72,14 @@ export default function DashboardPage() {
     const hasAgentCourse = list.some(
       (c: any) =>
         c.id === "course1" ||
+        c.slug === "cs-agentic" ||
         (c.title && c.title.toLowerCase().includes("agent"))
     );
     if (!hasAgentCourse) {
       return [
         {
-          id: "course1",
-          slug: "course1",
+          id: "cs-agentic",
+          slug: "cs-agentic",
           title: "AI Agent Engineering",
           shortDescription: "12-Week AI Agent Engineering Certificate Program (Weeks 1 - 12)",
         },
@@ -92,7 +88,7 @@ export default function DashboardPage() {
     }
 
     return list;
-  }, [myPathways]);
+  }, [myPathways, isPathwaysLoading]);
 
 
 
@@ -117,7 +113,19 @@ export default function DashboardPage() {
       <div className="max-w-4xl lg:max-w-5xl mx-auto px-4 sm:px-6 space-y-6">
 
         {/* ─── Continue Learning: Vertical Course Cards (Matching Reference) ─── */}
-        {enrolledCourses.length === 0 ? (
+        {isPathwaysLoading ? (
+          <div className="space-y-3">
+            <div className="h-5 bg-slate-200 dark:bg-slate-800 rounded w-40 animate-pulse" />
+            <div className="macos-card rounded-2xl p-4 sm:p-5 flex items-center gap-4 animate-pulse">
+              <div className="w-12 h-12 rounded-xl bg-slate-200 dark:bg-slate-800 shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/3" />
+                <div className="h-3 bg-slate-100 dark:bg-slate-800/60 rounded w-1/2" />
+              </div>
+              <div className="w-24 h-8 bg-slate-200 dark:bg-slate-800 rounded-full shrink-0" />
+            </div>
+          </div>
+        ) : enrolledCourses.length === 0 ? (
           /* Empty Enrolled Courses Card */
           <div
             onClick={() => navigate("/catalog")}
@@ -220,7 +228,36 @@ export default function DashboardPage() {
           </div>
 
           {/* Tab Content */}
-          {activeTab === "completed" ? (
+          {isActivitiesLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/3 animate-pulse" />
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="macos-card rounded-2xl p-3.5 flex items-center gap-3 animate-pulse">
+                    <div className="w-9 h-9 rounded-xl bg-slate-200 dark:bg-slate-800 shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
+                      <div className="h-2.5 bg-slate-100 dark:bg-slate-800/60 rounded w-1/2" />
+                    </div>
+                    <div className="w-20 h-7 bg-slate-200 dark:bg-slate-800 rounded-full shrink-0" />
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-3">
+                <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/3 animate-pulse" />
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="macos-card rounded-2xl p-3.5 flex items-center gap-3 animate-pulse">
+                    <div className="w-9 h-9 rounded-xl bg-slate-200 dark:bg-slate-800 shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
+                      <div className="h-2.5 bg-slate-100 dark:bg-slate-800/60 rounded w-1/2" />
+                    </div>
+                    <div className="w-20 h-7 bg-slate-200 dark:bg-slate-800 rounded-full shrink-0" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : activeTab === "completed" ? (
             completedList.length === 0 ? (
               /* Empty Completed State */
               <div className="macos-card rounded-2xl p-8 sm:p-10 text-center space-y-3.5 border border-slate-200/80 dark:border-slate-800">

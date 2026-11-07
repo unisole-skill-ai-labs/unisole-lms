@@ -10,6 +10,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useGetStudentActivitiesQuery } from "../store/apiSlice";
+import { cleanLessonTitle } from "../utils/formatContent";
 
 interface ScheduledActivity {
   id: string;
@@ -135,7 +136,24 @@ export default function ActivitiesPage() {
 
         {/* Grouped Month Timelines */}
         <div className="space-y-6 pt-1">
-          {filteredGroups.length === 0 ? (
+          {isLoading ? (
+            <div className="space-y-4">
+              <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-24 animate-pulse" />
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="bg-white dark:bg-[#121622] rounded-2xl border border-slate-100/90 dark:border-zinc-800/80 p-4 flex items-center gap-3.5 animate-pulse"
+                >
+                  <div className="w-11 h-11 rounded-xl bg-slate-200 dark:bg-slate-800 shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/3" />
+                    <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
+                  </div>
+                  <div className="w-20 h-4 bg-slate-200 dark:bg-slate-800 rounded shrink-0" />
+                </div>
+              ))}
+            </div>
+          ) : filteredGroups.length === 0 ? (
             <div className="bg-white dark:bg-[#121622] rounded-3xl border border-slate-200/90 dark:border-zinc-800/90 p-8 text-center space-y-3">
               <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto">
                 <Check className="w-6 h-6 stroke-[2]" />
@@ -196,7 +214,7 @@ export default function ActivitiesPage() {
                         {item.category} · {item.course}
                       </div>
                       <h3 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate mt-0.5">
-                        {item.title}
+                        {cleanLessonTitle(item.title)}
                       </h3>
                       <div
                         className={`text-[11px] truncate mt-0.5 font-medium ${

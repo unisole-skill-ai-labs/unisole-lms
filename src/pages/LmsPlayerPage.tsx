@@ -743,6 +743,17 @@ export default function LmsPlayerPage() {
 
 
   // -------------------------------------------------------------
+  // Loading State
+  // -------------------------------------------------------------
+  if (isPathwayLoading && !pathwayData) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-8 bg-white dark:bg-[#070A11]">
+        <Spinner label="Loading curriculum..." size="lg" />
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
   // VIEW 1: Course Overview (Unisole Brand Theme)
   // -------------------------------------------------------------
   if (currentView === "overview") {

@@ -72,7 +72,7 @@ export default function AdminCoursesPage() {
     isActive: true,
   };
 
-  const courses = filteredFromApi.length > 0 ? filteredFromApi : [canonicalCourse];
+  const courses = filteredFromApi.length > 0 ? filteredFromApi : (isLoading ? [] : [canonicalCourse]);
 
   const handleTitleChange = (val: string) => {
     setTitle(val);
