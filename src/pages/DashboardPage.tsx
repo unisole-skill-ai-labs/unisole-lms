@@ -21,6 +21,7 @@ import {
 import { useGetMyPathwaysQuery, useGetStudentActivitiesQuery } from "../store/apiSlice";
 import MacFolderIcon, { MacFolderColor } from "../components/ui/MacFolderIcon";
 import MacSegmentedControl from "../components/ui/MacSegmentedControl";
+import { cleanLessonTitle } from "../utils/formatContent";
 
 // Helper to determine macOS folder color based on course title / topic
 const getFolderColor = (title: string = ""): MacFolderColor => {
@@ -175,12 +176,6 @@ export default function DashboardPage() {
                         <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                           {cTitle}
                         </h3>
-                        {idx === 0 && (
-                          <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-900/40">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                            Active
-                          </span>
-                        )}
                       </div>
                       <div className="flex items-center gap-1.5 mt-1 text-xs text-zinc-500 dark:text-zinc-400 truncate">
                         <Video className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 shrink-0 stroke-[2]" />
@@ -208,19 +203,10 @@ export default function DashboardPage() {
 
         {/* ─── Learning Activities Section ─── */}
         <section className="space-y-4 pt-1">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-                Learning Activities
-              </h2>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">Enrolled Course:</span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-bold text-xs border border-blue-200/60 dark:border-blue-900/40">
-                  <BookOpen className="w-3 h-3" />
-                  {enrolledCourseTitle}
-                </span>
-              </div>
-            </div>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+              Learning Activities
+            </h2>
 
             {/* Apple macOS Segmented Control */}
             <MacSegmentedControl<"active" | "completed">
@@ -236,8 +222,8 @@ export default function DashboardPage() {
           {/* Tab Content */}
           {activeTab === "completed" ? (
             completedList.length === 0 ? (
-              /* Empty Completed State matching screenshot with macOS glassmorphism */
-              <div className="macos-card rounded-3xl p-8 sm:p-10 text-center space-y-3.5">
+              /* Empty Completed State */
+              <div className="macos-card rounded-2xl p-8 sm:p-10 text-center space-y-3.5 border border-slate-200/80 dark:border-slate-800">
                 <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto shadow-2xs border border-blue-100 dark:border-blue-900/40">
                   <CheckCircle2 className="w-6 h-6 stroke-[1.8]" />
                 </div>
@@ -266,61 +252,51 @@ export default function DashboardPage() {
                 )}
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {completedList.map((item: any) => (
                   <div
                     key={item.id}
                     onClick={() => item.pathwayId && navigate(`/learn/${item.pathwayId}`)}
-                    className="macos-card rounded-2xl p-3.5 sm:p-4 flex items-center gap-3.5 cursor-pointer group active:scale-[0.99] transition-all"
+                    className="macos-card rounded-2xl p-3.5 sm:p-4 flex items-center justify-between gap-3 cursor-pointer group active:scale-[0.99] transition-all"
                   >
-                    {/* Left Icon with Green Checkmark Badge */}
-                    <div className="relative shrink-0">
-                      {item.type === "assignment" ? (
-                        <div className="w-11 h-11 rounded-xl bg-rose-100/80 dark:bg-rose-950/50 border border-rose-200/60 dark:border-rose-900/30 flex items-center justify-center text-rose-500 dark:text-rose-400 shadow-2xs">
-                          <FileText className="w-5 h-5 stroke-[1.8]" />
+                    <div className="flex items-center gap-3.5 min-w-0 pr-2">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                        <Check className="w-4.5 h-4.5 stroke-[2.5]" />
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
+                          <span className="truncate">{item.moduleTitle || item.course || "Week 1"}</span>
+                          <span className="text-zinc-300 dark:text-zinc-600">•</span>
+                          <span>{item.category || "Completed"}</span>
                         </div>
-                      ) : item.type === "quiz" ? (
-                        <div className="w-11 h-11 rounded-xl bg-[#DCF8C6]/80 dark:bg-lime-950/50 border border-lime-200/70 dark:border-lime-900/30 flex items-center justify-center text-lime-800 dark:text-lime-400 shadow-2xs">
-                          <FileQuestion className="w-5 h-5 stroke-[1.8]" />
+                        <h4 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate mt-0.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                          {cleanLessonTitle(item.title)}
+                        </h4>
+                        <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5 font-medium">
+                          {item.datePrefix || "Completed"}: {item.date} {item.statusText ? `· ${item.statusText}` : ""}
                         </div>
-                      ) : (
-                        <div className="w-11 h-11 rounded-xl bg-sky-100/80 dark:bg-sky-950/50 border border-sky-200/70 dark:border-sky-900/30 flex items-center justify-center text-sky-800 dark:text-sky-400 shadow-2xs">
-                          <Video className="w-5 h-5 stroke-[1.8]" />
-                        </div>
-                      )}
-                      <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center border-2 border-white dark:border-[#121622] shadow-xs">
-                        <Check className="w-2.5 h-2.5 stroke-[3]" />
                       </div>
                     </div>
 
-                    {/* Activity Metadata Column */}
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[11px] sm:text-xs font-semibold text-blue-600 dark:text-blue-400 truncate">
-                        {item.category} · {item.moduleTitle || item.course}
-                      </div>
-                      <h4 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate mt-0.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                        {item.title}
-                      </h4>
-                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5 font-medium">
-                        {item.datePrefix}: {item.date} · {item.statusText}
-                      </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-200/60 dark:border-emerald-800/60">
+                        Completed
+                      </span>
                     </div>
                   </div>
                 ))}
               </div>
             )
           ) : (
-            /* Active View: Split into Missed (Middle/Left) and Upcoming (Right) */
+            /* Active View: Split into Missed Activities and Upcoming Activities */
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-              {/* ─── Middle Column: Missed Activities ─── */}
+              {/* ─── Left Column: Missed Activities ─── */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                    <h3 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
-                      Missed Activities
-                    </h3>
-                  </div>
+                  <h3 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
+                    Missed Activities
+                  </h3>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-900/40">
                     {missedList.length} Missed
                   </span>
@@ -359,7 +335,7 @@ export default function DashboardPage() {
                             {item.category} · {item.moduleTitle || "Week 1"}
                           </div>
                           <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate mt-0.5 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">
-                            {item.title}
+                            {cleanLessonTitle(item.title)}
                           </h4>
                           <div className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5 font-medium flex items-center gap-1">
                             <Clock className="w-3 h-3 text-rose-500 shrink-0" />
@@ -383,15 +359,12 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* ─── Right Side Column: Upcoming Activities ─── */}
+              {/* ─── Right Column: Upcoming Activities ─── */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-sky-500" />
-                    <h3 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
-                      Upcoming Activities
-                    </h3>
-                  </div>
+                  <h3 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
+                    Upcoming Activities
+                  </h3>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300 border border-sky-200/60 dark:border-sky-900/40">
                     {upcomingList.length} Upcoming
                   </span>
@@ -409,7 +382,7 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div className="space-y-2.5">
-                    {upcomingList.slice(0, 6).map((item: any) => (
+                    {upcomingList.slice(0, 8).map((item: any) => (
                       <div
                         key={item.id}
                         onClick={() => {
@@ -421,13 +394,15 @@ export default function DashboardPage() {
                         }}
                         className="macos-card rounded-2xl p-3 sm:p-3.5 flex items-start gap-3 cursor-pointer group active:scale-[0.99] transition-all border border-sky-200/60 dark:border-sky-900/40 hover:border-sky-400/60 dark:hover:border-sky-700/60"
                       >
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-2xs mt-0.5 ${
-                          item.type === "live"
-                            ? "bg-sky-100/80 dark:bg-sky-950/60 border border-sky-200/60 dark:border-sky-900/40 text-sky-600 dark:text-sky-400"
-                            : item.type === "quiz"
-                            ? "bg-purple-100/80 dark:bg-purple-950/60 border border-purple-200/60 dark:border-purple-900/40 text-purple-600 dark:text-purple-400"
-                            : "bg-blue-100/80 dark:bg-blue-950/60 border border-blue-200/60 dark:border-blue-900/40 text-blue-600 dark:text-blue-400"
-                        }`}>
+                        <div
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-2xs mt-0.5 ${
+                            item.type === "live"
+                              ? "bg-sky-100/80 dark:bg-sky-950/60 border border-sky-200/60 dark:border-sky-900/40 text-sky-600 dark:text-sky-400"
+                              : item.type === "quiz"
+                              ? "bg-purple-100/80 dark:bg-purple-950/60 border border-purple-200/60 dark:border-purple-900/40 text-purple-600 dark:text-purple-400"
+                              : "bg-blue-100/80 dark:bg-blue-950/60 border border-blue-200/60 dark:border-blue-900/40 text-blue-600 dark:text-blue-400"
+                          }`}
+                        >
                           {item.type === "live" ? (
                             <Video className="w-4 h-4 stroke-[1.8]" />
                           ) : item.type === "quiz" ? (
@@ -447,7 +422,7 @@ export default function DashboardPage() {
                             <span className="truncate">{item.category} · {item.moduleTitle || "Week 2"}</span>
                           </div>
                           <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate mt-0.5 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
-                            {item.title}
+                            {cleanLessonTitle(item.title)}
                           </h4>
                           <div className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5 font-medium flex items-center gap-1">
                             <Calendar className="w-3 h-3 text-sky-500 shrink-0" />

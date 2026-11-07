@@ -142,3 +142,24 @@ export function parseLessonContent(raw: string | null | undefined): ParsedLesson
     contentHtml: renderMarkdownToHtml(raw),
   };
 }
+
+/**
+ * Utility to strip out technical/verbose prefixes from lesson titles
+ * e.g. "1.1 Concept Lecture: What is an AI Agent?" -> "What is an AI Agent?"
+ *      "1.2 Knowledge Check: MCQ Quiz (3 Questions)" -> "MCQ Quiz (3 Questions)"
+ *      "1.3 Hands-on Practical: Build a ReAct agent" -> "Build a ReAct agent"
+ */
+export function cleanLessonTitle(rawTitle: string): string {
+  if (!rawTitle) return "";
+  let title = rawTitle.trim();
+  // Strip numbers like "1.1 ", "1. ", "W1.1 ", "Week 1: "
+  title = title.replace(/^(?:Week\s*\d+|Weekend\s*\d+|[wW]?\d+(\.\d+)*)\s*[:.-]?\s*/i, "");
+  // Strip verbose category prefixes
+  title = title.replace(
+    /^(?:Concept Lecture|Lecture Videos?|Lecture|Knowledge Check|Quiz MCQ|Questions? & Quizzes|Question|Hands-on Practical|Hands-on Assignments?|Hands-on|Practical Project|Assignment|Live Class|Live Session|Live Architectural Workshop|Milestone Deliverable|Graded Quiz)\s*[:–-]\s*/i,
+    ""
+  );
+  // Also strip any remaining leading numbering like "1.1 " if it occurred after category
+  title = title.replace(/^[wW]?\d+(\.\d+)*\s*[:.-]?\s*/, "");
+  return title.trim() || rawTitle;
+}

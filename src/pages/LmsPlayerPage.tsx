@@ -76,7 +76,7 @@ import {
   saveSubmission,
   getSubmissionForLesson,
 } from "../utils/submissionsStorage";
-import { renderMarkdownToHtml } from "../utils/formatContent";
+import { renderMarkdownToHtml, cleanLessonTitle } from "../utils/formatContent";
 
 export default function LmsPlayerPage() {
   const { pathwayId } = useParams();
@@ -941,13 +941,6 @@ export default function LmsPlayerPage() {
           i.category !== "FOLDER" &&
           !i.folderId
       ) || [];
-    const liveLessons =
-      selectedModule?.items.filter(
-        (i: any) =>
-          (i.type === "live" || i.category === "LIVE") &&
-          i.category !== "FOLDER" &&
-          !i.folderId
-      ) || [];
 
     return (
       <div className="min-h-[calc(100vh-4rem)] bg-[#F8FAFC] dark:bg-[#070A11] text-slate-900 dark:text-slate-100 animate-fade-in">
@@ -975,19 +968,23 @@ export default function LmsPlayerPage() {
         </div>
 
         {/* Content Area with Responsive Container */}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-7">
           {/* Section 0: Resource Folders */}
           {folderLessons.length > 0 && (
-            <div className="space-y-3.5">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400 flex items-center gap-2">
-                  <FolderOpen className="w-4 h-4" />
-                  <span>Resource Folders ({folderLessons.length})</span>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-teal-50 dark:bg-teal-950/40 border border-teal-200/60 dark:border-teal-800/60 text-teal-600 dark:text-teal-400 flex items-center justify-center">
+                  <FolderOpen className="w-3.5 h-3.5" />
+                </div>
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Resources
                 </h2>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Downloadable Materials</span>
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                  {folderLessons.length}
+                </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {folderLessons.map((item: any) => {
                   const isDone = completedLessonIds.includes(item.id);
                   return (
@@ -997,17 +994,17 @@ export default function LmsPlayerPage() {
                         setSelectedLesson(item);
                         setCurrentView("player");
                       }}
-                      className="bg-white dark:bg-[#0B1120] hover:bg-teal-50/40 dark:hover:bg-teal-950/20 rounded-2xl border border-teal-200/80 dark:border-teal-500/30 hover:border-teal-400 p-4 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between cursor-pointer group"
+                      className="group bg-white dark:bg-[#0B1120] hover:bg-slate-50/80 dark:hover:bg-[#0E1726] rounded-xl border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 p-3.5 transition-all duration-150 shadow-2xs hover:shadow-xs flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex items-center gap-3 min-w-0 pr-2">
-                        <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-500/15 border border-teal-200 dark:border-teal-500/30 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
-                          <Folder className="w-5 h-5 stroke-[2]" />
+                        <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-950/40 border border-teal-200/60 dark:border-teal-800/60 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                          <Folder className="w-4 h-4 stroke-[2]" />
                         </div>
                         <div className="min-w-0">
-                          <h3 className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-teal-600 dark:group-hover:text-teal-300">
-                            {item.title}
+                          <h3 className="text-xs font-semibold text-slate-900 dark:text-white truncate group-hover:text-teal-600 dark:group-hover:text-teal-300">
+                            {cleanLessonTitle(item.title)}
                           </h3>
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                             {item.attachments?.length || 0} Files & Notes
                           </p>
                         </div>
@@ -1029,17 +1026,22 @@ export default function LmsPlayerPage() {
             </div>
           )}
 
-          {/* Section 1: Lecture Videos */}
+          {/* Section 1: Lectures */}
           {lectureLessons.length > 0 && (
-            <div className="space-y-3.5">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                  <PlayCircle className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                  <span>Lecture Videos ({lectureLessons.length})</span>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-sky-50 dark:bg-sky-950/40 border border-sky-200/60 dark:border-sky-800/60 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+                  <PlayCircle className="w-3.5 h-3.5" />
+                </div>
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Lectures
                 </h2>
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                  {lectureLessons.length}
+                </span>
               </div>
 
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 {lectureLessons.map((item) => {
                   const isDone = completedLessonIds.includes(item.id);
                   return (
@@ -1049,35 +1051,35 @@ export default function LmsPlayerPage() {
                         setSelectedLesson(item);
                         setCurrentView("player");
                       }}
-                      className="bg-white dark:bg-[#0B1120]/80 hover:bg-slate-50 dark:hover:bg-[#0F172A] rounded-2xl border border-slate-200/80 dark:border-sky-500/15 hover:border-sky-400/40 p-4 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between cursor-pointer group"
+                      className="group bg-white dark:bg-[#0B1120] hover:bg-slate-50/80 dark:hover:bg-[#0E1726] rounded-xl border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 p-3.5 sm:p-4 transition-all duration-150 shadow-2xs hover:shadow-xs flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex items-center gap-3.5 min-w-0 pr-2">
-                        <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/20 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                          <PlayCircle className="w-5 h-5 stroke-[2]" />
+                        <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-950/50 border border-sky-200/60 dark:border-sky-800/60 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                          <PlayCircle className="w-4.5 h-4.5 stroke-[2]" />
                         </div>
 
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-sky-600 dark:group-hover:text-sky-300 transition-colors">
-                              {item.title}
-                            </h3>
-                            {item.isLocked && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                                <Lock className="w-2.5 h-2.5" />
-                                <span>Locked{item.unlockAt ? ` · Unlocks ${new Date(item.unlockAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}` : ""}</span>
-                              </span>
-                            )}
-                            {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
+                          <h3 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors line-clamp-2">
+                            {cleanLessonTitle(item.title)}
+                          </h3>
+                          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
+                            {item.duration && <span>{item.duration}</span>}
+                            {item.duration && item.description && <span className="text-slate-300 dark:text-slate-600">•</span>}
+                            {item.description && <span className="truncate">{item.description}</span>}
                           </div>
-                          {item.duration && (
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate font-medium">
-                              {item.duration} {item.description ? `· ${item.description}` : ""}
-                            </p>
-                          )}
                         </div>
                       </div>
 
-                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-sky-500 dark:group-hover:text-sky-400 shrink-0 transition-transform group-hover:translate-x-1" />
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        {item.isLocked && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                            <Lock className="w-2.5 h-2.5" />
+                            <span>Locked{item.unlockAt ? ` · ${new Date(item.unlockAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}</span>
+                          </span>
+                        )}
+                        {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
+                        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 group-hover:translate-x-0.5 transition-all" />
+                      </div>
                     </div>
                   );
                 })}
@@ -1085,18 +1087,22 @@ export default function LmsPlayerPage() {
             </div>
           )}
 
-          {/* Section 2: Questions & Quizzes */}
+          {/* Section 2: Quizzes */}
           {questionLessons.length > 0 && (
-            <div className="space-y-3.5">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 flex items-center gap-2">
-                  <FileQuestion className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  <span>Questions & Quizzes ({questionLessons.length})</span>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                  <FileQuestion className="w-3.5 h-3.5" />
+                </div>
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Quizzes
                 </h2>
-                <span className="text-[11px] text-amber-600 dark:text-amber-400/80 font-medium">Knowledge Checks</span>
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                  {questionLessons.length}
+                </span>
               </div>
 
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 {questionLessons.map((item: any) => {
                   const isDone = completedLessonIds.includes(item.id);
                   return (
@@ -1106,36 +1112,38 @@ export default function LmsPlayerPage() {
                         setSelectedLesson(item);
                         setCurrentView("player");
                       }}
-                      className="bg-white dark:bg-[#0B1120]/80 hover:bg-slate-50 dark:hover:bg-[#0F172A] rounded-2xl border border-amber-200 dark:border-amber-500/20 hover:border-amber-400 dark:hover:border-amber-500/50 p-4 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between cursor-pointer group"
+                      className="group bg-white dark:bg-[#0B1120] hover:bg-slate-50/80 dark:hover:bg-[#0E1726] rounded-xl border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 p-3.5 sm:p-4 transition-all duration-150 shadow-2xs hover:shadow-xs flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex items-center gap-3.5 min-w-0 pr-2">
-                        <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                          <FileQuestion className="w-5 h-5 stroke-[2]" />
+                        <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                          <FileQuestion className="w-4.5 h-4.5 stroke-[2]" />
                         </div>
 
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors">
-                              {item.title}
-                            </h3>
-                            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-300">
-                              Question MCQ
-                            </span>
-                            {item.isLocked && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                                <Lock className="w-2.5 h-2.5" />
-                                <span>Locked{item.unlockAt ? ` · Unlocks ${new Date(item.unlockAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}` : ""}</span>
-                              </span>
-                            )}
-                            {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
+                          <h3 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors line-clamp-2">
+                            {cleanLessonTitle(item.title)}
+                          </h3>
+                          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
+                            <span>{item.duration || "15 Mins"}</span>
+                            <span className="text-slate-300 dark:text-slate-600">•</span>
+                            <span>{(item.questions?.length || 3)} Questions</span>
                           </div>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate font-medium">
-                            {item.duration || "15 Mins"} · {(item.questions?.length || 3)} Questions
-                          </p>
                         </div>
                       </div>
 
-                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-600 dark:group-hover:text-amber-400 shrink-0 transition-transform group-hover:translate-x-1" />
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <span className="hidden sm:inline-flex text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/60 shrink-0">
+                          Quiz MCQ
+                        </span>
+                        {item.isLocked && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                            <Lock className="w-2.5 h-2.5" />
+                            <span>Locked{item.unlockAt ? ` · ${new Date(item.unlockAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}</span>
+                          </span>
+                        )}
+                        {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
+                        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 group-hover:translate-x-0.5 transition-all" />
+                      </div>
                     </div>
                   );
                 })}
@@ -1143,24 +1151,44 @@ export default function LmsPlayerPage() {
             </div>
           )}
 
-          {/* Section 3: Hands-on Practical Assignments */}
+          {/* Section 3: Assignments */}
           {assignmentLessons.length > 0 && (
-            <div className="space-y-3.5">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 flex items-center gap-2">
-                  <Code2 className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                  <span>Hands-on Assignments ({assignmentLessons.length})</span>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <Code2 className="w-3.5 h-3.5" />
+                </div>
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Assignments
                 </h2>
-                <span className="text-[11px] text-sky-600 dark:text-sky-400/80 font-medium">Practical Deliverables</span>
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                  {assignmentLessons.length}
+                </span>
               </div>
 
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 {assignmentLessons.map((item: any) => {
                   const isDone = completedLessonIds.includes(item.id);
                   const isCoding = item.type === "coding_test" || item.type === "code";
                   const isVideo = item.type === "video_test";
                   const isSubjective = item.type === "subjective_test";
 
+                  const badgeLabel = isCoding
+                    ? "Coding Test"
+                    : isVideo
+                    ? "Video Viva"
+                    : isSubjective
+                    ? "Subjective Test"
+                    : "Practical Project";
+
+                  const cleanSubtitle = (item.instructions || item.description || "")
+                    .replace(/^Hands-on Practical Work:\s*/i, "")
+                    .replace(/^Mini Project Deliverable:\s*/i, "")
+                    .replace(/^Project Deliverable:\s*/i, "")
+                    .replace(/^Deliverables:\s*/i, "")
+                    .split("\n")[0]
+                    .trim();
+
                   return (
                     <div
                       key={item.id}
@@ -1168,107 +1196,44 @@ export default function LmsPlayerPage() {
                         setSelectedLesson(item);
                         setCurrentView("player");
                       }}
-                      className="bg-white dark:bg-gradient-to-r dark:from-[#0B1120] dark:to-[#0D1D38] hover:bg-slate-50 dark:hover:to-[#112344] rounded-2xl border border-sky-200 dark:border-sky-500/30 hover:border-sky-400 p-4 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between cursor-pointer group"
+                      className="group bg-white dark:bg-[#0B1120] hover:bg-slate-50/80 dark:hover:bg-[#0E1726] rounded-xl border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 p-3.5 sm:p-4 transition-all duration-150 shadow-2xs hover:shadow-xs flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex items-center gap-3.5 min-w-0 pr-2">
-                        <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-500/15 border border-sky-200 dark:border-sky-500/30 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                        <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/60 dark:border-emerald-800/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                           {isCoding ? (
-                            <Code2 className="w-5 h-5 stroke-[2.2]" />
+                            <Code2 className="w-4.5 h-4.5 stroke-[2]" />
                           ) : isVideo ? (
-                            <VideoIcon className="w-5 h-5 stroke-[2.2]" />
+                            <VideoIcon className="w-4.5 h-4.5 stroke-[2]" />
                           ) : (
-                            <FileText className="w-5 h-5 stroke-[2.2]" />
+                            <FileText className="w-4.5 h-4.5 stroke-[2]" />
                           )}
                         </div>
 
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-sky-600 dark:group-hover:text-sky-300 transition-colors">
-                              {item.title}
-                            </h3>
-                            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-sky-50 dark:bg-sky-500/20 border border-sky-200 dark:border-sky-400/40 text-sky-700 dark:text-sky-300">
-                              {isCoding
-                                ? "Coding Test"
-                                : isVideo
-                                ? "Video Viva"
-                                : isSubjective
-                                ? "Subjective Test"
-                                : "Practical Project"}
-                            </span>
-                            {item.isLocked && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                                <Lock className="w-2.5 h-2.5" />
-                                <span>Locked{item.unlockAt ? ` · Unlocks ${new Date(item.unlockAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}` : ""}</span>
-                              </span>
-                            )}
-                            {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
+                          <h3 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-2">
+                            {cleanLessonTitle(item.title)}
+                          </h3>
+                          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
+                            <span>{item.duration || "90 Mins"}</span>
+                            {cleanSubtitle && <span className="text-slate-300 dark:text-slate-600">•</span>}
+                            {cleanSubtitle && <span className="truncate">{cleanSubtitle}</span>}
                           </div>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate font-medium">
-                            {item.duration || "90 Mins"} {item.instructions ? `· ${item.instructions.split('\n')[0]}` : ""}
-                          </p>
                         </div>
                       </div>
 
-                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-sky-500 dark:group-hover:text-sky-400 shrink-0 transition-transform group-hover:translate-x-1" />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Section 4: Live Interactive Sessions */}
-          {liveLessons.length > 0 && (
-            <div className="space-y-3.5">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
-                  <VideoIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <span>Live Sessions ({liveLessons.length})</span>
-                </h2>
-                <span className="text-[11px] text-indigo-600 dark:text-indigo-400/80 font-medium">Interactive Mentoring</span>
-              </div>
-
-              <div className="space-y-2.5">
-                {liveLessons.map((item: any) => {
-                  const isDone = completedLessonIds.includes(item.id);
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => {
-                        setSelectedLesson(item);
-                        setCurrentView("player");
-                      }}
-                      className="bg-white dark:bg-gradient-to-r dark:from-[#0E1326] dark:to-[#171B33] hover:bg-indigo-50/50 dark:hover:to-[#1E2342] rounded-2xl border border-indigo-200/80 dark:border-indigo-500/30 hover:border-indigo-400 p-4 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between cursor-pointer group"
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0 pr-2">
-                        <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                          <VideoIcon className="w-5 h-5 stroke-[2.2]" />
-                        </div>
-
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">
-                              {item.title}
-                            </h3>
-                            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-500/20 border border-red-200 dark:border-red-500/40 text-red-700 dark:text-red-400">
-                              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                              Live Class
-                            </span>
-                            {item.isLocked && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                                <Lock className="w-2.5 h-2.5" />
-                                <span>Locked{item.unlockAt ? ` · Unlocks ${new Date(item.unlockAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}` : ""}</span>
-                              </span>
-                            )}
-                            {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
-                          </div>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate font-medium">
-                            {item.liveDate || "Weekend Session"} • {item.liveTime || "6:00 PM IST"} {item.mentorName ? `· ${item.mentorName}` : ""}
-                          </p>
-                        </div>
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <span className="hidden sm:inline-flex text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/60 shrink-0">
+                          {badgeLabel}
+                        </span>
+                        {item.isLocked && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                            <Lock className="w-2.5 h-2.5" />
+                            <span>Locked{item.unlockAt ? ` · ${new Date(item.unlockAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}</span>
+                          </span>
+                        )}
+                        {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
+                        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 group-hover:translate-x-0.5 transition-all" />
                       </div>
-
-                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 shrink-0 transition-transform group-hover:translate-x-1" />
                     </div>
                   );
                 })}
@@ -1329,7 +1294,7 @@ export default function LmsPlayerPage() {
                   Scheduled Release Content
                 </span>
                 <h2 className="text-2xl font-black text-slate-900 dark:text-white">
-                  {selectedLesson.title}
+                  {cleanLessonTitle(selectedLesson.title)}
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
                   This activity has been scheduled by course managers and is locked for learners. It will automatically unlock once the scheduled release time arrives.
@@ -1400,7 +1365,7 @@ export default function LmsPlayerPage() {
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-                    {selectedLesson.title}
+                    {cleanLessonTitle(selectedLesson.title)}
                   </h1>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                     Resource folder containing starter code, supplementary cheat sheets, and learning materials.
@@ -1518,7 +1483,7 @@ export default function LmsPlayerPage() {
                 <span>Back to Curriculum Module</span>
               </button>
               <CodingTestRunner
-                title={selectedLesson.title}
+                title={cleanLessonTitle(selectedLesson.title)}
                 description={
                   selectedLesson.description ||
                   selectedLesson.instructions ||
@@ -1550,7 +1515,7 @@ export default function LmsPlayerPage() {
                     ? "VIDEO_TEST"
                     : "SUBJECTIVE_TEST"
                 }
-                title={selectedLesson.title}
+                title={cleanLessonTitle(selectedLesson.title)}
                 description={
                   selectedLesson.description ||
                   selectedLesson.instructions ||
@@ -1673,7 +1638,7 @@ export default function LmsPlayerPage() {
                       <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
                     </button>
                     <span className="text-xs sm:text-sm font-bold text-white truncate">
-                      {selectedLesson?.title}
+                      {cleanLessonTitle(selectedLesson?.title || "")}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1721,7 +1686,7 @@ export default function LmsPlayerPage() {
 
               <div>
                 <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-zinc-100">
-                  {selectedLesson.title}
+                  {cleanLessonTitle(selectedLesson.title)}
                 </h1>
                 <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
                   Answer the multiple-choice questions below to test your understanding of this module.
@@ -1842,39 +1807,14 @@ export default function LmsPlayerPage() {
                   <ArrowLeft className="w-4 h-4" />
                   <span>Back to Curriculum Module</span>
                 </button>
-                <span
-                  className={`text-xs font-extrabold uppercase px-2.5 py-1 rounded-full border ${
-                    (selectedLesson as any)?.category === "TEST"
-                      ? "bg-sky-50 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/30"
-                      : "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30"
-                  }`}
-                >
-                  {(selectedLesson as any)?.category === "TEST"
-                    ? "Capstone Project Deliverable"
-                    : "Practical Deliverable"}
-                </span>
               </div>
 
               <div>
                 <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
-                  {selectedLesson.title}
+                  {cleanLessonTitle(selectedLesson.title)}
                 </h1>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  {(selectedLesson as any)?.category === "TEST"
-                    ? "Complete your capstone project deliverable according to specifications and submit your repository link for mentor review."
-                    : "Complete the hands-on project tasks and submit your implementation repository link."}
-                </p>
-              </div>
-
-              {/* Lab / Capstone Instructions Box */}
-              <div className="bg-slate-50 dark:bg-[#070A11] rounded-2xl p-5 border border-slate-200/80 dark:border-sky-500/20 space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
-                  {(selectedLesson as any)?.category === "TEST"
-                    ? "Project Specification & Deliverable Requirements"
-                    : "Lab Specification & Deliverable Requirements"}
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 whitespace-pre-line leading-relaxed font-medium">
-                  {selectedLesson.instructions || selectedLesson.description || "Review the project specifications and submit your deliverable repository or deployment link below."}
+                  Submit your repository or project link below for mentor review.
                 </p>
               </div>
 
@@ -1882,11 +1822,7 @@ export default function LmsPlayerPage() {
                 <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/40 text-emerald-900 dark:text-emerald-200 space-y-2">
                   <div className="flex items-center gap-2 font-bold text-sm">
                     <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
-                    <span>
-                      {(selectedLesson as any)?.category === "TEST"
-                        ? "Capstone Project Submitted!"
-                        : "Lab Deliverable Submitted!"}
-                    </span>
+                    <span>Assignment Submitted!</span>
                   </div>
                   <p className="text-xs opacity-90">
                     Your deliverable has been queued for mentor evaluation. Submission URL:{" "}
@@ -1921,26 +1857,11 @@ export default function LmsPlayerPage() {
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Implementation Notes / Architecture Highlights (Optional)
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={assignmentNotes}
-                      onChange={(e) => setAssignmentNotes(e.target.value)}
-                      placeholder="Brief notes explaining your architectural choices, containerization, or benchmark results..."
-                      className="w-full p-3 rounded-xl border border-slate-200 dark:border-sky-500/30 bg-white dark:bg-[#070A11] text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                    />
-                  </div>
-
                   <button
                     type="submit"
                     className="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs py-3 px-8 rounded-xl shadow-md transition-all cursor-pointer"
                   >
-                    {(selectedLesson as any)?.category === "TEST"
-                      ? "Submit Capstone Project Deliverable"
-                      : "Submit Lab Deliverable"}
+                    Submit
                   </button>
                 </form>
               )}

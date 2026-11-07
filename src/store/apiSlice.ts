@@ -3,6 +3,7 @@ import { setCredentials, logout } from "./authSlice";
 
 const API_BASE_URL = (
   import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
   (typeof window !== "undefined"
     ? window.location.hostname.includes("stg")
       ? "https://stg.engine.unisole.org"
