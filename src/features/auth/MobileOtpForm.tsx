@@ -110,9 +110,8 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
         // New user: ask for Name, College, Branch
         setStep("PROFILE_SETUP");
       }
-    } catch {
-      // Fallback: ask for profile details
-      setStep("PROFILE_SETUP");
+    } catch (err) {
+      setErrorMsg(extractErrorMessage(err, "Unable to verify mobile number. Please try again."));
     }
   };
 
