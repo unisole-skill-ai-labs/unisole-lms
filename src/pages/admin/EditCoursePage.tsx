@@ -105,7 +105,7 @@ export default function EditCoursePage() {
       return valid;
     }
     return (canonical.modules || []).map((m, idx) => ({
-      moduleId: m.id || `mod_agent_w${idx + 1}`,
+      moduleId: m.id?.startsWith("mod_") ? m.id : `mod_agent_w${idx + 1}`,
       title: m.title,
       slug: `cs-agentic-week-${idx + 1}`,
       position: idx + 1,
