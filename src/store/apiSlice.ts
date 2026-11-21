@@ -518,6 +518,14 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: ["AdminStudents", "Cohort", "Submissions"],
     }),
+    unenrollStudent: builder.mutation({
+      query: ({ studentId, courseId }: { studentId: string; courseId?: string }) => ({
+        url: `/api/admin/students/${studentId}/unenroll`,
+        method: "POST",
+        body: { courseId },
+      }),
+      invalidatesTags: ["AdminStudents", "Cohort", "AdminCourses"],
+    }),
 
     // Course Assignments Studio (Practice vs Test)
     getCourseAssignments: builder.query({
@@ -650,6 +658,7 @@ export const {
   useGetAdminMentorsQuery,
   useAssignMentorMutation,
   useUnassignMentorMutation,
+  useUnenrollStudentMutation,
   useGetCourseAssignmentsQuery,
   useCreateCourseAssignmentMutation,
   useSubmitAssessmentTaskMutation,
