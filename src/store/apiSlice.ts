@@ -312,6 +312,29 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: (_res, _err, { id }) => ["AdminCourses", { type: "AdminCourses", id }],
     }),
+    duplicateAdminCourse: builder.mutation({
+      query: ({ id, body }) => ({
+        url: `/api/admin/courses/${id}/duplicate`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["AdminCourses"],
+    }),
+    importAdminCourse: builder.mutation({
+      query: (body) => ({
+        url: "/api/admin/courses/import",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["AdminCourses", "AdminModules", "AdminLessons"],
+    }),
+    deleteAdminCourse: builder.mutation({
+      query: (id: string) => ({
+        url: `/api/admin/courses/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["AdminCourses"],
+    }),
     syncCanonicalCourses: builder.mutation({
       query: () => ({
         url: "/api/admin/courses/sync-canonical",
@@ -619,6 +642,9 @@ export const {
   useGetAdminCourseByIdQuery,
   useCreateAdminCourseMutation,
   useUpdateAdminCourseMutation,
+  useDuplicateAdminCourseMutation,
+  useImportAdminCourseMutation,
+  useDeleteAdminCourseMutation,
   useSyncCanonicalCoursesMutation,
   useGetAdminCourseModulesQuery,
   useAttachAdminCourseModuleMutation,

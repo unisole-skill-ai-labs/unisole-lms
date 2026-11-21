@@ -117,6 +117,10 @@ export function useAdminAnalytics(options?: UseAdminAnalyticsOptions) {
     );
   }, [stats, period]);
 
+  const courses = useMemo(() => {
+    return stats?.courses || [];
+  }, [stats]);
+
   return {
     rawStats: stats,
     summary,
@@ -125,6 +129,7 @@ export function useAdminAnalytics(options?: UseAdminAnalyticsOptions) {
     benchmarks,
     highlightCards,
     velocity,
+    courses,
     canonicalEnrolledCount: summary.enrolledStudents,
     isLoading: isStatsLoading,
     isError: isStatsError,
