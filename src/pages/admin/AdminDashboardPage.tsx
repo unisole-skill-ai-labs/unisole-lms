@@ -6,7 +6,6 @@ import {
   ClipboardCheck,
   FolderArchive,
   Users,
-  MoreVertical,
   ChevronRight,
   ArrowUpRight,
   FileText,
@@ -17,15 +16,19 @@ import {
   Calendar,
   GraduationCap,
   Clock,
+  AlertTriangle,
+  AlertCircle,
+  Inbox,
+  TrendingUp,
+  Activity,
   Code2,
   Video,
 } from "lucide-react";
 import {
-  useGetAdminDashboardStatsQuery,
   useGetAdminCoursesQuery,
   useGetAdminLessonsQuery,
-  useGetAdminStudentsQuery,
 } from "../../store/apiSlice";
+import { useAdminAnalytics } from "../../hooks/useAdminAnalytics";
 
 export default function AdminDashboardPage() {
   const { user } = useSelector((state: any) => state.auth);
@@ -53,412 +56,461 @@ export default function AdminDashboardPage() {
     return <Navigate to="/admin/courses" replace />;
   }
 
-  // Velocity Period Filter (Weekly, Monthly, Yearly)
+  // Course Scope & Velocity Period States (A7, A4)
+  const [selectedCourseId, setSelectedCourseId] = useState<string>("ALL");
   const [velocityPeriod, setVelocityPeriod] = useState<"Weekly" | "Monthly" | "Yearly">("Monthly");
-  const [funnelPeriod, setFunnelPeriod] = useState<"Active" | "All">("Active");
+  const [hoveredPoint, setHoveredPoint] = useState<{ dayLabel: string; dateKey: string; count: number; x: number; y: number } | null>(null);
 
-  // Fetch Live Data from Backend Database
-  const { data: statsRes, isLoading: statsLoading } = useGetAdminDashboardStatsQuery(velocityPeriod);
-  const stats = statsRes?.data;
+  // Shared Admin Analytics Hook (Canonical Source of Truth, Parts A1 & F)
+  const {
+    summary,
+    needsAttention,
+    funnel,
+    benchmarks,
+    highlightCards,
+    velocity,
+    isLoading: analyticsLoading,
+  } = useAdminAnalytics({
+    period: velocityPeriod,
+    courseId: selectedCourseId,
+  });
 
   const { data: courses = [] } = useGetAdminCoursesQuery(undefined);
-  const { data: lessons = [] } = useGetAdminLessonsQuery(undefined);
-  const { data: students = [] } = useGetAdminStudentsQuery({ role: "STUDENT", enrolledOnly: true });
 
-  // Live Counts from Database
-  const summary = stats?.summary || {
-    totalCourses: courses.length,
-    publishedCourses: courses.filter((c: any) => c.status === "PUBLISHED").length,
-    totalModules: 0,
-    totalLessons: lessons.length,
-    publishedLessons: lessons.filter((l: any) => l.status === "PUBLISHED").length,
-    totalStudents: students.length,
-    totalEnrollments: 0,
-    activeEnrollments: 0,
-    pendingSubmissions: 0,
-    gradedSubmissions: 0,
-  };
+  // Y-Axis Ticks (Whole numbers only, no duplicate labels) (A4)
+  const velocityData = velocity?.data || [];
+  const counts = velocityData.map((d: any) => d.count);
+  const rawMaxCount = Math.max(1, ...counts);
+  const maxCount = Math.max(4, Math.ceil(rawMaxCount));
 
-  const funnel = stats?.funnel || {
-    enrolled: summary.totalStudents,
-    activeLearners: 0,
-    assessed: 0,
-    certified: 0,
-    enrolledPct: summary.totalStudents > 0 ? 100 : 0,
-    activePct: 0,
-    assessedPct: 0,
-    certifiedPct: 0,
-  };
+  const yTicks = useMemo(() => {
+    const t4 = maxCount;
+    const t3 = Math.round(maxCount * 0.75);
+    const t2 = Math.round(maxCount * 0.5);
+    const t1 = Math.round(maxCount * 0.25);
+    const t0 = 0;
+    // Deduplicate while preserving descending order
+    return Array.from(new Set([t4, t3, t2, t1, t0]));
+  }, [maxCount]);
 
-  const benchmarks = stats?.benchmarks || {
-    avgScore: 0,
-    vivaPassRate: 0,
-    codingPassRate: 0,
-    avgTurnaroundHours: 0,
-    totalEvaluations: 0,
-  };
-
-  // Top Highlight Cards from Real DB Courses
-  const highlightCards = useMemo(() => {
-    if (!stats?.highlightCards || stats.highlightCards.length === 0) {
-      return [];
+  // Construct Area & Line SVG Paths with Hover Points (A4)
+  const { areaPath, linePath, chartPoints, xLabels } = useMemo(() => {
+    if (velocityData.length === 0) {
+      return { areaPath: "", linePath: "", chartPoints: [], xLabels: [] };
     }
 
-    const icons = [BookOpen, Layers, Award, Sparkles];
-    const iconColors = [
-      "bg-blue-500/10 text-blue-500",
-      "bg-purple-500/10 text-purple-500",
-      "bg-amber-500/10 text-amber-500",
-      "bg-emerald-500/10 text-emerald-500",
-    ];
-
-    return stats.highlightCards.map((c: any, index: number) => ({
-      id: c.id,
-      icon: icons[index % icons.length],
-      iconColor: iconColors[index % iconColors.length],
-      title: c.title,
-      desc: c.desc,
-      tag: c.tag,
-      modulesCount: c.modulesCount,
-      enrollmentsCount: c.enrollmentsCount,
-      link: `/admin/courses/${c.id}`,
-    }));
-  }, [stats?.highlightCards]);
-
-  // Construct Dynamic SVG Path for the Learning Velocity Area Chart from Real Postgres Dates
-  const { areaPath, linePath, maxCount, xLabels } = useMemo(() => {
-    const rawData = stats?.velocity?.data || [];
-    if (rawData.length === 0) {
-      return {
-        areaPath: "",
-        linePath: "",
-        maxCount: 0,
-        xLabels: [],
-      };
-    }
-
-    const counts = rawData.map((d: any) => d.count);
-    const maxVal = Math.max(1, ...counts);
-    const len = rawData.length;
-
-    const points = rawData.map((d: any, i: number) => {
+    const len = velocityData.length;
+    const points = velocityData.map((d: any, i: number) => {
       const x = len > 1 ? (i / (len - 1)) * 600 : 300;
-      const y = maxVal > 0 ? 180 - (d.count / maxVal) * 140 : 180;
-      return { x, y };
+      const y = maxCount > 0 ? 180 - (d.count / maxCount) * 140 : 180;
+      return { x, y, data: d };
     });
 
-    if (points.length < 2) {
-      return {
-        areaPath: "M 0,180 L 600,180 L 600,200 L 0,200 Z",
-        linePath: "M 0,180 L 600,180",
-        maxCount: maxVal,
-        xLabels: rawData.map((d: any) => d.dayLabel),
-      };
+    const lPath =
+      points.length > 0
+        ? points.reduce((acc: string, curr: any, i: number) => {
+            if (i === 0) return `M ${curr.x} ${curr.y}`;
+            const prev = points[i - 1];
+            const cpX = (prev.x + curr.x) / 2;
+            return `${acc} C ${cpX} ${prev.y}, ${cpX} ${curr.y}, ${curr.x} ${curr.y}`;
+          }, "")
+        : "";
+
+    const aPath =
+      points.length > 0
+        ? `${lPath} L ${points[points.length - 1].x} 190 L ${points[0].x} 190 Z`
+        : "";
+
+    const stride = Math.max(1, Math.floor(len / 6));
+    const labels: string[] = [];
+    for (let i = 0; i < len; i += stride) {
+      labels.push(velocityData[i].dayLabel);
+    }
+    if (labels[labels.length - 1] !== velocityData[len - 1].dayLabel) {
+      labels.push(velocityData[len - 1].dayLabel);
     }
 
-    // Build smooth bezier curves
-    let dLine = `M ${points[0].x},${points[0].y}`;
-    for (let i = 0; i < points.length - 1; i++) {
-      const p0 = points[i];
-      const p1 = points[i + 1];
-      const cpX = (p0.x + p1.x) / 2;
-      dLine += ` C ${cpX},${p0.y} ${cpX},${p1.y} ${p1.x},${p1.y}`;
-    }
-
-    const dArea = `${dLine} L 600,200 L 0,200 Z`;
-    
-    // Pick 5-7 evenly spaced real dates from Postgres
-    const step = Math.max(1, Math.floor(len / 6));
-    const labels = rawData
-      .filter((_: any, idx: number) => idx === 0 || idx === len - 1 || idx % step === 0)
-      .map((d: any) => d.dayLabel);
-
-    return {
-      areaPath: dArea,
-      linePath: dLine,
-      maxCount: maxVal,
-      xLabels: labels,
-    };
-  }, [stats?.velocity?.data]);
+    return { areaPath: aPath, linePath: lPath, chartPoints: points, xLabels: labels };
+  }, [velocityData, maxCount]);
 
   return (
-    <div className="p-5 sm:p-7 lg:p-8 space-y-6 max-w-[1560px] mx-auto animate-fade-in font-sans">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto animate-fade-in font-sans">
       {/* ------------------------------------------------------------- */}
-      {/* ROW 1: Real Course & Track Highlights (Carousel Cards) */}
+      {/* Top Header & Course Selector Filter (A7)                       */}
       {/* ------------------------------------------------------------- */}
-      <div className="flex items-center gap-4 overflow-x-auto pb-1 scrollbar-none">
-        {highlightCards.length > 0 ? (
-          highlightCards.map((card) => {
-            const Icon = card.icon;
-            return (
-              <Link
-                key={card.id}
-                to={card.link}
-                className="min-w-[280px] sm:min-w-[320px] max-w-[340px] flex-1 bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between group"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className={`w-8 h-8 rounded-xl ${card.iconColor} flex items-center justify-center shrink-0`}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors line-clamp-1">
-                          {card.title}
-                        </h4>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0">
-                      {card.tag}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 line-clamp-2 leading-relaxed">
-                    {card.desc}
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 dark:border-slate-800/60 text-[11px]">
-                  <span className="font-mono text-slate-400">
-                    {card.modulesCount} {card.modulesCount === 1 ? "Module" : "Modules"}
-                  </span>
-                  <span className="font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                    {card.enrollmentsCount} {card.enrollmentsCount === 1 ? "Mentee" : "Mentees"}
-                    <ArrowUpRight className="w-3.5 h-3.5" />
-                  </span>
-                </div>
-              </Link>
-            );
-          })
-        ) : (
-          <div className="w-full bg-white dark:bg-[#0B1120] rounded-2xl border border-dashed border-slate-200 dark:border-slate-800/80 p-5 flex items-center justify-between shadow-2xs">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
-                <BookOpen className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-100">No courses in database yet</p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                  All metrics update automatically once courses and modules are created in Curriculum Studio.
-                </p>
-              </div>
-            </div>
-            <Link
-              to="/admin/courses"
-              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white transition-colors flex items-center gap-1 shrink-0"
-            >
-              + Create Course
-            </Link>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800/80">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+              Admin Overview
+            </h1>
+            <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/70 dark:border-purple-800/60">
+              Live Cockpit
+            </span>
           </div>
-        )}
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Canonical platform operations, student completion funnel & academic velocity.
+          </p>
+        </div>
+
+        {/* Course Scoping Dropdown (A7: Scopes every metric on page) */}
+        <div className="flex items-center gap-2 bg-white dark:bg-[#0B1120] px-3.5 py-2 rounded-xl border border-slate-200/80 dark:border-slate-800 text-xs shadow-2xs self-start sm:self-auto">
+          <BookOpen className="w-4 h-4 text-purple-600 shrink-0" />
+          <span className="text-slate-400 font-semibold">Scope:</span>
+          <select
+            value={selectedCourseId}
+            onChange={(e) => setSelectedCourseId(e.target.value)}
+            className="bg-transparent text-xs font-bold text-slate-900 dark:text-white focus:outline-none cursor-pointer"
+          >
+            <option value="ALL">All Enrolled Courses (Global)</option>
+            {courses.map((c: any) => (
+              <option key={c.id} value={c.id}>
+                {c.title}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* ROW 2: Learning Velocity Chart + Mentee Progress Funnel */}
+      {/* SECTION: "Needs Attention" Operational Alerts (A2)            */}
+      {/* ------------------------------------------------------------- */}
+      <div className="space-y-2.5">
+        <h2 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+          <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
+          <span>Needs Attention</span>
+        </h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          {/* Card 1: Students Inactive 7+ Days */}
+          <Link
+            to="/admin/students?status=AT_RISK"
+            className="p-4 rounded-2xl bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-600 transition-all shadow-2xs flex items-center justify-between group"
+          >
+            <div>
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Inactive 7+ Days</span>
+              <div className="text-xl font-black text-slate-900 dark:text-white font-mono mt-0.5">
+                {needsAttention.inactive7Days}
+              </div>
+              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1 mt-1">
+                <span>View at-risk students</span>
+                <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5 stroke-[2.2]" />
+            </div>
+          </Link>
+
+          {/* Card 2: Pending Submissions Queue */}
+          <Link
+            to="/admin/submissions"
+            className="p-4 rounded-2xl bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800 hover:border-purple-400 dark:hover:border-purple-600 transition-all shadow-2xs flex items-center justify-between group"
+          >
+            <div>
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Review Queue</span>
+              <div className="text-xl font-black text-slate-900 dark:text-white font-mono mt-0.5">
+                {needsAttention.reviewQueueSize}
+              </div>
+              <span className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-1 mt-1">
+                <span>Pending mentor grading</span>
+                <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 flex items-center justify-center shrink-0">
+              <Inbox className="w-5 h-5 stroke-[2.2]" />
+            </div>
+          </Link>
+
+          {/* Card 3: Unassigned Students */}
+          <Link
+            to="/admin/students?assigned=UNASSIGNED"
+            className="p-4 rounded-2xl bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800 hover:border-rose-400 dark:hover:border-rose-600 transition-all shadow-2xs flex items-center justify-between group"
+          >
+            <div>
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Unassigned Learners</span>
+              <div className="text-xl font-black text-slate-900 dark:text-white font-mono mt-0.5">
+                {needsAttention.unassignedStudents}
+              </div>
+              <span className="text-[10px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1 mt-1">
+                <span>Allocate mentors</span>
+                <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 stroke-[2.2]" />
+            </div>
+          </Link>
+
+          {/* Card 4: Overdue Submissions */}
+          <Link
+            to="/admin/submissions"
+            className="p-4 rounded-2xl bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-600 transition-all shadow-2xs flex items-center justify-between group"
+          >
+            <div>
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Overdue Lab Reviews</span>
+              <div className="text-xl font-black text-slate-900 dark:text-white font-mono mt-0.5">
+                {needsAttention.overdueSubmissions}
+              </div>
+              <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold flex items-center gap-1 mt-1">
+                <span>Assess submissions</span>
+                <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
+              <ClipboardCheck className="w-5 h-5 stroke-[2.2]" />
+            </div>
+          </Link>
+        </div>
+      </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* SECTION: Stat Cards with Plain Numbers & Trends (A3)          */}
+      {/* ------------------------------------------------------------- */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Canonical Enrolled Learners */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-xs font-bold">Enrolled Learners</span>
+            <GraduationCap className="w-4 h-4 text-purple-500" />
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">
+            {summary.enrolledStudents}
+          </div>
+          <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+            <TrendingUp className="w-3.5 h-3.5" />
+            <span>{funnel.activePct}% active in coursework</span>
+          </div>
+        </div>
+
+        {/* Card 2: Total Courses */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-xs font-bold">Curriculum Programs</span>
+            <BookOpen className="w-4 h-4 text-blue-500" />
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">
+            {summary.totalCourses}
+          </div>
+          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+            <span>{summary.publishedCourses} published live tracks</span>
+          </div>
+        </div>
+
+        {/* Card 3: Total Lessons */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-xs font-bold">Total Lessons & Modules</span>
+            <Layers className="w-4 h-4 text-amber-500" />
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">
+            {summary.totalLessons}
+          </div>
+          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+            <span>{summary.totalModules} modules across tracks</span>
+          </div>
+        </div>
+
+        {/* Card 4: Graded Evaluations */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-xs font-bold">Graded Evaluations</span>
+            <Award className="w-4 h-4 text-emerald-500" />
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">
+            {summary.gradedSubmissions}
+          </div>
+          <div className="text-[11px] font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1">
+            <span>{summary.pendingSubmissions} in review queue</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* ROW: Learning Velocity Chart + Horizontal Progress Funnel      */}
       {/* ------------------------------------------------------------- */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Left: Learning Velocity & Daily Active Mentees Chart */}
-        <div className="lg:col-span-8 bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-5 sm:p-6 shadow-2xs flex flex-col justify-between">
-          {/* Header */}
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800/60">
+        {/* Left: Learning Velocity Chart (A4: whole numbers, hover tooltip) */}
+        <div className="lg:col-span-7 bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800/80">
             <div>
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight">
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
                 Learning Velocity
               </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Daily student lesson completions & assessment submissions from DB
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Completed student activities & submissions over time
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800/80 p-0.5 rounded-xl text-[11px] font-semibold">
-                {(["Weekly", "Monthly", "Yearly"] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setVelocityPeriod(tab)}
-                    className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                      velocityPeriod === tab
-                        ? "bg-white dark:bg-purple-500/20 text-purple-600 dark:text-purple-300 font-bold shadow-2xs"
-                        : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white"
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
+
+            {/* Velocity Period Toggle */}
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl text-xs font-semibold">
+              {(["Weekly", "Monthly", "Yearly"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setVelocityPeriod(tab)}
+                  className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                    velocityPeriod === tab
+                      ? "bg-white dark:bg-purple-600 text-purple-700 dark:text-white font-bold shadow-xs"
+                      : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Spline Area Chart Canvas */}
-          <div className="relative pt-6 pb-2 min-h-[260px] flex">
-            {/* Y-Axis Scale */}
-            <div className="flex flex-col justify-between text-[11px] text-slate-400 font-mono pr-4 select-none pb-6">
-              <span>{maxCount}</span>
-              <span>{Math.round(maxCount * 0.75)}</span>
-              <span>{Math.round(maxCount * 0.5)}</span>
-              <span>{Math.round(maxCount * 0.25)}</span>
-              <span>0</span>
+          {/* SVG Chart Area */}
+          <div className="relative pt-6 pb-2 min-h-[240px] flex">
+            {/* Y-Axis Ticks (Whole numbers only, no duplicate labels) (A4) */}
+            <div className="flex flex-col justify-between text-[11px] text-slate-400 font-mono pr-3 select-none pb-6">
+              {yTicks.map((tick, i) => (
+                <span key={i}>{tick}</span>
+              ))}
             </div>
 
-            {/* SVG Chart Graphic */}
+            {/* SVG Curve */}
             <div className="flex-1 relative flex flex-col justify-between">
-              {/* Horizontal Guidelines */}
+              {/* Grid Lines */}
               <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-6 opacity-30">
-                <div className="border-b border-slate-200 dark:border-slate-800 border-dashed w-full" />
-                <div className="border-b border-slate-200 dark:border-slate-800 border-dashed w-full" />
-                <div className="border-b border-slate-200 dark:border-slate-800 border-dashed w-full" />
-                <div className="border-b border-slate-200 dark:border-slate-800 border-dashed w-full" />
-                <div className="border-b border-slate-200 dark:border-slate-800 w-full" />
+                {yTicks.map((_, i) => (
+                  <div key={i} className="border-b border-slate-200 dark:border-slate-800 border-dashed w-full" />
+                ))}
               </div>
 
-              {/* The Area Gradient Curve */}
-              <div className="relative h-[210px] w-full">
+              <div className="relative h-[190px] w-full">
                 <svg viewBox="0 0 600 200" preserveAspectRatio="none" className="w-full h-full overflow-visible">
                   <defs>
                     <linearGradient id="velocityGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.45" />
-                      <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0.00" />
+                      <stop offset="0%" stopColor="#9333EA" stopOpacity="0.4" />
+                      <stop offset="100%" stopColor="#9333EA" stopOpacity="0.0" />
                     </linearGradient>
                   </defs>
 
-                  {/* Gradient Area */}
                   <path d={areaPath} fill="url(#velocityGrad)" />
+                  <path d={linePath} fill="none" stroke="#9333EA" strokeWidth="2.5" strokeLinecap="round" />
 
-                  {/* Top Line Stroke */}
-                  <path
-                    d={linePath}
-                    fill="none"
-                    stroke="#8B5CF6"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                  />
+                  {/* Interactive Points on Curve with Tooltips (A4) */}
+                  {chartPoints.map((pt: any, i: number) => (
+                    <circle
+                      key={i}
+                      cx={pt.x}
+                      cy={pt.y}
+                      r={hoveredPoint?.dateKey === pt.data.dateKey ? "5" : "3"}
+                      className="fill-purple-600 hover:fill-purple-400 transition-all cursor-pointer"
+                      onMouseEnter={() =>
+                        setHoveredPoint({
+                          dayLabel: pt.data.dayLabel,
+                          dateKey: pt.data.dateKey,
+                          count: pt.data.count,
+                          x: pt.x,
+                          y: pt.y,
+                        })
+                      }
+                      onMouseLeave={() => setHoveredPoint(null)}
+                    />
+                  ))}
                 </svg>
 
-                {/* Floating Tooltip Callout Pill */}
-                <div className="absolute top-2 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none drop-shadow-md">
-                  <div className="bg-purple-600 text-white text-[11px] font-extrabold px-3 py-1 rounded-lg flex items-center gap-1.5 shadow-sm">
-                    <GraduationCap className="w-3.5 h-3.5" />
-                    <span>{stats?.velocity?.totalActivity?.toLocaleString() ?? 0} Completed Actions</span>
+                {/* Floating Tooltip (A4) */}
+                {hoveredPoint && (
+                  <div
+                    className="absolute z-20 pointer-events-none px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[11px] font-bold shadow-lg -translate-x-1/2 -translate-y-8"
+                    style={{ left: `${(hoveredPoint.x / 600) * 100}%`, top: `${hoveredPoint.y}px` }}
+                  >
+                    <span>{hoveredPoint.dayLabel}: </span>
+                    <span className="text-purple-300 font-mono">{hoveredPoint.count} activities</span>
                   </div>
-                </div>
+                )}
               </div>
 
-              {/* X-Axis Scale */}
+              {/* X-Axis Labels */}
               <div className="flex justify-between text-[11px] text-slate-400 font-mono pt-2 border-t border-slate-100 dark:border-slate-800">
                 {xLabels.map((lbl: string, i: number) => (
-                  <span key={i} className={i === Math.floor(xLabels.length / 2) ? "font-bold text-purple-600 dark:text-purple-400" : ""}>
-                    {lbl}
-                  </span>
+                  <span key={i}>{lbl}</span>
                 ))}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right: Mentee Progress & Completion Funnel */}
-        <div className="lg:col-span-4 bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-5 sm:p-6 shadow-2xs flex flex-col justify-between">
-          {/* Header */}
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800/60">
-            <div>
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight">
-                Progress Funnel
-              </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Cohort progression across course milestones
-              </p>
-            </div>
-            <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-full border border-purple-200/60 dark:border-purple-800/60">
-              Live DB
-            </span>
+        {/* Right: Horizontal Progress Funnel (A5) */}
+        <div className="lg:col-span-5 bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-2xs flex flex-col justify-between">
+          <div className="pb-3 border-b border-slate-100 dark:border-slate-800">
+            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+              Progress Funnel
+            </h3>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Learner stage drop-off & progression rates
+            </p>
           </div>
 
-          {/* Metrics List + Vertical Pill Bar Gauges */}
-          <div className="py-6 flex items-center justify-between gap-4">
-            {/* Metric Items */}
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200">
-                  <span className="w-2 h-2 rounded-full bg-purple-500" />
-                  <span>Enrolled Mentees</span>
-                </div>
-                <p className="text-[11px] font-mono text-slate-400 pl-4 mt-0.5">
-                  {funnel.enrolled.toLocaleString()}
-                </p>
+          {/* Horizontal Funnel Steps (A5) */}
+          <div className="py-3 space-y-3.5">
+            {/* Step 1: Enrolled */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-800 dark:text-slate-200">1. Enrolled</span>
+                <span className="font-mono font-bold text-purple-600 dark:text-purple-400">
+                  {funnel.enrolled} (100%)
+                </span>
               </div>
-
-              <div>
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200">
-                  <span className="w-2 h-2 rounded-full bg-rose-500" />
-                  <span>Active in Modules</span>
-                </div>
-                <p className="text-[11px] font-mono text-slate-400 pl-4 mt-0.5">
-                  {funnel.activeLearners.toLocaleString()}
-                </p>
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200">
-                  <span className="w-2 h-2 rounded-full bg-orange-400" />
-                  <span>Assessments Cleared</span>
-                </div>
-                <p className="text-[11px] font-mono text-slate-400 pl-4 mt-0.5">
-                  {funnel.assessed.toLocaleString()}
-                </p>
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200">
-                  <span className="w-2 h-2 rounded-full bg-blue-600" />
-                  <span>Certified / Graduated</span>
-                </div>
-                <p className="text-[11px] font-mono text-slate-400 pl-4 mt-0.5">
-                  {funnel.certified.toLocaleString()}
-                </p>
+              <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden">
+                <div className="h-full bg-purple-600 rounded-lg" style={{ width: "100%" }} />
               </div>
             </div>
 
-            {/* 4 Vertical Pill Progress Bars */}
-            <div className="flex items-end gap-3.5 h-[170px] pr-2">
-              {/* Bar 1: Enrolled */}
-              <div className="flex flex-col items-center gap-1.5 h-full justify-end">
-                <div className="w-3.5 h-[140px] bg-slate-100 dark:bg-slate-800 rounded-full relative overflow-hidden flex flex-col justify-end">
-                  <div
-                    className="w-full bg-purple-400 rounded-full transition-all duration-700"
-                    style={{ height: `${Math.max(5, funnel.enrolledPct)}%` }}
-                  />
-                </div>
-                <span className="text-[10px] font-bold text-slate-500 font-mono">{funnel.enrolledPct}%</span>
-              </div>
+            {/* Drop-off tag 1 */}
+            <div className="flex justify-end pr-1 text-[10px] text-rose-500 font-semibold">
+              ↓ Drop-off: {funnel.dropOff?.enrolledToActive || 0} ({funnel.dropOff?.enrolledToActivePct || 0}%)
+            </div>
 
-              {/* Bar 2: Active */}
-              <div className="flex flex-col items-center gap-1.5 h-full justify-end">
-                <div className="w-3.5 h-[140px] bg-slate-100 dark:bg-slate-800 rounded-full relative overflow-hidden flex flex-col justify-end">
-                  <div
-                    className="w-full bg-rose-500 rounded-full transition-all duration-700"
-                    style={{ height: `${Math.max(5, funnel.activePct)}%` }}
-                  />
-                </div>
-                <span className="text-[10px] font-bold text-slate-500 font-mono">{funnel.activePct}%</span>
+            {/* Step 2: Started Modules */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-800 dark:text-slate-200">2. Started Modules</span>
+                <span className="font-mono font-bold text-rose-600 dark:text-rose-400">
+                  {funnel.activeLearners} ({funnel.activePct}%)
+                </span>
               </div>
-
-              {/* Bar 3: Assessed */}
-              <div className="flex flex-col items-center gap-1.5 h-full justify-end">
-                <div className="w-3.5 h-[140px] bg-slate-100 dark:bg-slate-800 rounded-full relative overflow-hidden flex flex-col justify-end">
-                  <div
-                    className="w-full bg-orange-400 rounded-full transition-all duration-700"
-                    style={{ height: `${Math.max(5, funnel.assessedPct)}%` }}
-                  />
-                </div>
-                <span className="text-[10px] font-bold text-slate-500 font-mono">{funnel.assessedPct}%</span>
+              <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden">
+                <div className="h-full bg-rose-500 rounded-lg" style={{ width: `${funnel.activePct}%` }} />
               </div>
+            </div>
 
-              {/* Bar 4: Certified */}
-              <div className="flex flex-col items-center gap-1.5 h-full justify-end">
-                <div className="w-3.5 h-[140px] bg-slate-100 dark:bg-slate-800 rounded-full relative overflow-hidden flex flex-col justify-end">
-                  <div
-                    className="w-full bg-blue-600 rounded-full transition-all duration-700"
-                    style={{ height: `${Math.max(5, funnel.certifiedPct)}%` }}
-                  />
-                </div>
-                <span className="text-[10px] font-bold text-slate-500 font-mono">{funnel.certifiedPct}%</span>
+            {/* Drop-off tag 2 */}
+            <div className="flex justify-end pr-1 text-[10px] text-rose-500 font-semibold">
+              ↓ Drop-off: {funnel.dropOff?.activeToAssessed || 0} ({funnel.dropOff?.activeToAssessedPct || 0}%)
+            </div>
+
+            {/* Step 3: Assessments Cleared */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-800 dark:text-slate-200">3. Assessments Cleared</span>
+                <span className="font-mono font-bold text-amber-600 dark:text-amber-400">
+                  {funnel.assessed} ({funnel.assessedPct}%)
+                </span>
+              </div>
+              <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden">
+                <div className="h-full bg-amber-500 rounded-lg" style={{ width: `${funnel.assessedPct}%` }} />
+              </div>
+            </div>
+
+            {/* Drop-off tag 3 */}
+            <div className="flex justify-end pr-1 text-[10px] text-rose-500 font-semibold">
+              ↓ Drop-off: {funnel.dropOff?.assessedToCertified || 0} ({funnel.dropOff?.assessedToCertifiedPct || 0}%)
+            </div>
+
+            {/* Step 4: Certified / Graduated */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-800 dark:text-slate-200">4. Certified / Graduated</span>
+                <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                  {funnel.certified} ({funnel.certifiedPct}%)
+                </span>
+              </div>
+              <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden">
+                <div className="h-full bg-emerald-500 rounded-lg" style={{ width: `${funnel.certifiedPct}%` }} />
               </div>
             </div>
           </div>
@@ -466,312 +518,107 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* ROW 3: 4 Academic KPI Radial Cards + Evaluation Benchmarks */}
+      {/* ROW: Academic Benchmarks (A6) & Course Cards (A8)             */}
       {/* ------------------------------------------------------------- */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Left: 4 Metric Cards with Circular Radial Progress Rings */}
-        <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card 1: Published Courses */}
-          <div className="bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-4 shadow-2xs flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-100">Published Courses</p>
-                <p className="text-[11px] font-bold text-purple-600 dark:text-purple-400">
-                  {summary.totalCourses > 0
-                    ? `${Math.round((summary.publishedCourses / summary.totalCourses) * 100)}%`
-                    : "0%"}
-                </p>
-              </div>
-              <BookOpen className="w-4 h-4 text-purple-400" />
-            </div>
-
-            {/* Circular Gauge */}
-            <div className="py-4 flex justify-center">
-              <div className="relative w-16 h-16 flex items-center justify-center">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                  <path
-                    className="text-slate-100 dark:text-slate-800"
-                    strokeWidth="3.2"
-                    stroke="currentColor"
-                    fill="none"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                  <path
-                    className="text-purple-500"
-                    strokeDasharray={`${
-                      summary.totalCourses > 0
-                        ? Math.round((summary.publishedCourses / summary.totalCourses) * 100)
-                        : 0
-                    }, 100`}
-                    strokeLinecap="round"
-                    strokeWidth="3.2"
-                    stroke="currentColor"
-                    fill="none"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                </svg>
-                <ArrowUpRight className="w-4 h-4 text-purple-500 absolute" />
-              </div>
-            </div>
-
-            <div className="text-center pt-1 border-t border-slate-100 dark:border-slate-800/60">
-              <div className="text-sm font-extrabold text-slate-800 dark:text-white font-mono">
-                {summary.publishedCourses} / {summary.totalCourses}
-              </div>
-              <Link to="/admin/courses" className="text-[10px] text-slate-400 hover:text-purple-600 font-semibold block mt-0.5">
-                View Courses
-              </Link>
-            </div>
-          </div>
-
-          {/* Card 2: Curriculum Lessons & Labs */}
-          <div className="bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-4 shadow-2xs flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-100">Modules & Labs</p>
-                <p className="text-[11px] font-bold text-rose-500">
-                  {summary.totalLessons > 0
-                    ? `${Math.round((summary.publishedLessons / summary.totalLessons) * 100)}%`
-                    : "0%"}
-                </p>
-              </div>
-              <Layers className="w-4 h-4 text-rose-400" />
-            </div>
-
-            {/* Circular Gauge */}
-            <div className="py-4 flex justify-center">
-              <div className="relative w-16 h-16 flex items-center justify-center">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                  <path
-                    className="text-slate-100 dark:text-slate-800"
-                    strokeWidth="3.2"
-                    stroke="currentColor"
-                    fill="none"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                  <path
-                    className="text-rose-500"
-                    strokeDasharray={`${
-                      summary.totalLessons > 0
-                        ? Math.round((summary.publishedLessons / summary.totalLessons) * 100)
-                        : 0
-                    }, 100`}
-                    strokeLinecap="round"
-                    strokeWidth="3.2"
-                    stroke="currentColor"
-                    fill="none"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                </svg>
-                <ArrowUpRight className="w-4 h-4 text-rose-500 absolute" />
-              </div>
-            </div>
-
-            <div className="text-center pt-1 border-t border-slate-100 dark:border-slate-800/60">
-              <div className="text-sm font-extrabold text-slate-800 dark:text-white font-mono">
-                {summary.totalLessons} Lessons
-              </div>
-              <Link to="/admin/courses" className="text-[10px] text-slate-400 hover:text-rose-600 font-semibold block mt-0.5">
-                Curriculum Studio
-              </Link>
-            </div>
-          </div>
-
-          {/* Card 3: Pending Reviews */}
-          <div className="bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-4 shadow-2xs flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-100">Review Queue</p>
-                <p className="text-[11px] font-bold text-amber-500">
-                  {summary.pendingSubmissions > 0 ? "Pending Action" : "Up to Date"}
-                </p>
-              </div>
-              <ClipboardCheck className="w-4 h-4 text-amber-400" />
-            </div>
-
-            {/* Circular Gauge */}
-            <div className="py-4 flex justify-center">
-              <div className="relative w-16 h-16 flex items-center justify-center">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                  <path
-                    className="text-slate-100 dark:text-slate-800"
-                    strokeWidth="3.2"
-                    stroke="currentColor"
-                    fill="none"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                  <path
-                    className="text-amber-500"
-                    strokeDasharray={`${Math.min(
-                      100,
-                      summary.pendingSubmissions > 0
-                        ? Math.max(15, summary.pendingSubmissions * 10)
-                        : 0
-                    )}, 100`}
-                    strokeLinecap="round"
-                    strokeWidth="3.2"
-                    stroke="currentColor"
-                    fill="none"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                </svg>
-                <ArrowUpRight className="w-4 h-4 text-amber-500 absolute" />
-              </div>
-            </div>
-
-            <div className="text-center pt-1 border-t border-slate-100 dark:border-slate-800/60">
-              <div className="text-sm font-extrabold text-slate-800 dark:text-white font-mono">
-                {summary.pendingSubmissions} In Queue
-              </div>
-              <Link to="/admin/submissions" className="text-[10px] text-slate-400 hover:text-amber-600 font-semibold block mt-0.5">
-                Review Submissions
-              </Link>
-            </div>
-          </div>
-
-          {/* Card 4: Enrolled Students */}
-          <div className="bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-4 shadow-2xs flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-100">Enrolled Students</p>
-                <p className="text-[11px] font-bold text-emerald-500">
-                  {funnel.activePct}% Active
-                </p>
-              </div>
-              <Users className="w-4 h-4 text-emerald-400" />
-            </div>
-
-            {/* Circular Gauge */}
-            <div className="py-4 flex justify-center">
-              <div className="relative w-16 h-16 flex items-center justify-center">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                  <path
-                    className="text-slate-100 dark:text-slate-800"
-                    strokeWidth="3.2"
-                    stroke="currentColor"
-                    fill="none"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                  <path
-                    className="text-emerald-500"
-                    strokeDasharray={`${funnel.activePct}, 100`}
-                    strokeLinecap="round"
-                    strokeWidth="3.2"
-                    stroke="currentColor"
-                    fill="none"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                </svg>
-                <ArrowUpRight className="w-4 h-4 text-emerald-500 absolute" />
-              </div>
-            </div>
-
-            <div className="text-center pt-1 border-t border-slate-100 dark:border-slate-800/60">
-              <div className="text-sm font-extrabold text-slate-800 dark:text-white font-mono">
-                {summary.totalStudents} Mentees
-              </div>
-              <Link to="/admin/students" className="text-[10px] text-slate-400 hover:text-emerald-600 font-semibold block mt-0.5">
-                View Roster
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Academic Evaluation Benchmarks Speedometer */}
-        <div className="lg:col-span-4 bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-5 sm:p-6 shadow-2xs flex flex-col justify-between">
-          {/* Header */}
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800/60">
+        {/* Left: Academic Benchmarks with Clean Empty State (A6) */}
+        <div className="lg:col-span-5 bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
             <div>
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight">
-                Academic Benchmarks
-              </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Evaluation quality & student test scores
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Academic Benchmarks</h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">Evaluation performance across tests & vivas</p>
+            </div>
+            <Award className="w-4 h-4 text-purple-500" />
+          </div>
+
+          {benchmarks.totalEvaluations > 0 ? (
+            <div className="grid grid-cols-2 gap-3.5">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#070A11] border border-slate-100 dark:border-slate-800 space-y-1">
+                <span className="text-[11px] text-slate-400 font-medium">Avg Test Score</span>
+                <div className="text-lg font-black text-slate-900 dark:text-white font-mono">
+                  {benchmarks.avgScore}%
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#070A11] border border-slate-100 dark:border-slate-800 space-y-1">
+                <span className="text-[11px] text-slate-400 font-medium">Viva Pass Rate</span>
+                <div className="text-lg font-black text-slate-900 dark:text-white font-mono">
+                  {benchmarks.vivaTotal > 0 ? `${benchmarks.vivaPassRate}%` : "—"}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#070A11] border border-slate-100 dark:border-slate-800 space-y-1">
+                <span className="text-[11px] text-slate-400 font-medium">Coding Pass Rate</span>
+                <div className="text-lg font-black text-slate-900 dark:text-white font-mono">
+                  {benchmarks.codingTotal > 0 ? `${benchmarks.codingPassRate}%` : "—"}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#070A11] border border-slate-100 dark:border-slate-800 space-y-1">
+                <span className="text-[11px] text-slate-400 font-medium">Avg Turnaround</span>
+                <div className="text-lg font-black text-slate-900 dark:text-white font-mono">
+                  {benchmarks.avgTurnaroundHours} hrs
+                </div>
+              </div>
+            </div>
+          ) : (
+            // Clean Empty State (A6)
+            <div className="p-6 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-2">
+              <Award className="w-8 h-8 text-slate-300 mx-auto" />
+              <p className="text-xs font-semibold text-slate-500">
+                No evaluations recorded yet for this cohort.
+              </p>
+              <p className="text-[11px] text-slate-400">
+                Academic score diagnostics appear once student tests or projects are graded.
               </p>
             </div>
-            <Award className="w-4 h-4 text-purple-400" />
+          )}
+        </div>
+
+        {/* Right: Real Course Cards with Modules, Lessons & Enrolled Counts (A8) */}
+        <div className="lg:col-span-7 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Active Curriculum Programs</h3>
+            <Link to="/admin/courses" className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline">
+              Manage Courses →
+            </Link>
           </div>
 
-          {/* Diagnostics Content */}
-          <div className="py-4 flex items-center justify-between gap-4">
-            {/* 4 Academic Metric Chips */}
-            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-              <div>
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span>Avg Test Score</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {highlightCards.slice(0, 4).map((c: any) => (
+              <Link
+                key={c.id}
+                to={`/admin/courses/${c.id}`}
+                className="p-4 rounded-2xl bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-700 transition-all shadow-2xs space-y-3 group"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center shrink-0">
+                      <BookOpen className="w-4 h-4" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-purple-600 transition-colors line-clamp-1">
+                      {c.title}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0">
+                    {c.tag}
+                  </span>
                 </div>
-                <p className="text-xs font-extrabold text-slate-800 dark:text-slate-100 font-mono mt-0.5">
-                  {benchmarks.avgScore > 0 ? `${benchmarks.avgScore}%` : "No tests yet"}
-                </p>
-              </div>
 
-              <div>
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
-                  <span className="w-2 h-2 rounded-full bg-amber-400" />
-                  <span>Viva Pass Rate</span>
+                <p className="text-[11px] text-slate-500 line-clamp-2">
+                  {c.desc}
+                </p>
+
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] font-mono">
+                  <span className="text-slate-400">
+                    {c.modulesCount} modules · {c.lessonsCount} lessons
+                  </span>
+                  <span className="font-bold text-purple-600 dark:text-purple-400">
+                    {c.enrollmentsCount} {c.enrollmentsCount === 1 ? "Learner" : "Learners"}
+                  </span>
                 </div>
-                <p className="text-xs font-extrabold text-slate-800 dark:text-slate-100 font-mono mt-0.5">
-                  {benchmarks.vivaPassRate > 0 ? `${benchmarks.vivaPassRate}%` : "No viva yet"}
-                </p>
-              </div>
-
-              <div>
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
-                  <span className="w-2 h-2 rounded-full bg-rose-500" />
-                  <span>Coding Pass Rate</span>
-                </div>
-                <p className="text-xs font-extrabold text-slate-800 dark:text-slate-100 font-mono mt-0.5">
-                  {benchmarks.codingPassRate > 0 ? `${benchmarks.codingPassRate}%` : "No coding yet"}
-                </p>
-              </div>
-
-              <div>
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
-                  <span className="w-2 h-2 rounded-full bg-purple-500" />
-                  <span>Evaluations</span>
-                </div>
-                <p className="text-xs font-extrabold text-slate-800 dark:text-slate-100 font-mono mt-0.5">
-                  {benchmarks.totalEvaluations}
-                </p>
-              </div>
-            </div>
-
-            {/* Radial Speedometer / Donut Ring */}
-            <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
-              <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                <defs>
-                  <linearGradient id="academicScoreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#8B5CF6" />
-                    <stop offset="100%" stopColor="#3B82F6" />
-                  </linearGradient>
-                </defs>
-                <path
-                  className="text-slate-100 dark:text-slate-800"
-                  strokeWidth="3.2"
-                  stroke="currentColor"
-                  fill="none"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-                <path
-                  stroke="url(#academicScoreGrad)"
-                  strokeDasharray={`${Math.max(5, benchmarks.avgScore)}, 100`}
-                  strokeLinecap="round"
-                  strokeWidth="3.2"
-                  fill="none"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-              </svg>
-
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-sm font-black text-slate-900 dark:text-white font-mono leading-none">
-                  {benchmarks.avgScore > 0 ? `${benchmarks.avgScore}%` : "N/A"}
-                </span>
-                <span className="text-[9px] text-slate-400 font-semibold mt-0.5">
-                  {benchmarks.avgScore >= 80 ? "Grade A" : benchmarks.avgScore >= 60 ? "Grade B" : "Score"}
-                </span>
-              </div>
-            </div>
+              </Link>
+            ))}
           </div>
         </div>
       </div>
