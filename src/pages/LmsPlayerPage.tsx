@@ -113,6 +113,14 @@ export default function LmsPlayerPage() {
     if (validCourseModules.length >= 12) {
       return validCourseModules.map((m: any, idx: number) => {
         const backendLessons = m.lessons || [];
+        const liveCount = backendLessons.filter(
+          (l: any) =>
+            l.curriculumMode === "LIVE" ||
+            l.type === "live" ||
+            l.category === "LIVE" ||
+            l.contentType === "LIVE" ||
+            l.id?.includes("_live")
+        ).length;
         const videoCount = backendLessons.filter(
           (l: any) =>
             l.contentType !== "QUIZ" &&
@@ -126,11 +134,12 @@ export default function LmsPlayerPage() {
             l.type !== "coding_test" &&
             l.type !== "video_test" &&
             l.type !== "subjective_test" &&
-            l.type !== "live"
+            l.type !== "live" &&
+            !l.id?.includes("_live")
         ).length;
         const assessCount = backendLessons.filter(
           (l: any) =>
-            l.contentType === "QUIZ" ||
+            (l.contentType === "QUIZ" ||
             l.contentType === "ASSIGNMENT" ||
             l.curriculumMode === "PRACTICE" ||
             l.curriculumMode === "TEST" ||
@@ -138,7 +147,10 @@ export default function LmsPlayerPage() {
             l.type === "assignment" ||
             l.type === "coding_test" ||
             l.type === "video_test" ||
-            l.type === "subjective_test"
+            l.type === "subjective_test") &&
+            l.curriculumMode !== "LIVE" &&
+            l.type !== "live" &&
+            !l.id?.includes("_live")
         ).length;
         const metaParts: string[] = [];
         if (videoCount > 0) {
@@ -146,6 +158,9 @@ export default function LmsPlayerPage() {
         }
         if (assessCount > 0) {
           metaParts.push(`${assessCount} ${assessCount === 1 ? "Assessment" : "Assessments"}`);
+        }
+        if (liveCount > 0) {
+          metaParts.push(`${liveCount} Live ${liveCount === 1 ? "Workshop" : "Workshops"}`);
         }
         if (metaParts.length === 0) {
           metaParts.push("4 Lessons");
@@ -962,8 +977,16 @@ export default function LmsPlayerPage() {
             (i.category === "PRACTICE" && (i.questions?.length || 0) === 0)) &&
           i.type !== "live" &&
           i.category !== "LIVE" &&
+          !i.id?.includes("_live") &&
           i.type !== "video" &&
           i.category !== "LECTURE" &&
+          i.category !== "FOLDER" &&
+          !i.folderId
+      ) || [];
+    const liveLessons =
+      selectedModule?.items.filter(
+        (i: any) =>
+          (i.type === "live" || i.category === "LIVE" || i.id?.includes("_live")) &&
           i.category !== "FOLDER" &&
           !i.folderId
       ) || [];
@@ -1250,6 +1273,78 @@ export default function LmsPlayerPage() {
                       <div className="flex items-center gap-2.5 shrink-0">
                         <span className="hidden sm:inline-flex text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/60 shrink-0">
                           {badgeLabel}
+                        </span>
+                        {item.isLocked && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                            <Lock className="w-2.5 h-2.5" />
+                            <span>Locked{item.unlockAt ? ` · ${new Date(item.unlockAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}</span>
+                          </span>
+                        )}
+                        {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
+                        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 group-hover:translate-x-0.5 transition-all" />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Section 4: Live Workshops & Interactive Sessions */}
+          {liveLessons.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <VideoIcon className="w-3.5 h-3.5" />
+                </div>
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Live Workshops & Cohort Classes
+                </h2>
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                  {liveLessons.length}
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                {liveLessons.map((item: any) => {
+                  const isDone = completedLessonIds.includes(item.id);
+
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        setSelectedLesson(item);
+                        setCurrentView("player");
+                      }}
+                      className="group bg-white dark:bg-[#0B1120] hover:bg-slate-50/80 dark:hover:bg-[#0E1726] rounded-xl border border-slate-200/90 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-500/40 p-3.5 sm:p-4 transition-all duration-150 shadow-2xs hover:shadow-xs flex items-center justify-between cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0 pr-2">
+                        <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                          <VideoIcon className="w-4.5 h-4.5 stroke-[2]" />
+                        </div>
+
+                        <div className="min-w-0">
+                          <h3 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2">
+                            {cleanLessonTitle(item.title)}
+                          </h3>
+                          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
+                            <span>{item.duration || "120 Mins"}</span>
+                            <span className="text-slate-300 dark:text-slate-600">•</span>
+                            <span>{item.liveDate || "Weekend Interactive Workshop"}</span>
+                            {item.liveTime && (
+                              <>
+                                <span className="text-slate-300 dark:text-slate-600">•</span>
+                                <span>{item.liveTime}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60">
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                          <span>Live Session</span>
                         </span>
                         {item.isLocked && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
