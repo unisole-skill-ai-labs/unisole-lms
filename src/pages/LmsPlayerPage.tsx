@@ -438,6 +438,44 @@ export default function LmsPlayerPage() {
     return getCourseFlowStats(modules, completedLessonIds, submissionsData || []);
   }, [modules, completedLessonIds, submissionsData]);
 
+  // Overview page: inline expanded weeks, current week ref, and scroll-collapse header
+  const [expandedWeekIds, setExpandedWeekIds] = useState<Record<string, boolean>>({});
+  const currentWeekRef = useRef<HTMLDivElement | null>(null);
+  const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);
+  const hasAutoScrolled = useRef(false);
+
+  // Auto-expand current week by default on overview
+  useEffect(() => {
+    if (courseFlow.currentWeek?.id) {
+      setExpandedWeekIds((prev) => {
+        if (Object.keys(prev).length === 0) {
+          return { [courseFlow.currentWeek!.id]: true };
+        }
+        return prev;
+      });
+    }
+  }, [courseFlow.currentWeek?.id]);
+
+  // Mobile scroll listener to collapse header into a slim bar
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsHeaderScrolled(window.scrollY > 40);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Auto-scroll to current week on initial overview load
+  useEffect(() => {
+    if (currentView === "overview" && currentWeekRef.current && !hasAutoScrolled.current) {
+      hasAutoScrolled.current = true;
+      const timer = setTimeout(() => {
+        currentWeekRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [currentView, courseFlow.currentWeek?.id]);
+
   const markLessonComplete = async (lessonId: string) => {
     setLocalCompletedIds((prev) => (prev.includes(lessonId) ? prev : [...prev, lessonId]));
     try {
@@ -774,61 +812,124 @@ export default function LmsPlayerPage() {
   }
 
   // -------------------------------------------------------------
-  // VIEW 1: Course Overview (Unisole Brand Theme)
+  // VIEW 1: Course Overview (Connected Mobile-First Learning Flow)
   // -------------------------------------------------------------
   if (currentView === "overview") {
     return (
-      <div className="min-h-[calc(100vh-4rem)] bg-white dark:bg-[#070A11] flex flex-col justify-between">
+      <div className="min-h-[calc(100vh-4rem)] bg-white dark:bg-[#070A11] flex flex-col justify-between pb-24 sm:pb-16 overflow-x-hidden">
         <div className="animate-fade-in">
-          {/* Cosmic Midnight Navy Banner Header (Flowers of the Sky) */}
-          <div className="bg-gradient-to-br from-[#070A11] via-[#0B1120] to-[#0D1D38] border-b border-sky-500/20 text-white py-6 sm:py-7">
-            <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 space-y-4">
+          {/* Cosmic Midnight Navy Banner Header (A1) */}
+          <div
+            className={`bg-gradient-to-br from-[#070A11] via-[#0B1120] to-[#0D1D38] border-b border-sky-500/20 text-white sticky top-0 z-30 transition-all duration-200 backdrop-blur-md ${
+              isHeaderScrolled ? "py-2.5 shadow-md" : "py-5 sm:py-6"
+            }`}
+          >
+            <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 space-y-3">
               {/* Top Navigation Row */}
               <div className="flex items-center justify-between">
                 <button
                   onClick={() => navigate("/")}
                   aria-label="Back to Dashboard"
-                  className="p-1 rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                 >
                   <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
                 </button>
-                <div className="flex items-center gap-3">
+                {isHeaderScrolled && (
+                  <h2 className="text-xs sm:text-sm font-bold text-white truncate max-w-[200px] sm:max-w-md animate-fade-in">
+                    {courseTitle}
+                  </h2>
+                )}
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => navigate("/catalog")}
-                    aria-label="Search"
-                    className="p-1 text-white/90 hover:text-white transition-colors cursor-pointer"
+                    aria-label="Search curriculum"
+                    className="p-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                   >
-                    <Search className="w-5 h-5" />
+                    <Search className="w-4.5 h-4.5" />
                   </button>
                 </div>
               </div>
 
-              {/* Course Title & Syllabus Stats */}
-              <div className="pt-2">
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-                  {courseTitle}
-                </h1>
-                <p className="text-xs text-slate-300 mt-1 font-medium">
-                  {statsSummary}
-                </p>
-              </div>
+              {/* Title and Single Consistent Progress Stats Line (A1) */}
+              {!isHeaderScrolled && (
+                <div className="pt-0.5 space-y-1">
+                  <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-white line-clamp-1">
+                    {courseTitle}
+                  </h1>
+                  <p className="text-xs text-sky-200/90 font-medium">
+                    {statsSummary}
+                  </p>
+                </div>
+              )}
 
-              {/* Progress Bar with Dynamic Count */}
-              <div className="flex items-center gap-3 pt-1 pb-1">
-                <div className="flex-1 h-2 bg-slate-800/80 rounded-full overflow-hidden border border-slate-700/50">
+              {/* Progress Bar with Percentage placed directly next to the bar (A1) */}
+              <div className="flex items-center gap-2.5 pt-0.5 pb-0.5">
+                <span className="text-xs font-bold text-sky-400 font-mono shrink-0">
+                  {courseFlow.progressPercent}%
+                </span>
+                <div className="flex-1 h-2 bg-slate-800/90 rounded-full overflow-hidden border border-slate-700/50">
                   <div
                     className="h-full bg-gradient-to-r from-sky-400 to-blue-500 rounded-full transition-all duration-500 shadow-sm shadow-sky-400/50"
-                    style={{ width: `${progressPercent}%` }}
+                    style={{ width: `${courseFlow.progressPercent}%` }}
                   />
                 </div>
-                <span className="text-[11px] font-bold text-sky-300 shrink-0 font-mono">
-                  {completedCount} / {totalLessons}
+                <span className="text-[11px] font-semibold text-slate-300 shrink-0 font-mono">
+                  {courseFlow.completedActivities} of {courseFlow.totalActivities}
                 </span>
               </div>
             </div>
-          </div>          {/* Course Curriculum Modules List */}
+          </div>
+
+          {/* Upcoming Live Workshop Banner (A5) */}
+          {courseFlow.upcomingLiveSession && (
+            <div className="bg-sky-50 dark:bg-sky-950/40 border-b border-sky-200/80 dark:border-sky-800/60 text-slate-800 dark:text-slate-200">
+              <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-6 h-6 rounded-md bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                    <VideoIcon className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">
+                      Next live class:{" "}
+                    </span>
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
+                      {courseFlow.upcomingLiveSession.details.dateFormatted},{" "}
+                      {courseFlow.upcomingLiveSession.details.timeFormatted} (
+                      {courseFlow.upcomingLiveSession.details.userTimeZone})
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {courseFlow.upcomingLiveSession.details.isLiveNow ? (
+                    <a
+                      href={courseFlow.upcomingLiveSession.details.meetUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white flex items-center gap-1.5 shadow-xs animate-pulse"
+                    >
+                      <Radio className="w-3 h-3" />
+                      <span>Join Live</span>
+                    </a>
+                  ) : (
+                    <a
+                      href={courseFlow.upcomingLiveSession.details.calendarUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
+                    >
+                      <Calendar className="w-3 h-3" />
+                      <span>Add to calendar</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Course Curriculum Weeks List (A2 & A3) */}
           <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 py-6">
-            {modules.length === 0 ? (
+            {courseFlow.weekStats.length === 0 ? (
               <div className="bg-white dark:bg-[#0B1120] rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-12 text-center space-y-3">
                 <BookOpen className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto stroke-[1.5]" />
                 <div className="space-y-1">
@@ -842,50 +943,235 @@ export default function LmsPlayerPage() {
               </div>
             ) : (
               <div className="space-y-3.5">
-                {modules.map((mod) => {
-                  const modItems = mod.items || [];
-                  const modCompletedCount = modItems.filter((i) => completedLessonIds.includes(i.id)).length;
-                  const isModCompleted = modItems.length > 0 && modCompletedCount === modItems.length;
+                {courseFlow.weekStats.map((ws) => {
+                  const isCurrentWeek = ws.module.id === courseFlow.currentWeek?.id;
+                  const isExpanded = !!expandedWeekIds[ws.module.id];
 
                   return (
                     <div
-                      key={mod.id}
-                      onClick={() => {
-                        setSelectedModule(mod);
-                        setCurrentView("chapter");
-                      }}
-                      className="bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-4.5 shadow-2xs hover:border-sky-500/40 dark:hover:border-sky-500/40 hover:shadow-xs transition-all flex items-center justify-between cursor-pointer group"
+                      key={ws.module.id}
+                      ref={isCurrentWeek ? currentWeekRef : undefined}
+                      className={`rounded-2xl border transition-all duration-150 overflow-hidden shadow-2xs ${
+                        isCurrentWeek
+                          ? "border-sky-500 dark:border-sky-500 ring-2 ring-sky-500/20 bg-white dark:bg-[#0B1120]"
+                          : ws.isCompleted
+                          ? "border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-[#070D18]/70 opacity-90"
+                          : "border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] hover:border-slate-300 dark:hover:border-slate-700"
+                      }`}
                     >
-                      <div className="pr-3 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-sky-500 transition-colors">
-                            {mod.title}
-                          </h3>
-                          {mod.isLocked && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                              <Lock className="w-2.5 h-2.5" />
-                              <span>
-                                Locked
-                                {mod.unlockAt
-                                  ? ` · Unlocks ${new Date(mod.unlockAt).toLocaleString(undefined, {
-                                      month: "short",
-                                      day: "numeric",
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    })}`
-                                  : ""}
+                      {/* Week Card Header (tappable to expand inline) */}
+                      <div
+                        onClick={() => {
+                          setExpandedWeekIds((prev) => ({
+                            ...prev,
+                            [ws.module.id]: !prev[ws.module.id],
+                          }));
+                        }}
+                        className="p-4 sm:p-4.5 cursor-pointer flex items-center justify-between gap-3 group"
+                      >
+                        <div className="min-w-0 flex-1">
+                          {/* Title and Status Badge */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3
+                              className={`text-sm sm:text-base font-bold truncate transition-colors ${
+                                isCurrentWeek
+                                  ? "text-sky-600 dark:text-sky-400 font-extrabold"
+                                  : "text-slate-900 dark:text-slate-100 group-hover:text-sky-500"
+                              }`}
+                            >
+                              {ws.formattedTitle}
+                            </h3>
+
+                            {/* Status Per Week (A2) */}
+                            {ws.isCompleted ? (
+                              <CheckCircle2
+                                className="w-4 h-4 text-emerald-500 shrink-0"
+                                aria-label="Completed"
+                              />
+                            ) : ws.isLocked ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                <Lock className="w-2.5 h-2.5" />
+                                <span>
+                                  Locked
+                                  {ws.module.unlockAt
+                                    ? ` · Unlocks ${new Date(
+                                        ws.module.unlockAt
+                                      ).toLocaleDateString(undefined, {
+                                        month: "short",
+                                        day: "numeric",
+                                      })}`
+                                    : ""}
+                                </span>
                               </span>
+                            ) : ws.isInProgress ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                In progress
+                              </span>
+                            ) : isCurrentWeek ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                                Up next
+                              </span>
+                            ) : null}
+                          </div>
+
+                          {/* Mini Progress Bar and Done Count (A2) */}
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <div className="w-16 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-sky-500 rounded-full transition-all"
+                                style={{ width: `${ws.progressPercent}%` }}
+                              />
+                            </div>
+                            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                              {ws.completedActivities}/{ws.totalActivities} done
                             </span>
-                          )}
-                          {isModCompleted && (
-                            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                          </div>
+
+                          {/* Consistent Meta Line (A2: "1 video · 2 quizzes · 1 lab · 1 live") */}
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
+                            <span>{ws.metaSummary}</span>
+                            {ws.liveSession && (
+                              <>
+                                <span className="text-slate-300 dark:text-slate-600">
+                                  {" "}
+                                  •{" "}
+                                </span>
+                                <span className="text-indigo-600 dark:text-indigo-400 font-medium">
+                                  Live: {ws.liveSession.liveBadgeText}
+                                </span>
+                              </>
+                            )}
+                            {ws.estimatedTime && (
+                              <>
+                                <span className="text-slate-300 dark:text-slate-600">
+                                  {" "}
+                                  •{" "}
+                                </span>
+                                <span>{ws.estimatedTime}</span>
+                              </>
+                            )}
+                          </p>
+                        </div>
+
+                        {/* Expand / Collapse Indicator */}
+                        <div className="flex items-center gap-1.5 shrink-0 text-slate-400 group-hover:text-sky-500 transition-colors">
+                          <span className="text-xs font-semibold hidden sm:inline">
+                            {isExpanded ? "Collapse" : "Details"}
+                          </span>
+                          {isExpanded ? (
+                            <ChevronUp className="w-4 h-4 transition-transform" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 transition-transform" />
                           )}
                         </div>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 truncate">
-                          {mod.meta} {modCompletedCount > 0 && `· ${modCompletedCount}/${modItems.length} Done`}
-                        </p>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-zinc-400 group-hover:text-sky-500 shrink-0 transition-transform group-hover:translate-x-0.5" />
+
+                      {/* Inline Expanded Items & Week Navigation (A3) */}
+                      {isExpanded && (
+                        <div className="border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 p-3 sm:p-4 space-y-2">
+                          <div className="space-y-1.5">
+                            {ws.flowLessons.map((item, idx) => {
+                              const itemStatus = getItemStatus(
+                                item,
+                                completedLessonIds,
+                                submissionsData || []
+                              );
+                              const actType = getActivityType(item);
+                              const isItemDone = itemStatus.isCompleted;
+                              const isItemInProgress = itemStatus.isInProgress;
+
+                              return (
+                                <div
+                                  key={item.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (item.isLocked || ws.isLocked) return;
+                                    setSelectedModule(ws.module);
+                                    setSelectedLesson(item);
+                                    setCurrentView("player");
+                                  }}
+                                  className={`group/item flex items-center justify-between gap-3 p-2.5 rounded-xl border text-xs transition-all ${
+                                    item.isLocked || ws.isLocked
+                                      ? "opacity-60 bg-slate-100 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 cursor-not-allowed"
+                                      : "bg-white dark:bg-[#0B1120] border-slate-200/80 dark:border-slate-800 hover:border-sky-400 dark:hover:border-sky-500 cursor-pointer shadow-2xs active:scale-[0.99]"
+                                  }`}
+                                >
+                                  {/* Left: Step, Status, Icon, Title */}
+                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                    {/* Status Icon */}
+                                    <div className="shrink-0">
+                                      {isItemDone ? (
+                                        <CheckCircle2
+                                          className="w-4 h-4 text-emerald-500"
+                                          aria-label="Completed"
+                                        />
+                                      ) : isItemInProgress ? (
+                                        <Clock
+                                          className="w-4 h-4 text-amber-500"
+                                          aria-label="In Progress"
+                                        />
+                                      ) : (
+                                        <Circle
+                                          className="w-4 h-4 text-slate-300 dark:text-slate-600"
+                                          aria-label="Not Started"
+                                        />
+                                      )}
+                                    </div>
+
+                                    {/* Type Icon */}
+                                    <div className="shrink-0 text-slate-500 group-hover/item:text-sky-500">
+                                      {actType === "video" ? (
+                                        <PlayCircle className="w-3.5 h-3.5 text-sky-500" />
+                                      ) : actType === "quiz" ? (
+                                        <FileQuestion className="w-3.5 h-3.5 text-amber-500" />
+                                      ) : actType === "lab" ? (
+                                        <Code2 className="w-3.5 h-3.5 text-emerald-500" />
+                                      ) : actType === "live" ? (
+                                        <VideoIcon className="w-3.5 h-3.5 text-indigo-500" />
+                                      ) : (
+                                        <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+                                      )}
+                                    </div>
+
+                                    {/* Title */}
+                                    <span
+                                      className={`truncate font-medium ${
+                                        isItemDone
+                                          ? "text-slate-600 dark:text-slate-400 line-through decoration-slate-300 dark:decoration-slate-600"
+                                          : "text-slate-800 dark:text-slate-200 group-hover/item:text-sky-600 dark:group-hover/item:text-sky-400 font-semibold"
+                                      }`}
+                                    >
+                                      {cleanLessonTitle(item.title)}
+                                    </span>
+                                  </div>
+
+                                  {/* Right: Meta & Lock status */}
+                                  <div className="flex items-center gap-1.5 shrink-0 text-[11px] text-slate-400">
+                                    <span>
+                                      {getItemMeta(item, itemStatus)}
+                                    </span>
+                                    <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover/item:text-sky-500 group-hover/item:translate-x-0.5 transition-transform" />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Open Week Link Button (A3) */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedModule(ws.module);
+                              setCurrentView("chapter");
+                            }}
+                            className="w-full py-2 px-3 rounded-xl bg-sky-50 dark:bg-sky-950/40 hover:bg-sky-100 dark:hover:bg-sky-900/60 text-sky-700 dark:text-sky-300 font-bold text-xs flex items-center justify-center gap-1.5 border border-sky-200/60 dark:border-sky-800/60 transition-colors cursor-pointer mt-1"
+                          >
+                            <span>Open {ws.formattedTitle}</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -894,30 +1180,48 @@ export default function LmsPlayerPage() {
           </div>
         </div>
 
-        {/* Bottom Floating Sticky Bar with Responsive Container */}
-        <div className="sticky bottom-0 z-20 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 py-3">
-          <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 flex items-center justify-between">
-            <button
-              onClick={() => {
-                setSelectedModule(modules[0]);
-                setCurrentView("chapter");
-              }}
-              className="flex items-center gap-2 text-xs font-bold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 transition-colors cursor-pointer"
-            >
-              <BookOpen className="w-4 h-4 stroke-[2]" />
-              <span>Course Outline</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setSelectedModule(modules[0]);
-                setSelectedLesson(modules[0]?.items[0]);
-                setCurrentView("player");
-              }}
-              className="bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs px-6 py-2.5 rounded-xl shadow-md shadow-sky-500/20 transition-all cursor-pointer"
-            >
-              {progressPercent > 0 ? "Continue Course" : "Start Course"}
-            </button>
+        {/* Sticky Bottom Floating Bar (A4) */}
+        <div className="fixed sm:sticky bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 py-3 px-4 shadow-lg">
+          <div className="max-w-3xl lg:max-w-4xl mx-auto flex items-center justify-between gap-3">
+            {/* Direct Deep-Linking Sticky Action */}
+            {courseFlow.isCourseCompleted ? (
+              <div className="w-full flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Course Completed!</span>
+                </div>
+                {pathway?.certificateUrl && (
+                  <a
+                    href={pathway.certificateUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
+                  >
+                    <Award className="w-4 h-4" />
+                    <span>View Certificate</span>
+                  </a>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  if (courseFlow.nextIncompleteItem && courseFlow.nextIncompleteWeek) {
+                    setSelectedModule(courseFlow.nextIncompleteWeek);
+                    setSelectedLesson(courseFlow.nextIncompleteItem);
+                    setCurrentView("player");
+                  } else if (modules[0]?.items?.[0]) {
+                    setSelectedModule(modules[0]);
+                    setSelectedLesson(modules[0].items[0]);
+                    setCurrentView("player");
+                  }
+                }}
+                className="w-full min-h-[44px] bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 active:from-sky-600 active:to-blue-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow-md shadow-sky-500/20 transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>{courseFlow.nextIncompleteLabel}</span>
+                <ChevronRight className="w-4 h-4 stroke-[2.2]" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -966,180 +1270,15 @@ export default function LmsPlayerPage() {
         ? Math.round((completedModuleLessons / totalModuleLessons) * 100)
         : 0;
 
-    // Helper: Determine per-item completion & submission status
-    const getItemStatus = (item: any) => {
-      const isCompleted = completedLessonIds.includes(item.id);
-      const sub = Array.isArray(submissionsData)
-        ? submissionsData.find((s: any) => s.lessonId === item.id || s.assignmentId === item.id)
-        : null;
+    const checkItemStatus = (item: any) =>
+      getItemStatus(item, completedLessonIds, submissionsData || []);
 
-      let status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" = "NOT_STARTED";
-      let scoreText: string | null = null;
-      let submissionStateText: string | null = null;
-
-      if (isCompleted) {
-        status = "COMPLETED";
-      }
-
-      if (item.type === "quiz") {
-        if (sub && sub.score !== null && sub.score !== undefined) {
-          scoreText = `${sub.score}/${sub.maxScore || (item.questions?.length || 3)}`;
-          status = "COMPLETED";
-        }
-      }
-
-      if (
-        item.type === "assignment" ||
-        item.type === "coding_test" ||
-        item.type === "subjective_test" ||
-        item.type === "video_test"
-      ) {
-        if (sub) {
-          if (sub.status === "GRADED") {
-            submissionStateText = `Graded (${sub.score}/${sub.maxScore || 100})`;
-            status = "COMPLETED";
-          } else if (sub.status === "SUBMITTED" || sub.status === "UNDER_REVIEW") {
-            submissionStateText = "Submitted";
-            if (!isCompleted) status = "IN_PROGRESS";
-          } else if (sub.status === "CHANGES_REQUESTED") {
-            submissionStateText = "Changes requested";
-            status = "IN_PROGRESS";
-          }
-        } else {
-          submissionStateText = "Not submitted";
-        }
-      }
-
-      const isOverdue =
-        !isCompleted && !!item.lockAt && new Date(item.lockAt).getTime() < Date.now();
-
-      return {
-        status,
-        isCompleted: status === "COMPLETED",
-        isInProgress: status === "IN_PROGRESS",
-        isNotStarted: status === "NOT_STARTED",
-        scoreText,
-        submissionStateText,
-        isOverdue,
-      };
-    };
-
-    // Helper: First incomplete item in recommended flow
-    const nextIncompleteItem = flowLessons.find((item) => {
-      const s = getItemStatus(item);
-      return !s.isCompleted && !item.isLocked;
-    }) || null;
-
-    // Helper: Clean concise meta line
-    const getItemMeta = (item: any, statusInfo: any) => {
-      const rawDur = item.duration || "15 min";
-      const duration = rawDur
-        .replace(/\s*Minutes?/i, " min")
-        .replace(/\s*Mins?/i, " min");
-      const parts: string[] = [duration];
-
-      if (item.type === "quiz") {
-        const qCount = item.questions?.length || 3;
-        parts.push(`${qCount} ${qCount === 1 ? "question" : "questions"}`);
-        if (statusInfo.scoreText) {
-          parts.push(`Score: ${statusInfo.scoreText}`);
-        }
-      } else if (
-        item.type === "assignment" ||
-        item.type === "coding_test" ||
-        item.type === "subjective_test" ||
-        item.type === "video_test"
-      ) {
-        if (statusInfo.submissionStateText) {
-          parts.push(statusInfo.submissionStateText);
-        } else {
-          parts.push("Hands-on Lab");
-        }
-      } else if (item.type === "live" || item.category === "LIVE") {
-        parts.push("Live Workshop");
-      }
-
-      return parts.join(" · ");
-    };
-
-    // Helper: Live session schedule & timezone calculations
-    const getLiveSessionDetails = (item: any) => {
-      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-      const tzShort =
-        new Date().toLocaleTimeString(undefined, { timeZoneName: "short" }).split(" ")[2] || "Local";
-
-      let relativeText = item.liveDate
-        ? `${item.liveDate}${item.liveTime ? ` at ${item.liveTime}` : ""}`
-        : "Weekend Session";
-      let isLiveNow = false;
-      let isConcluded = false;
-
-      if (item.unlockAt) {
-        const unlockDate = new Date(item.unlockAt);
-        const now = new Date();
-        const diffMs = unlockDate.getTime() - now.getTime();
-        const diffHours = diffMs / (1000 * 60 * 60);
-
-        if (diffMs > 0) {
-          const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-          if (diffDays <= 1 && unlockDate.getDate() === now.getDate()) {
-            relativeText = `Today at ${unlockDate.toLocaleTimeString(undefined, {
-              hour: "numeric",
-              minute: "2-digit",
-            })} ${tzShort}`;
-          } else if (diffDays <= 2) {
-            relativeText = `Tomorrow at ${unlockDate.toLocaleTimeString(undefined, {
-              hour: "numeric",
-              minute: "2-digit",
-            })} ${tzShort}`;
-          } else {
-            relativeText = `Starts in ${diffDays} days (${unlockDate.toLocaleDateString(undefined, {
-              month: "short",
-              day: "numeric",
-            })})`;
-          }
-        } else {
-          if (Math.abs(diffHours) < 3) {
-            isLiveNow = true;
-            relativeText = "Live Now";
-          } else {
-            isConcluded = true;
-            relativeText = `Concluded on ${unlockDate.toLocaleDateString(undefined, {
-              month: "short",
-              day: "numeric",
-            })}`;
-          }
-        }
-      }
-
-      // Google Calendar 1-Click Link
-      const calStart = item.unlockAt
-        ? new Date(item.unlockAt).toISOString().replace(/-|:|\.\d\d\d/g, "")
-        : "";
-      const calEnd = item.unlockAt
-        ? new Date(new Date(item.unlockAt).getTime() + 2 * 60 * 60 * 1000)
-            .toISOString()
-            .replace(/-|:|\.\d\d\d/g, "")
-        : "";
-      const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
-        `${item.title} (Unisole Live Workshop)`
-      )}${calStart ? `&dates=${calStart}/${calEnd}` : ""}&details=${encodeURIComponent(
-        `Interactive Live Architectural Masterclass.\nMeeting URL: ${
-          item.liveMeetingUrl || "https://meet.google.com/new"
-        }`
-      )}`;
-
-      return {
-        relativeText,
-        isLiveNow,
-        isConcluded,
-        userTimeZone: `${userTimeZone} (${tzShort})`,
-        calendarUrl,
-        meetUrl: item.liveMeetingUrl || "https://meet.google.com/new",
-        hasRecording: !!item.videoUrl,
-        recordingUrl: item.videoUrl,
-      };
-    };
+    // First incomplete item in recommended flow
+    const nextIncompleteItem =
+      flowLessons.find((item) => {
+        const s = checkItemStatus(item);
+        return !s.isCompleted && !item.isLocked;
+      }) || null;
 
     return (
       <div className="min-h-[calc(100vh-4rem)] bg-[#F8FAFC] dark:bg-[#070A11] text-slate-900 dark:text-slate-100 animate-fade-in pb-28 sm:pb-12 overflow-x-hidden">
@@ -1166,7 +1305,7 @@ export default function LmsPlayerPage() {
                     </span>
                   </div>
                   <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
-                    {selectedModule?.title || "Module Curriculum"}
+                    {formatWeekTitle(selectedModule?.title || "Curriculum Module", currentModuleIndex)}
                   </h1>
                 </div>
               </div>
@@ -1300,7 +1439,7 @@ export default function LmsPlayerPage() {
             ) : (
               <div className="space-y-2.5">
                 {flowLessons.map((item: any, idx: number) => {
-                  const itemState = getItemStatus(item);
+                  const itemState = checkItemStatus(item);
                   const isDone = itemState.isCompleted;
                   const isInProgress = itemState.isInProgress;
                   const isNext = nextIncompleteItem?.id === item.id;
@@ -1635,7 +1774,7 @@ export default function LmsPlayerPage() {
               className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all"
             >
               <span>
-                {getItemStatus(nextIncompleteItem).isInProgress
+                {checkItemStatus(nextIncompleteItem).isInProgress
                   ? "Continue"
                   : "Start"}{" "}
                 Next: {cleanLessonTitle(nextIncompleteItem.title)}
