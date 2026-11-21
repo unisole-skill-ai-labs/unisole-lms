@@ -274,7 +274,18 @@ export const apiSlice = createApi({
 
     // ─── Admin & Mentor CMS Studio Endpoints ─────────────────────────────────────
     getAdminDashboardStats: builder.query({
-      query: (period = "Monthly") => `/api/admin/dashboard/stats?period=${period}`,
+      query: (arg = "Monthly") => {
+        if (typeof arg === "string") {
+          return `/api/admin/dashboard/stats?period=${arg}`;
+        }
+        const { period = "Monthly", courseId } = (arg as any) || {};
+        const params: any = { period };
+        if (courseId && courseId !== "ALL") params.courseId = courseId;
+        return {
+          url: "/api/admin/dashboard/stats",
+          params,
+        };
+      },
       providesTags: ["AdminCourses", "AdminLessons", "AdminStudents", "Submissions", "Enrollment"],
     }),
     getAdminCourses: builder.query({
