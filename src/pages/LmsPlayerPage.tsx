@@ -67,7 +67,6 @@ import {
 import MilestonesModal from "../components/lms/MilestonesModal";
 import CodingTestRunner from "../components/lms/CodingTestRunner";
 import SubjectiveVideoTestRunner from "../components/lms/SubjectiveVideoTestRunner";
-import Spinner from "../components/ui/Spinner";
 import Button from "../components/ui/Button";
 import {
   getCurriculum,
@@ -801,12 +800,58 @@ export default function LmsPlayerPage() {
 
 
   // -------------------------------------------------------------
-  // Loading State
+  // Error & Loading States (Skeleton Loaders as required by Part C)
   // -------------------------------------------------------------
-  if (isPathwayLoading && !pathwayData) {
+  if (pathwayError && !pathwayData) {
     return (
       <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-8 bg-white dark:bg-[#070A11]">
-        <Spinner label="Loading curriculum..." size="lg" />
+        <div className="text-center space-y-3 max-w-md">
+          <AlertCircle className="w-10 h-10 text-rose-500 mx-auto" />
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
+            Unable to load course curriculum
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Please check your network connection or try reloading the curriculum.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow-sm cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isPathwayLoading && !pathwayData) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] bg-white dark:bg-[#070A11] p-4 sm:p-6 space-y-6 animate-pulse max-w-3xl lg:max-w-4xl mx-auto">
+        {/* Header Skeleton */}
+        <div className="h-32 bg-slate-100 dark:bg-slate-900 rounded-2xl p-5 space-y-4">
+          <div className="flex justify-between items-center">
+            <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800" />
+            <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800" />
+          </div>
+          <div className="w-3/4 h-6 bg-slate-200 dark:bg-slate-800 rounded" />
+          <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full" />
+        </div>
+        {/* Week Cards Skeleton */}
+        <div className="space-y-3.5">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="h-24 bg-slate-100 dark:bg-slate-900 rounded-2xl p-4 flex items-center justify-between"
+            >
+              <div className="space-y-2 flex-1">
+                <div className="w-1/2 h-4 bg-slate-200 dark:bg-slate-800 rounded" />
+                <div className="w-1/3 h-3 bg-slate-200 dark:bg-slate-800 rounded" />
+              </div>
+              <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-800" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -1322,7 +1367,7 @@ export default function LmsPlayerPage() {
                   }}
                   disabled={!prevModule}
                   aria-label="Previous week"
-                  title={prevModule ? `Previous: ${prevModule.title}` : "First week"}
+                  title={prevModule ? `Previous: ${formatWeekTitle(prevModule.title, currentModuleIndex - 1)}` : "First week"}
                   className={`p-1.5 sm:px-2.5 sm:py-1 rounded-xl border text-xs flex items-center gap-1 transition-all ${
                     prevModule
                       ? "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 cursor-pointer"
@@ -1343,7 +1388,7 @@ export default function LmsPlayerPage() {
                   }}
                   disabled={!nextModule}
                   aria-label="Next week"
-                  title={nextModule ? `Next: ${nextModule.title}` : "Last week"}
+                  title={nextModule ? `Next: ${formatWeekTitle(nextModule.title, currentModuleIndex + 1)}` : "Last week"}
                   className={`p-1.5 sm:px-2.5 sm:py-1 rounded-xl border text-xs flex items-center gap-1 transition-all ${
                     nextModule
                       ? "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 cursor-pointer"
@@ -1445,34 +1490,15 @@ export default function LmsPlayerPage() {
                   const isNext = nextIncompleteItem?.id === item.id;
                   const stepNum = idx + 1;
 
-                  const isVideo =
-                    item.category === "VIDEO" ||
-                    item.type === "video" ||
-                    item.category === "LECTURE" ||
-                    item.type === "lecture";
-                  const isQuiz =
-                    item.category === "QUIZ" ||
-                    item.category === "ASSESSMENT" ||
-                    item.type === "quiz";
-                  const isAssignment =
-                    item.category === "ASSIGNMENT" ||
-                    item.type === "assignment" ||
-                    item.type === "project" ||
-                    item.type === "coding_test" ||
-                    item.type === "video_test" ||
-                    item.type === "subjective_test";
-                  const isLive =
-                    item.category === "LIVE" ||
-                    item.type === "live" ||
-                    item.category === "WORKSHOP" ||
-                    item.type === "workshop";
+                  const actType = getActivityType(item);
+                  const isVideo = actType === "video";
+                  const isQuiz = actType === "quiz";
+                  const isAssignment = actType === "lab";
+                  const isLive = actType === "live";
 
                   const liveInfo = isLive ? getLiveSessionDetails(item) : null;
                   const metaText = getItemMeta(item, itemState);
-                  const isOverdue =
-                    item.lockAt &&
-                    new Date(item.lockAt) < new Date() &&
-                    !isDone;
+                  const isOverdue = itemState.isOverdue;
 
                   return (
                     <div
@@ -1790,7 +1816,7 @@ export default function LmsPlayerPage() {
               }}
               className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all"
             >
-              <span>Next Week: {nextModule.title}</span>
+              <span>Next Week: {formatWeekTitle(nextModule.title, currentModuleIndex + 1)}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           ) : (
