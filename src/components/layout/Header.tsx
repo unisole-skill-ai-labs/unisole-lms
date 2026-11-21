@@ -21,10 +21,11 @@ import {
   Newspaper,
   Settings,
   CheckCircle2,
+  Bell,
 } from "lucide-react";
 import { logout } from "../../store/authSlice";
 import { useTheme } from "../../context/ThemeContext";
-import { useGetPublicPathwaysQuery } from "../../store/apiSlice";
+import { useGetPublicPathwaysQuery, useGetStudentActivitiesQuery } from "../../store/apiSlice";
 import Button from "../ui/Button";
 import LearnerDrawer from "./LearnerDrawer";
 
@@ -43,6 +44,13 @@ export default function Header() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { data: pathways = [] } = useGetPublicPathwaysQuery(undefined);
+  const { data: activitiesData } = useGetStudentActivitiesQuery(undefined, {
+    skip: !isAuthenticated,
+  });
+
+  const unreadCount =
+    (activitiesData?.missed?.length || 0) +
+    (activitiesData?.upcoming?.filter((u: any) => u.isToday || u.isUrgent)?.length || 0);
 
   const navLinks = [
     { name: "Dashboard", path: "/", icon: LayoutDashboard },
@@ -159,35 +167,38 @@ export default function Header() {
               </nav>
             </div>
 
-            {/* Right Controls: Search, Theme Toggle, Auth */}
-            <div className="flex items-center gap-1.5 sm:gap-2.5">
-              {/* Mobile Search Icon Button */}
+            {/* Right Controls: Search, Notifications Bell, Theme Toggle, Auth */}
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              {/* Search Icon Button (opens search overlay) */}
               <button
                 onClick={() => setSearchOpen(true)}
                 aria-label="Search pathways"
-                className="sm:hidden p-2 rounded-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                className="p-2 rounded-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                title="Search pathways (Cmd + K)"
               >
                 <Search className="w-4 h-4" />
               </button>
 
-              {/* Quick Search Shortcut Button (Desktop) */}
-              <button
-                onClick={() => setSearchOpen(true)}
-                className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 text-xs text-zinc-500 dark:text-zinc-400 border border-zinc-200/60 dark:border-zinc-800 transition-colors"
-                title="Search pathways (Cmd + K)"
-              >
-                <Search className="w-3.5 h-3.5" />
-                <span className="font-medium">Search...</span>
-                <kbd className="text-[10px] font-mono bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded px-1.5 py-0.5 text-zinc-500 dark:text-zinc-400 shadow-xs">
-                  ⌘K
-                </kbd>
-              </button>
+              {/* Notifications Bell Icon */}
+              {isAuthenticated && (
+                <Link
+                  to="/notifications"
+                  aria-label="Notifications"
+                  className="relative p-2 rounded-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  title="Notifications"
+                >
+                  <Bell className="w-4 h-4" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-zinc-950" />
+                  )}
+                </Link>
+              )}
 
               {/* Theme Toggle Button */}
               <button
                 onClick={toggleTheme}
                 aria-label="Toggle Theme"
-                className="p-2 rounded-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                className="p-2 rounded-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
               >
                 {theme === "dark" ? (
                   <Sun className="w-4 h-4 text-amber-400" />

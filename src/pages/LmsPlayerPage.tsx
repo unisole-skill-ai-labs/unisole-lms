@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
@@ -354,7 +354,11 @@ export default function LmsPlayerPage() {
   const [submitAssessmentTaskApi] = useSubmitAssessmentTaskMutation();
 
   // View state: "overview" (SS1) | "chapter" (SS2) | "player" (SS3)
-  const [currentView, setCurrentView] = useState<"overview" | "chapter" | "player">("overview");
+  const [searchParams] = useSearchParams();
+  const queryLessonId = searchParams.get("lesson");
+  const [currentView, setCurrentView] = useState<"overview" | "chapter" | "player">(
+    () => (queryLessonId ? "player" : "overview")
+  );
   const [selectedModule, setSelectedModule] = useState<ModuleSection>(modules[0]);
   const [selectedLesson, setSelectedLesson] = useState<LessonItem>(
     modules[0]?.items[0]
@@ -363,12 +367,23 @@ export default function LmsPlayerPage() {
   // Sync selected module/lesson if modules change
   useEffect(() => {
     if (modules.length > 0) {
+      if (queryLessonId) {
+        for (const mod of modules) {
+          const found = mod.items?.find((item) => item.id === queryLessonId);
+          if (found) {
+            setSelectedModule(mod);
+            setSelectedLesson(found);
+            setCurrentView("player");
+            return;
+          }
+        }
+      }
       if (!selectedModule || !modules.some((m) => m.id === selectedModule.id)) {
         setSelectedModule(modules[0]);
         setSelectedLesson(modules[0].items[0]);
       }
     }
-  }, [modules, selectedModule]);
+  }, [modules, selectedModule, queryLessonId]);
 
   // Track student progress via backend API with local cache
   const { data: progressData } = useGetStudentProgressQuery(pathwayId);

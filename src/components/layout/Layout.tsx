@@ -10,12 +10,12 @@ export default function Layout() {
     window.scrollTo(0, 0);
   }, [pathname]);
 
-  const isPlayer = pathname.startsWith("/learn/");
+  const isPlayer = pathname.startsWith("/learn/") || pathname.startsWith("/player/");
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground antialiased transition-colors duration-200">
       <Header />
-      <main className={`flex-1 ${isPlayer ? "" : "pb-16 md:pb-0"}`}>
+      <main className={`flex-1 ${isPlayer ? "" : "pb-20 md:pb-0"}`}>
         <Outlet />
       </main>
       {!isPlayer && <MobileNav />}

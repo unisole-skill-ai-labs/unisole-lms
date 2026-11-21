@@ -1,193 +1,558 @@
 import React, { useState, useMemo } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
+  Play,
+  ArrowRight,
+  Calendar as CalendarIcon,
+  Clock,
   FileQuestion,
   FileText,
   Video,
   CheckCircle2,
-  ArrowRight,
-  BookOpen,
-  Layers,
-  Check,
-  Play,
-  Sparkles,
   ChevronRight,
-  AlertCircle,
-  Clock,
-  Calendar,
   ExternalLink,
+  ChevronDown,
+  Sparkles,
+  RefreshCw,
+  BookOpen,
 } from "lucide-react";
-import { useGetMyPathwaysQuery, useGetStudentActivitiesQuery } from "../store/apiSlice";
-import MacFolderIcon, { MacFolderColor } from "../components/ui/MacFolderIcon";
-import MacSegmentedControl from "../components/ui/MacSegmentedControl";
+import {
+  useGetMyPathwaysQuery,
+  useGetPathwayContentQuery,
+  useGetStudentProgressQuery,
+  useGetStudentActivitiesQuery,
+  useGetCalendarEventsQuery,
+} from "../store/apiSlice";
 import { cleanLessonTitle } from "../utils/formatContent";
-
-// Helper to determine macOS folder color based on course title / topic
-const getFolderColor = (title: string = ""): MacFolderColor => {
-  const t = title.toLowerCase();
-  if (t.includes("analytic") || t.includes("data") || t.includes("excel")) return "amber";
-  if (t.includes("ai") || t.includes("machine learning") || t.includes("python")) return "blue";
-  if (t.includes("web") || t.includes("full stack") || t.includes("react")) return "emerald";
-  if (t.includes("science") || t.includes("math")) return "purple";
-  return "blue";
-};
 
 export default function DashboardPage() {
   const { isAuthenticated, user } = useSelector((state: any) => state.auth);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
-  // Default to "completed" tab as shown in the reference screenshot
-  const [activeTab, setActiveTab] = useState<"active" | "completed">(() => {
-    const tab = searchParams.get("tab");
-    return tab === "active" ? "active" : "completed";
-  });
-
-  const { data: myPathways = [], isLoading: isPathwaysLoading } = useGetMyPathwaysQuery(undefined, {
-    skip: !isAuthenticated,
-  });
-
-  const { data: activitiesData, isLoading: isActivitiesLoading } = useGetStudentActivitiesQuery(undefined, {
-    skip: !isAuthenticated,
-  });
+  // 1. Enrolled Programs
+  const {
+    data: myPathways = [],
+    isLoading: isPathwaysLoading,
+    isError: isPathwaysError,
+    refetch: refetchPathways,
+  } = useGetMyPathwaysQuery(undefined, { skip: !isAuthenticated });
 
   const enrolledCourses = useMemo(() => {
-    const list = myPathways
+    return myPathways
       .map((item: any) => item.pathway || item)
       .filter((p: any) => p && (p.title || p.name));
+  }, [myPathways]);
 
-    if (list.length === 0) {
-      if (isPathwaysLoading) return [];
-      return [
-        {
-          id: "cs-agentic",
-          slug: "cs-agentic",
-          title: "AI Agent Engineering",
-          shortDescription: "12-Week AI Agent Engineering Certificate Program (Weeks 1 - 12)",
-        },
-      ];
+  // Selected active program (defaults to first enrolled program or "cs-agentic")
+  const [selectedProgramId, setSelectedProgramId] = useState<string>("");
+  const [programDropdownOpen, setProgramDropdownOpen] = useState(false);
+
+  const activeProgram = useMemo(() => {
+    if (selectedProgramId) {
+      const match = enrolledCourses.find((c: any) => (c.id || c.slug) === selectedProgramId);
+      if (match) return match;
     }
+    return enrolledCourses[0] || {
+      id: "cs-agentic",
+      slug: "cs-agentic",
+      title: "AI Agent Engineering",
+    };
+  }, [enrolledCourses, selectedProgramId]);
 
-    const hasAgentCourse = list.some(
-      (c: any) =>
-        c.id === "course1" ||
-        c.slug === "cs-agentic" ||
-        (c.title && c.title.toLowerCase().includes("agent"))
-    );
-    if (!hasAgentCourse) {
-      return [
-        {
-          id: "cs-agentic",
-          slug: "cs-agentic",
-          title: "AI Agent Engineering",
-          shortDescription: "12-Week AI Agent Engineering Certificate Program (Weeks 1 - 12)",
-        },
-        ...list,
-      ];
-    }
+  const currentProgramId = activeProgram.id || activeProgram.slug || "cs-agentic";
+  const programTitle = activeProgram.title || activeProgram.name || "AI Agent Engineering";
 
+  // 2. Pathway Curriculum & Lessons
+  const {
+    data: pathwayContent,
+    isLoading: isContentLoading,
+    isError: isContentError,
+    refetch: refetchContent,
+  } = useGetPathwayContentQuery(currentProgramId, { skip: !currentProgramId });
+
+  // 3. Student Progress
+  const {
+    data: progressData,
+    isLoading: isProgressLoading,
+    refetch: refetchProgress,
+  } = useGetStudentProgressQuery(currentProgramId, { skip: !currentProgramId });
+
+  // 4. Student Activities (missed, upcoming, completed)
+  const {
+    data: activitiesData,
+    isLoading: isActivitiesLoading,
+    refetch: refetchActivities,
+  } = useGetStudentActivitiesQuery(undefined, { skip: !isAuthenticated });
+
+  // 5. Calendar Events
+  const { data: calendarEvents = [] } = useGetCalendarEventsQuery(undefined, {
+    skip: !isAuthenticated,
+  });
+
+  // Extract all modules & ordered lessons
+  const modules = useMemo(() => {
+    return pathwayContent?.courses?.[0]?.modules || [];
+  }, [pathwayContent]);
+
+  const allLessons = useMemo(() => {
+    const list: Array<{
+      id: string;
+      title: string;
+      moduleId: string;
+      moduleTitle: string;
+      moduleIndex: number;
+      lessonIndex: number;
+    }> = [];
+
+    modules.forEach((mod: any, mIdx: number) => {
+      (mod.lessons || []).forEach((les: any, lIdx: number) => {
+        list.push({
+          id: les.id,
+          title: cleanLessonTitle(les.title),
+          moduleId: mod.id,
+          moduleTitle: mod.title,
+          moduleIndex: mIdx + 1,
+          lessonIndex: lIdx + 1,
+        });
+      });
+    });
     return list;
-  }, [myPathways, isPathwaysLoading]);
+  }, [modules]);
 
+  const completedLessonIds = useMemo(() => {
+    return new Set<string>(progressData?.completedLessonIds || []);
+  }, [progressData]);
 
+  // Determine current lesson to resume or start
+  const continueState = useMemo(() => {
+    if (allLessons.length === 0) {
+      return {
+        moduleTitle: "Week 1",
+        lessonTitle: "Introduction to AI Agents",
+        lessonId: null,
+        isStarted: false,
+        isFinished: false,
+        moduleIndex: 1,
+        totalModules: 12,
+        percent: 0,
+      };
+    }
 
-  // Dynamic completed and scheduled activities from backend
-  const enrolledCourseTitle = activitiesData?.courseName || enrolledCourses[0]?.title || "AI Agent Engineering: From Fundamentals to Production";
-  const primaryPathwayId = activitiesData?.pathwayId || enrolledCourses[0]?.id || "cs-agentic";
+    const totalModules = modules.length || 12;
+    const completedCount = completedLessonIds.size;
+    const percent = Math.min(100, Math.round((completedCount / allLessons.length) * 100));
 
-  const missedList = useMemo(() => {
-    return activitiesData?.missed || [];
+    // Has user completed any lesson?
+    const isStarted = completedCount > 0 || !!progressData?.lastLessonId;
+
+    if (completedCount >= allLessons.length) {
+      const last = allLessons[allLessons.length - 1];
+      return {
+        moduleTitle: last.moduleTitle || `Week ${last.moduleIndex}`,
+        lessonTitle: last.title,
+        lessonId: last.id,
+        isStarted: true,
+        isFinished: true,
+        moduleIndex: last.moduleIndex,
+        totalModules,
+        percent: 100,
+      };
+    }
+
+    // Check if backend returned lastLessonId
+    if (progressData?.lastLessonId) {
+      const match = allLessons.find((l) => l.id === progressData.lastLessonId);
+      if (match) {
+        return {
+          moduleTitle: match.moduleTitle || `Week ${match.moduleIndex}`,
+          lessonTitle: match.title,
+          lessonId: match.id,
+          isStarted,
+          isFinished: false,
+          moduleIndex: match.moduleIndex,
+          totalModules,
+          percent,
+        };
+      }
+    }
+
+    // Next incomplete lesson
+    const nextIncomplete = allLessons.find((l) => !completedLessonIds.has(l.id)) || allLessons[0];
+    return {
+      moduleTitle: nextIncomplete.moduleTitle || `Week ${nextIncomplete.moduleIndex}`,
+      lessonTitle: nextIncomplete.title,
+      lessonId: nextIncomplete.id,
+      isStarted,
+      isFinished: false,
+      moduleIndex: nextIncomplete.moduleIndex,
+      totalModules,
+      percent,
+    };
+  }, [allLessons, completedLessonIds, progressData, modules]);
+
+  // Today / Upcoming: next live workshop or deadline
+  const nextUpcoming = useMemo(() => {
+    const upcoming = activitiesData?.upcoming || [];
+    if (upcoming.length > 0) {
+      return upcoming[0];
+    }
+    // Check calendar events
+    if (calendarEvents.length > 0) {
+      const now = new Date();
+      const future = calendarEvents
+        .filter((ev: any) => new Date(ev.start_time).getTime() >= now.getTime() - 2 * 60 * 60 * 1000)
+        .sort((a: any, b: any) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+
+      if (future[0]) {
+        const ev = future[0];
+        const isToday = new Date(ev.start_time).toDateString() === now.toDateString();
+        return {
+          id: ev.id,
+          type: ev.event_type === "LIVE_CLASS" ? "live" : "assignment",
+          title: ev.title,
+          dateText: isToday
+            ? `Today • ${new Date(ev.start_time).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`
+            : new Date(ev.start_time).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
+          meetUrl: ev.meet_url,
+          isToday,
+          lessonId: ev.lesson_id,
+        };
+      }
+    }
+    return null;
+  }, [activitiesData, calendarEvents]);
+
+  // Pending Activities: next 3 incomplete quizzes, labs or assignments
+  const pendingActivities = useMemo(() => {
+    const missed = activitiesData?.missed || [];
+    const upcoming = activitiesData?.upcoming || [];
+    const combined = [...missed, ...upcoming].filter((item) => {
+      const t = (item.type || "").toLowerCase();
+      const cat = (item.category || "").toLowerCase();
+      return (
+        t === "quiz" ||
+        t === "assignment" ||
+        t === "lab" ||
+        cat.includes("quiz") ||
+        cat.includes("lab") ||
+        cat.includes("assignment") ||
+        cat.includes("project")
+      );
+    });
+    return combined.slice(0, 3);
   }, [activitiesData]);
 
-  const upcomingList = useMemo(() => {
-    return activitiesData?.upcoming || [];
-  }, [activitiesData]);
+  const firstName = user?.name ? user.name.trim().split(" ")[0] : "Learner";
 
-  const completedList = useMemo(() => {
-    return activitiesData?.completed || [];
-  }, [activitiesData]);
+  const handleRefresh = () => {
+    refetchPathways();
+    refetchContent();
+    refetchProgress();
+    refetchActivities();
+  };
+
+  const isInitialLoading = isPathwaysLoading || isContentLoading || isProgressLoading;
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-slate-50/70 dark:bg-[#0B0D13] py-4 sm:py-8 transition-colors">
-      <div className="max-w-4xl lg:max-w-5xl mx-auto px-4 sm:px-6 space-y-6">
+    <div className="min-h-[calc(100vh-4rem)] bg-slate-50/70 dark:bg-[#0B0D13] py-4 sm:py-6 transition-colors">
+      <div className="max-w-xl md:max-w-3xl mx-auto px-4 sm:px-6 space-y-4 sm:space-y-5 animate-fade-in">
+        {/* ─── 1b. Greeting ─── */}
+        <div className="flex items-center justify-between pt-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+            Hi {firstName}
+          </h1>
 
-        {/* ─── Continue Learning: Vertical Course Cards (Matching Reference) ─── */}
-        {isPathwaysLoading ? (
-          <div className="space-y-3">
-            <div className="h-5 bg-slate-200 dark:bg-slate-800 rounded w-40 animate-pulse" />
-            <div className="macos-card rounded-2xl p-4 sm:p-5 flex items-center gap-4 animate-pulse">
-              <div className="w-12 h-12 rounded-xl bg-slate-200 dark:bg-slate-800 shrink-0" />
-              <div className="flex-1 space-y-2">
-                <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/3" />
-                <div className="h-3 bg-slate-100 dark:bg-slate-800/60 rounded w-1/2" />
-              </div>
-              <div className="w-24 h-8 bg-slate-200 dark:bg-slate-800 rounded-full shrink-0" />
-            </div>
-          </div>
-        ) : enrolledCourses.length === 0 ? (
-          /* Empty Enrolled Courses Card */
-          <div
-            onClick={() => navigate("/catalog")}
-            className="macos-card rounded-2xl p-4 sm:p-5 flex items-center gap-4 cursor-pointer group"
+          {/* Optional Refresh Button */}
+          <button
+            type="button"
+            onClick={handleRefresh}
+            aria-label="Refresh data"
+            className="p-2 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            title="Refresh"
           >
-            <MacFolderIcon size="md" color="blue" />
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                Explore Learning Pathways
-              </h3>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 truncate">
-                Enroll in a curriculum to start your hands-on journey
-              </p>
-            </div>
-            <ArrowRight className="w-4 h-4 text-zinc-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 group-hover:translate-x-1 transition-all shrink-0" />
+            <RefreshCw className="w-4 h-4 stroke-[1.8]" />
+          </button>
+        </div>
+
+        {/* ─── 1g. Program Switcher (Show only if student has > 1 enrolled program) ─── */}
+        {enrolledCourses.length > 1 && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setProgramDropdownOpen((prev) => !prev)}
+              className="w-full flex items-center justify-between min-h-[44px] px-3.5 py-2.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-2xs hover:border-zinc-300 dark:hover:border-zinc-700 transition-all cursor-pointer text-left"
+            >
+              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                <BookOpen className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                <div className="min-w-0">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block leading-tight">
+                    Current Program
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate block mt-0.5">
+                    {programTitle}
+                  </span>
+                </div>
+              </div>
+              <ChevronDown
+                className={`w-4 h-4 text-zinc-400 shrink-0 transition-transform ${
+                  programDropdownOpen ? "rotate-180 text-blue-600" : ""
+                }`}
+              />
+            </button>
+
+            {programDropdownOpen && (
+              <div className="absolute top-full left-0 right-0 mt-1.5 p-1.5 bg-white dark:bg-[#121622] rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 z-30 space-y-0.5 animate-fade-in">
+                <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                  Select Program
+                </div>
+                {enrolledCourses.map((c: any) => {
+                  const id = c.id || c.slug;
+                  const title = c.title || c.name;
+                  const isSelected = id === currentProgramId;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedProgramId(id);
+                        setProgramDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-left transition-colors cursor-pointer ${
+                        isSelected
+                          ? "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"
+                          : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                      }`}
+                    >
+                      <span className="truncate">{title}</span>
+                      {isSelected && <span className="text-[11px] font-bold text-blue-600">Active</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── 1c. Continue Learning Card (Full width, Top priority) ─── */}
+        {isInitialLoading ? (
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl p-5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs animate-pulse space-y-4">
+            <div className="h-3.5 bg-zinc-200 dark:bg-zinc-800 rounded w-1/4" />
+            <div className="h-5 bg-zinc-200 dark:bg-zinc-800 rounded w-3/4" />
+            <div className="h-4 bg-zinc-100 dark:bg-zinc-800/60 rounded w-1/2" />
+            <div className="h-2 bg-zinc-200 dark:bg-zinc-800 rounded-full w-full" />
+            <div className="h-11 bg-zinc-200 dark:bg-zinc-800 rounded-2xl w-full" />
+          </div>
+        ) : isContentError && enrolledCourses.length === 0 ? (
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-zinc-200/80 dark:border-zinc-800 shadow-xs text-center space-y-3">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Unable to load course content.
+            </p>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="min-h-[44px] px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold"
+            >
+              Retry
+            </button>
           </div>
         ) : (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between px-0.5">
-              <h2 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-                Continue Learning
+          <div className="bg-white dark:bg-[#121622] rounded-3xl p-5 sm:p-6 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-4">
+            {/* Header: Program & Module */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider truncate">
+                  {programTitle}
+                </span>
+                <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 shrink-0">
+                  {continueState.percent}% complete
+                </span>
+              </div>
+              <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 truncate">
+                {continueState.moduleTitle}
               </h2>
-              {enrolledCourses.length > 2 && (
-                <Link
-                  to="/enrolled"
-                  className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-                >
-                  <span>View All ({enrolledCourses.length})</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </Link>
-              )}
+              <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                {continueState.lessonTitle}
+              </h3>
             </div>
 
-            <div className="flex flex-col space-y-3">
-              {enrolledCourses.map((c: any, idx: number) => {
-                const cTitle = c.title || c.name;
-                const courseId = c.id || c.slug;
-                const folderColor = getFolderColor(cTitle);
-                const path = `/learn/${courseId}`;
-                const subtitle = c.shortDescription || "Continue your next structured learning milestone";
+            {/* Progress Bar */}
+            <div className="space-y-1.5">
+              <div className="w-full h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-600 rounded-full transition-all duration-300"
+                  style={{ width: `${continueState.percent}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Full-width Action Button (min 44px tall) */}
+            <button
+              type="button"
+              onClick={() => {
+                const targetUrl = continueState.lessonId
+                  ? `/learn/${currentProgramId}?lesson=${continueState.lessonId}`
+                  : `/learn/${currentProgramId}`;
+                navigate(targetUrl);
+              }}
+              className="w-full min-h-[44px] py-3 px-5 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white text-sm font-bold shadow-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <span>{continueState.isStarted ? "Resume" : "Start Week 1"}</span>
+              <Play className="w-4 h-4 fill-current" />
+            </button>
+          </div>
+        )}
+
+        {/* ─── 1d. Today / Upcoming ─── */}
+        <section className="bg-white dark:bg-[#121622] rounded-3xl p-4 sm:p-5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
+              Today / Upcoming
+            </h2>
+            <Link
+              to="/calendar"
+              className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+            >
+              <span>View calendar</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          {isActivitiesLoading ? (
+            <div className="h-14 bg-zinc-100 dark:bg-zinc-800/60 rounded-2xl animate-pulse" />
+          ) : !nextUpcoming ? (
+            <div className="py-2 text-xs text-zinc-500 dark:text-zinc-400">
+              Nothing scheduled
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-sky-50/60 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/30">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-950/70 border border-sky-200/60 dark:border-sky-900/40 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                  {nextUpcoming.type === "live" ? (
+                    <Video className="w-5 h-5 stroke-[1.8]" />
+                  ) : (
+                    <CalendarIcon className="w-5 h-5 stroke-[1.8]" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    {nextUpcoming.isToday && (
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 uppercase tracking-wider">
+                        Today
+                      </span>
+                    )}
+                    <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 truncate">
+                      {nextUpcoming.dateText}
+                    </span>
+                  </div>
+                  <h3 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate mt-0.5">
+                    {cleanLessonTitle(nextUpcoming.title)}
+                  </h3>
+                </div>
+              </div>
+
+              {nextUpcoming.type === "live" && nextUpcoming.meetUrl ? (
+                <a
+                  href={nextUpcoming.meetUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="min-h-[44px] px-4 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold shadow-xs inline-flex items-center gap-1.5 shrink-0 transition-colors"
+                >
+                  <span>Join</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(
+                      `/learn/${currentProgramId}?lesson=${nextUpcoming.lessonId || nextUpcoming.id}`
+                    )
+                  }
+                  className="min-h-[44px] px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs inline-flex items-center shrink-0 transition-colors cursor-pointer"
+                >
+                  Start
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* ─── 1e. Pending Activities ─── */}
+        <section className="bg-white dark:bg-[#121622] rounded-3xl p-4 sm:p-5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
+              Pending Activities
+            </h2>
+            <Link
+              to="/activities"
+              className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+            >
+              <span>View all</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          {isActivitiesLoading ? (
+            <div className="space-y-2.5">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-16 bg-zinc-100 dark:bg-zinc-800/60 rounded-2xl animate-pulse"
+                />
+              ))}
+            </div>
+          ) : pendingActivities.length === 0 ? (
+            <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 text-center space-y-1">
+              <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                All caught up!
+              </p>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                No pending quizzes, labs, or assignments.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {pendingActivities.map((act: any) => {
+                const isOverdue = act.isOverdue || act.id?.includes("missed");
+                const targetLink = `/learn/${act.pathwayId || currentProgramId}?lesson=${act.lessonId}`;
 
                 return (
                   <div
-                    key={c.id || idx}
-                    onClick={() => navigate(path)}
-                    className="macos-card rounded-2xl p-4 sm:p-4.5 flex items-center gap-3.5 cursor-pointer group active:scale-[0.99] transition-all"
+                    key={act.id}
+                    onClick={() => navigate(targetLink)}
+                    className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-zinc-50/70 dark:bg-zinc-900/50 hover:bg-zinc-100/80 dark:hover:bg-zinc-800/60 border border-zinc-200/60 dark:border-zinc-800/80 transition-all cursor-pointer group active:scale-[0.99]"
                   >
-                    <MacFolderIcon
-                      size="md"
-                      color={folderColor}
-                      className="group-hover:rotate-[-2deg] transition-transform shrink-0"
-                    />
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                          {cTitle}
-                        </h3>
+                    <div className="flex items-center gap-3 min-w-0 pr-2">
+                      <div
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                          isOverdue
+                            ? "bg-rose-100 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400"
+                            : act.type === "quiz"
+                            ? "bg-purple-100 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400"
+                            : "bg-blue-100 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400"
+                        }`}
+                      >
+                        {act.type === "quiz" ? (
+                          <FileQuestion className="w-4 h-4 stroke-[1.8]" />
+                        ) : (
+                          <FileText className="w-4 h-4 stroke-[1.8]" />
+                        )}
                       </div>
-                      <div className="flex items-center gap-1.5 mt-1 text-xs text-zinc-500 dark:text-zinc-400 truncate">
-                        <Video className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 shrink-0 stroke-[2]" />
-                        <span className="truncate">{subtitle}</span>
+
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 truncate">
+                          {act.category || (act.type === "quiz" ? "Quiz" : "Lab")} · {act.moduleTitle || "Week 1"}
+                        </div>
+                        <h3 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                          {cleanLessonTitle(act.title)}
+                        </h3>
+                        <div className="flex items-center gap-1 text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                          <Clock className={`w-3 h-3 shrink-0 ${isOverdue ? "text-rose-500" : ""}`} />
+                          <span className={`truncate ${isOverdue ? "text-rose-600 dark:text-rose-400 font-medium" : ""}`}>
+                            {act.dateText}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
@@ -195,318 +560,46 @@ export default function DashboardPage() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigate(path);
+                        navigate(targetLink);
                       }}
-                      className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors shrink-0"
+                      className={`min-h-[44px] px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-xs transition-colors shrink-0 cursor-pointer ${
+                        isOverdue
+                          ? "bg-rose-600 hover:bg-rose-700 text-white"
+                          : "bg-blue-600 hover:bg-blue-700 text-white"
+                      }`}
                     >
-                      <span>Continue</span>
-                      <Play className="w-3 h-3 fill-current" />
+                      {act.actionText || (isOverdue ? "Catch Up" : "Start")}
                     </button>
                   </div>
                 );
               })}
             </div>
-          </div>
-        )}
-
-        {/* ─── Learning Activities Section ─── */}
-        <section className="space-y-4 pt-1">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-              Learning Activities
-            </h2>
-
-            {/* Apple macOS Segmented Control */}
-            <MacSegmentedControl<"active" | "completed">
-              value={activeTab}
-              onChange={(val) => setActiveTab(val)}
-              options={[
-                { value: "active", label: "Active", badge: (missedList.length + upcomingList.length) > 0 ? (missedList.length + upcomingList.length) : undefined },
-                { value: "completed", label: "Completed", badge: completedList.length > 0 ? completedList.length : undefined },
-              ]}
-            />
-          </div>
-
-          {/* Tab Content */}
-          {isActivitiesLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/3 animate-pulse" />
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="macos-card rounded-2xl p-3.5 flex items-center gap-3 animate-pulse">
-                    <div className="w-9 h-9 rounded-xl bg-slate-200 dark:bg-slate-800 shrink-0" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
-                      <div className="h-2.5 bg-slate-100 dark:bg-slate-800/60 rounded w-1/2" />
-                    </div>
-                    <div className="w-20 h-7 bg-slate-200 dark:bg-slate-800 rounded-full shrink-0" />
-                  </div>
-                ))}
-              </div>
-              <div className="space-y-3">
-                <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/3 animate-pulse" />
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="macos-card rounded-2xl p-3.5 flex items-center gap-3 animate-pulse">
-                    <div className="w-9 h-9 rounded-xl bg-slate-200 dark:bg-slate-800 shrink-0" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
-                      <div className="h-2.5 bg-slate-100 dark:bg-slate-800/60 rounded w-1/2" />
-                    </div>
-                    <div className="w-20 h-7 bg-slate-200 dark:bg-slate-800 rounded-full shrink-0" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : activeTab === "completed" ? (
-            completedList.length === 0 ? (
-              /* Empty Completed State */
-              <div className="macos-card rounded-2xl p-8 sm:p-10 text-center space-y-3.5 border border-slate-200/80 dark:border-slate-800">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto shadow-2xs border border-blue-100 dark:border-blue-900/40">
-                  <CheckCircle2 className="w-6 h-6 stroke-[1.8]" />
-                </div>
-                <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100">
-                  No completed learning activities yet
-                </h3>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-xs mx-auto leading-relaxed">
-                  Complete video lectures, quizzes, or hands-on assignments to track your progress and marks here.
-                </p>
-                {enrolledCourses.length > 0 ? (
-                  <button
-                    onClick={() => navigate(`/learn/${enrolledCourses[0]?.id || enrolledCourses[0]?.slug}`)}
-                    className="mt-3 inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold py-2.5 px-6 rounded-full shadow-xs transition-all cursor-pointer"
-                  >
-                    <span>Start Learning</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => navigate("/catalog")}
-                    className="mt-3 inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold py-2.5 px-6 rounded-full shadow-xs transition-all cursor-pointer"
-                  >
-                    <span>Explore Catalog</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {completedList.map((item: any) => (
-                  <div
-                    key={item.id}
-                    onClick={() => item.pathwayId && navigate(`/learn/${item.pathwayId}`)}
-                    className="macos-card rounded-2xl p-3.5 sm:p-4 flex items-center justify-between gap-3 cursor-pointer group active:scale-[0.99] transition-all"
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0 pr-2">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                        <Check className="w-4.5 h-4.5 stroke-[2.5]" />
-                      </div>
-
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
-                          <span className="truncate">{item.moduleTitle || item.course || "Week 1"}</span>
-                          <span className="text-zinc-300 dark:text-zinc-600">•</span>
-                          <span>{item.category || "Completed"}</span>
-                        </div>
-                        <h4 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate mt-0.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                          {cleanLessonTitle(item.title)}
-                        </h4>
-                        <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5 font-medium">
-                          {item.datePrefix || "Completed"}: {item.date} {item.statusText ? `· ${item.statusText}` : ""}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-200/60 dark:border-emerald-800/60">
-                        Completed
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )
-          ) : (
-            /* Active View: Split into Missed Activities and Upcoming Activities */
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-              {/* ─── Left Column: Missed Activities ─── */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between px-1">
-                  <h3 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
-                    Missed Activities
-                  </h3>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-900/40">
-                    {missedList.length} Missed
-                  </span>
-                </div>
-
-                {missedList.length === 0 ? (
-                  <div className="macos-card rounded-2xl p-6 text-center space-y-2 border border-slate-200/80 dark:border-slate-800">
-                    <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto stroke-[1.8]" />
-                    <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
-                      No Missed Activities
-                    </h4>
-                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                      You're all caught up! No overdue lectures, quizzes, or assignments.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2.5">
-                    {missedList.map((item: any) => (
-                      <div
-                        key={item.id}
-                        onClick={() => navigate(`/learn/${item.pathwayId || primaryPathwayId}?lesson=${item.lessonId}`)}
-                        className="macos-card rounded-2xl p-3 sm:p-3.5 flex items-start gap-3 cursor-pointer group active:scale-[0.99] transition-all border border-rose-200/70 dark:border-rose-900/40 hover:border-rose-400/60 dark:hover:border-rose-700/60"
-                      >
-                        <div className="w-9 h-9 rounded-xl bg-rose-100/80 dark:bg-rose-950/60 border border-rose-200/60 dark:border-rose-900/40 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0 shadow-2xs mt-0.5">
-                          {item.type === "quiz" ? (
-                            <FileQuestion className="w-4 h-4 stroke-[1.8]" />
-                          ) : item.type === "assignment" ? (
-                            <FileText className="w-4 h-4 stroke-[1.8]" />
-                          ) : (
-                            <Video className="w-4 h-4 stroke-[1.8]" />
-                          )}
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="text-[10px] font-semibold text-rose-600 dark:text-rose-400 truncate">
-                            {item.category} · {item.moduleTitle || "Week 1"}
-                          </div>
-                          <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate mt-0.5 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">
-                            {cleanLessonTitle(item.title)}
-                          </h4>
-                          <div className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5 font-medium flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-rose-500 shrink-0" />
-                            <span>{item.dateText}</span>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/learn/${item.pathwayId || primaryPathwayId}?lesson=${item.lessonId}`);
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold shadow-xs transition-colors shrink-0 self-center"
-                        >
-                          {item.actionText || "Catch Up"}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* ─── Right Column: Upcoming Activities ─── */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between px-1">
-                  <h3 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
-                    Upcoming Activities
-                  </h3>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300 border border-sky-200/60 dark:border-sky-900/40">
-                    {upcomingList.length} Upcoming
-                  </span>
-                </div>
-
-                {upcomingList.length === 0 ? (
-                  <div className="macos-card rounded-2xl p-6 text-center space-y-2 border border-slate-200/80 dark:border-slate-800">
-                    <Sparkles className="w-8 h-8 text-sky-500 mx-auto stroke-[1.8]" />
-                    <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
-                      No Upcoming Deliverables
-                    </h4>
-                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                      Check back soon for new live classes, quizzes, and deliverables.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2.5">
-                    {upcomingList.slice(0, 8).map((item: any) => (
-                      <div
-                        key={item.id}
-                        onClick={() => {
-                          if (item.type === "live" && item.meetUrl) {
-                            window.open(item.meetUrl, "_blank");
-                          } else {
-                            navigate(`/learn/${item.pathwayId || primaryPathwayId}?lesson=${item.lessonId}`);
-                          }
-                        }}
-                        className="macos-card rounded-2xl p-3 sm:p-3.5 flex items-start gap-3 cursor-pointer group active:scale-[0.99] transition-all border border-sky-200/60 dark:border-sky-900/40 hover:border-sky-400/60 dark:hover:border-sky-700/60"
-                      >
-                        <div
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-2xs mt-0.5 ${
-                            item.type === "live"
-                              ? "bg-sky-100/80 dark:bg-sky-950/60 border border-sky-200/60 dark:border-sky-900/40 text-sky-600 dark:text-sky-400"
-                              : item.type === "quiz"
-                              ? "bg-purple-100/80 dark:bg-purple-950/60 border border-purple-200/60 dark:border-purple-900/40 text-purple-600 dark:text-purple-400"
-                              : "bg-blue-100/80 dark:bg-blue-950/60 border border-blue-200/60 dark:border-blue-900/40 text-blue-600 dark:text-blue-400"
-                          }`}
-                        >
-                          {item.type === "live" ? (
-                            <Video className="w-4 h-4 stroke-[1.8]" />
-                          ) : item.type === "quiz" ? (
-                            <FileQuestion className="w-4 h-4 stroke-[1.8]" />
-                          ) : (
-                            <FileText className="w-4 h-4 stroke-[1.8]" />
-                          )}
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-sky-600 dark:text-sky-400 truncate">
-                            {item.isToday && (
-                              <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300">
-                                TODAY
-                              </span>
-                            )}
-                            <span className="truncate">{item.category} · {item.moduleTitle || "Week 2"}</span>
-                          </div>
-                          <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate mt-0.5 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
-                            {cleanLessonTitle(item.title)}
-                          </h4>
-                          <div className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5 font-medium flex items-center gap-1">
-                            <Calendar className="w-3 h-3 text-sky-500 shrink-0" />
-                            <span>{item.dateText}</span>
-                          </div>
-                        </div>
-
-                        {item.type === "live" && item.meetUrl ? (
-                          <a
-                            href={item.meetUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-[11px] font-bold shadow-xs transition-colors shrink-0 self-center flex items-center gap-1"
-                          >
-                            <span>Join</span>
-                            <ExternalLink className="w-2.5 h-2.5" />
-                          </a>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/learn/${item.pathwayId || primaryPathwayId}?lesson=${item.lessonId}`);
-                            }}
-                            className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold shadow-xs transition-colors shrink-0 self-center"
-                          >
-                            {item.actionText || "Start"}
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
           )}
         </section>
 
-        {/* ─── Explore More Catalog Link ─── */}
-        <div className="text-center pt-2 pb-4">
+        {/* ─── 1f. Program Progress ─── */}
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#121622] border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-2">
+          <div className="flex items-center justify-between text-xs font-medium text-zinc-600 dark:text-zinc-400">
+            <span>
+              Week {continueState.moduleIndex} of {continueState.totalModules} · {continueState.percent}% complete
+            </span>
+          </div>
+          <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-600 rounded-full transition-all duration-300"
+              style={{ width: `${continueState.percent}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Catalog Link */}
+        <div className="text-center pt-1 pb-4">
           <Link
             to="/catalog"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors py-1.5 px-3 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/50"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors py-1.5 px-3 rounded-lg"
           >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Looking for more pathways? Browse Full Catalog</span>
+            <span>Explore all certification tracks in Catalog</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
       </div>

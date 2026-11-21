@@ -18,6 +18,7 @@ import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import CalendarPage from "./pages/CalendarPage";
 import ArticlesPage from "./pages/ArticlesPage";
+import NotificationsPage from "./pages/NotificationsPage";
 
 // Admin & Mentor Portal
 import AdminGuard from "./components/guards/AdminGuard";
@@ -128,6 +129,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <ActivitiesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="notifications"
+          element={
+            <ProtectedRoute>
+              <NotificationsPage />
             </ProtectedRoute>
           }
         />
