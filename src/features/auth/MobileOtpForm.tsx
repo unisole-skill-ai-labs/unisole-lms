@@ -10,19 +10,23 @@ import {
   AlertCircle,
   Sparkles,
   ChevronDown,
+  KeyRound,
+  RotateCcw,
 } from "lucide-react";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import {
   useCheckUserMutation,
   useLoginMutation,
+  useSendOtpMutation,
+  useVerifyOtpMutation,
   useGetCollegesQuery,
   useGetBranchesQuery,
 } from "../../store/apiSlice";
 import { setCredentials } from "../../store/authSlice";
 import { extractErrorMessage } from "../../utils/error";
 
-type AuthStep = "PHONE" | "PROFILE_SETUP";
+type AuthStep = "PHONE" | "OTP" | "PROFILE_SETUP";
 
 interface MobileOtpFormProps {
   initialMode?: "login" | "register";
@@ -66,6 +70,7 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
   // Form states
   const [step, setStep] = useState<AuthStep>("PHONE");
   const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
   const [name, setName] = useState("");
   const [selectedCollege, setSelectedCollege] = useState("");
   const [customCollege, setCustomCollege] = useState("");
@@ -86,6 +91,10 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
 
   const [checkUserMutation, { isLoading: isCheckingUser }] = useCheckUserMutation();
   const [loginMutation, { isLoading: isLoggingIn }] = useLoginMutation();
+  const [sendOtpMutation, { isLoading: isSendingOtp }] = useSendOtpMutation();
+  const [verifyOtpMutation, { isLoading: isVerifyingOtp }] = useVerifyOtpMutation();
+
+  const isRoadshowMode = import.meta.env.VITE_ROADSHOW_MODE === "true";
 
   // Step 1: User enters phone number and clicks continue
   const handlePhoneSubmit = async (e?: React.FormEvent) => {
@@ -101,21 +110,31 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
     try {
       const checkRes = await checkUserMutation({ phone: cleanPhone }).unwrap();
 
-      if (checkRes.exists && checkRes.user) {
-        // User exists: login directly and redirect
-        const response = await loginMutation({ phone: cleanPhone }).unwrap();
-        dispatch(setCredentials(response));
-        navigate(from, { replace: true });
+      if (isRoadshowMode) {
+        if (checkRes.exists && checkRes.user) {
+          // User exists: roadshow direct login shortcut
+          const response = await loginMutation({ phone: cleanPhone }).unwrap();
+          dispatch(setCredentials(response));
+          navigate(from, { replace: true });
+        } else {
+          // New user: ask for Name, College, Branch
+          setStep("PROFILE_SETUP");
+        }
       } else {
-        // New user: ask for Name, College, Branch
-        setStep("PROFILE_SETUP");
+        // Standard OTP verification flow (Default)
+        if (!checkRes.exists || !checkRes.user) {
+          setStep("PROFILE_SETUP");
+        } else {
+          await sendOtpMutation({ phone: cleanPhone }).unwrap();
+          setStep("OTP");
+        }
       }
     } catch (err) {
       setErrorMsg(extractErrorMessage(err, "Unable to verify mobile number. Please try again."));
     }
   };
 
-  // Step 2: New user fills profile and completes registration directly
+  // Step 2: New user fills profile and completes registration
   const handleProfileSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setErrorMsg("");
@@ -152,19 +171,67 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
       return;
     }
 
+    if (isRoadshowMode) {
+      try {
+        const response = await loginMutation({
+          phone: cleanPhone,
+          name: name.trim(),
+          collegeName: effectiveCollege,
+          collegeId: selectedCollegeObj?.id || undefined,
+          branch: effectiveBranch,
+        }).unwrap();
+
+        dispatch(setCredentials(response));
+        navigate(from, { replace: true });
+      } catch (err) {
+        setErrorMsg(extractErrorMessage(err, "Failed to complete registration. Please try again."));
+      }
+    } else {
+      // Send OTP to verify new registration
+      try {
+        await sendOtpMutation({ phone: cleanPhone }).unwrap();
+        setStep("OTP");
+      } catch (err) {
+        setErrorMsg(extractErrorMessage(err, "Failed to send verification code. Please try again."));
+      }
+    }
+  };
+
+  // Step 3: Verify OTP
+  const handleOtpSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setErrorMsg("");
+
+    const cleanOtp = otp.trim();
+    if (!cleanOtp) {
+      setErrorMsg("Please enter the verification code");
+      return;
+    }
+
+    const cleanPhone = phone.replace(/\D/g, "");
+    const effectiveCollege =
+      selectedCollege === "other" || selectedCollege === "Other University / College"
+        ? customCollege.trim()
+        : selectedCollege.trim();
+    const effectiveBranch =
+      selectedBranch === "other" || selectedBranch === "Other / Multidisciplinary"
+        ? customBranch.trim()
+        : selectedBranch.trim();
+
     try {
-      const response = await loginMutation({
+      const response = await verifyOtpMutation({
         phone: cleanPhone,
-        name: name.trim(),
-        collegeName: effectiveCollege,
+        otp: cleanOtp,
+        name: name ? name.trim() : undefined,
+        collegeName: effectiveCollege || undefined,
         collegeId: selectedCollegeObj?.id || undefined,
-        branch: effectiveBranch,
+        branch: effectiveBranch || undefined,
       }).unwrap();
 
       dispatch(setCredentials(response));
       navigate(from, { replace: true });
     } catch (err) {
-      setErrorMsg(extractErrorMessage(err, "Failed to complete registration. Please try again."));
+      setErrorMsg(extractErrorMessage(err, "Invalid or expired verification code. Please check and try again."));
     }
   };
 
@@ -223,15 +290,92 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
             variant="primary"
             size="lg"
             className="w-full"
-            loading={isCheckingUser || isLoggingIn}
+            loading={isCheckingUser || isLoggingIn || isSendingOtp}
             icon={ArrowRight}
           >
-            Continue to Start
+            {isRoadshowMode ? "Continue to Start" : "Get OTP Code"}
           </Button>
 
           <p className="text-[11px] text-center text-zinc-400 dark:text-zinc-500 pt-1">
-            Direct instant authentication.
+            {isRoadshowMode ? "Direct instant authentication enabled." : "A 4-digit verification code will be sent."}
           </p>
+        </form>
+      )}
+
+      {step === "OTP" && (
+        /* STEP: Verification Code */
+        <form onSubmit={handleOtpSubmit} className="space-y-4 animate-fade-in">
+          <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/40 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-200 font-medium">
+              <Phone className="w-4 h-4 text-indigo-500 shrink-0" />
+              <span>Mobile: <strong>+91 {phone}</strong></span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setStep("PHONE");
+                setOtp("");
+                setErrorMsg("");
+              }}
+              className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline font-semibold cursor-pointer"
+            >
+              Change
+            </button>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
+              Verification Code <span className="text-rose-500">*</span>
+            </label>
+            <div className="relative">
+              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400">
+                <KeyRound className="w-4 h-4" />
+              </div>
+              <input
+                type="text"
+                placeholder="Enter code (e.g. 1234)"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                maxLength={6}
+                required
+                autoFocus
+                className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-hidden focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono font-bold tracking-widest text-center"
+              />
+            </div>
+            <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">
+              Enter the verification code sent to your mobile.
+            </p>
+          </div>
+
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            className="w-full"
+            loading={isVerifyingOtp}
+            icon={ArrowRight}
+          >
+            Verify & Start Learning
+          </Button>
+
+          <div className="flex items-center justify-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={async () => {
+                setErrorMsg("");
+                try {
+                  await sendOtpMutation({ phone: phone.replace(/\D/g, "") }).unwrap();
+                } catch (err) {
+                  setErrorMsg(extractErrorMessage(err, "Failed to resend code"));
+                }
+              }}
+              disabled={isSendingOtp}
+              className="text-xs text-zinc-500 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1 font-medium transition-colors"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Resend Code</span>
+            </button>
+          </div>
         </form>
       )}
 
