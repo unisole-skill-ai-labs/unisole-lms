@@ -55,12 +55,16 @@ export default function App() {
       <Route
         path="/admin"
         element={
-          <AdminGuard>
+          <ProtectedRoute
+            allowedRoles={["ADMIN", "SUPER_ADMIN", "MENTOR", "MEMBER", "COURSE_MANAGER", "PROGRAM_MANAGER"]}
+            redirectTo="/dashboard"
+          >
             <AdminLayout />
-          </AdminGuard>
+          </ProtectedRoute>
         }
       >
         <Route index element={<AdminDashboardPage />} />
+        <Route path="dashboard" element={<AdminDashboardPage />} />
         <Route path="courses" element={<AdminCoursesPage />} />
         <Route path="courses/:courseId" element={<EditCoursePage />} />
         <Route path="submissions" element={<SubmissionsPage />} />
