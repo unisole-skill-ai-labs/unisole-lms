@@ -78,13 +78,9 @@ import { useAutosave } from "../../utils/useAutosave";
 import { LessonType, ContentStatus, QuizQuestion } from "../../types";
 import RichEditor from "../../components/ui/RichEditor";
 import { renderMarkdownToHtml } from "../../utils/formatContent";
-import { getCurriculum } from "../../constants/curriculumData";
 
 export default function EditCoursePage() {
   const { courseId = "" } = useParams();
-
-  // Active canonical curriculum fallback (guarantees Course Manager always sees 12 modules & activities)
-  const canonical = useMemo(() => getCurriculum(courseId), [courseId]);
 
   // Queries
   const { data: course, isLoading: isCourseLoading } = useGetAdminCourseByIdQuery(courseId, {
@@ -96,25 +92,12 @@ export default function EditCoursePage() {
     { skip: !courseId, refetchOnMountOrArgChange: true }
   );
 
-  // Seamlessly merge backend modules with canonical curriculum so Course Manager always has 100% synced view
+  // Render modules directly from database
   const displayModules = useMemo(() => {
-    const valid = (courseModules || []).filter(
+    return (courseModules || []).filter(
       (m: any) => m && m.title && !m.title.toLowerCase().includes("intro to ai")
     );
-    if (valid.length >= 12) {
-      return valid;
-    }
-    return (canonical.modules || []).map((m, idx) => ({
-      moduleId: m.id?.startsWith("mod_") ? m.id : `mod_agent_w${idx + 1}`,
-      title: m.title,
-      slug: `cs-agentic-week-${idx + 1}`,
-      position: idx + 1,
-      unlockAt: m.unlockAt || null,
-      lockAt: m.lockAt || null,
-      status: "PUBLISHED",
-      items: m.items || [],
-    }));
-  }, [courseModules, canonical]);
+  }, [courseModules]);
 
   // Mutations
   const [createModule] = useCreateAdminModuleMutation();
@@ -284,29 +267,9 @@ export default function EditCoursePage() {
   );
 
   // Find fallback lesson if not in DB
-  const fallbackLesson = useMemo(() => {
-    if (!activeLessonId) return null;
-    for (const mod of canonical.modules) {
-      const found = (mod.items || []).find((item) => item.id === activeLessonId);
-      if (found) return found;
-    }
-    return null;
-  }, [activeLessonId, canonical]);
-
-  // Auto-select first activity when opening course so editor is immediately populated
+  // Populate editor when active lesson changes (from backend)
   useEffect(() => {
-    if (!activeLessonId && displayModules.length > 0) {
-      const firstMod = displayModules[0];
-      const firstItem = (firstMod.items && firstMod.items[0]) || (canonical.modules[0]?.items && canonical.modules[0].items[0]);
-      if (firstItem?.id) {
-        setActiveLessonId(firstItem.id);
-      }
-    }
-  }, [displayModules, activeLessonId, canonical]);
-
-  // Populate editor when active lesson changes (from backend or canonical fallback)
-  useEffect(() => {
-    const dataToUse = activeLessonData || fallbackLesson;
+    const dataToUse = activeLessonData;
     if (dataToUse) {
       setLessonTitle(dataToUse.title || "");
       setLessonStatus((dataToUse.status as ContentStatus) || "PUBLISHED");
@@ -392,35 +355,9 @@ export default function EditCoursePage() {
           setContentHtml(renderMarkdownToHtml(raw));
           setCurriculumMode("LECTURE");
         }
-      } else if (fallbackLesson) {
-        const type = fallbackLesson.type || "video";
-        if (type === "video") {
-          setCurriculumMode("LECTURE");
-          setLessonType("READING");
-          setVideoUrl(fallbackLesson.videoUrl || "");
-          setContentMarkdown(fallbackLesson.description || "");
-        } else if (type === "quiz") {
-          setCurriculumMode("PRACTICE");
-          setPracticeType("MCQ");
-          setLessonType("QUIZ");
-          if (fallbackLesson.questions && fallbackLesson.questions.length > 0) {
-            setQuestions(fallbackLesson.questions);
-          }
-        } else if (type === "assignment") {
-          setCurriculumMode("PRACTICE");
-          setPracticeType("PROJECT");
-          setLessonType("ASSIGNMENT");
-          if (fallbackLesson.instructions) {
-            setAssignmentInstructions(fallbackLesson.instructions);
-          }
-        } else if (type === "live") {
-          setCurriculumMode("LECTURE");
-          setLessonType("READING");
-          setContentMarkdown(fallbackLesson.description || "");
-        }
       }
     }
-  }, [activeLessonData, fallbackLesson]);
+  }, [activeLessonData]);
 
   // Aggregate formData for autosave
   const isLec = curriculumMode === "LECTURE";
@@ -1179,9 +1116,6 @@ export default function EditCoursePage() {
               </div>
             ) : (
               displayModules.map((cMod: any, idx: number) => {
-                const fallbackMod = canonical.modules.find(
-                  (cm, cIdx) => cm.id === cMod.moduleId || cIdx === idx || cm.title === cMod.title
-                );
                 return (
                   <ChapterSection
                     key={cMod.moduleId}
@@ -1193,7 +1127,6 @@ export default function EditCoursePage() {
                     isFirst={idx === 0}
                     isLast={idx === displayModules.length - 1}
                     allModules={displayModules}
-                    fallbackItems={cMod.items || fallbackMod?.items || []}
                     activeLessonId={activeLessonId}
                     canManageCurriculum={canManageCurriculum}
                     isDragging={draggedChapterIdx === idx}
@@ -2482,33 +2415,10 @@ function ChapterSection({
     };
   }, [showAddMenu, activeFolderAddMenuId]);
 
-  // Compute effective lessons (from DB or canonical curriculum fallback)
+  // Effective lessons directly from database
   const effectiveLessons = useMemo(() => {
-    if (moduleLessons && moduleLessons.length > 0) return moduleLessons;
-    return (fallbackItems || []).map((fi: any, idx: number) => ({
-      lessonId: fi.id,
-      id: fi.id,
-      title: fi.title,
-      position: idx + 1,
-      status: "PUBLISHED",
-      durationMinutes: parseInt(fi.duration || "45", 10) || 45,
-      videoUrl: fi.videoUrl,
-      type: fi.type === "quiz" ? "QUIZ" : fi.type === "assignment" ? "ASSIGNMENT" : "READING",
-      content: JSON.stringify({
-        category: fi.type === "video" ? "LECTURE" : fi.type === "quiz" ? "PRACTICE" : fi.type === "assignment" ? "PRACTICE" : "LIVE",
-        type: fi.type,
-        videoUrl: fi.videoUrl,
-        quiz: fi.questions ? { passingScorePercent: 70, questions: fi.questions } : undefined,
-        questions: fi.questions,
-        assignment: fi.instructions ? { instructions: fi.instructions, allowedTypes: ["URL", "GITHUB"], maxPoints: 100 } : undefined,
-        liveDate: fi.liveDate,
-        liveTime: fi.liveTime,
-        mentorName: fi.mentorName,
-        contentMarkdown: fi.description,
-      }),
-      description: fi.description,
-    }));
-  }, [moduleLessons, fallbackItems]);
+    return moduleLessons || [];
+  }, [moduleLessons]);
 
   // Parse all lesson items and build folder hierarchy
   const { parsedLessons, foldersMap, rootLessons, folderChildrenMap } = useMemo(() => {
