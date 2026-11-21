@@ -606,3 +606,240 @@ export function getCourseFlowStats(
     isCourseCompleted,
   };
 }
+
+/**
+ * Standard relative time helper (E2)
+ * e.g. "Today", "Tomorrow", "In 2 days", "Yesterday"
+ */
+export function formatRelativeTime(dateInput: string | Date | number): string {
+  if (!dateInput) return "";
+  const date = new Date(dateInput);
+  if (isNaN(date.getTime())) return "";
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const targetDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  const diffDays = Math.round((targetDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Tomorrow";
+  if (diffDays === -1) return "Yesterday";
+  if (diffDays > 1 && diffDays <= 7) return `In ${diffDays} days`;
+  if (diffDays < -1 && diffDays >= -7) return `${Math.abs(diffDays)} days ago`;
+
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+/**
+ * Standard unified date format across all LMS screens (E2)
+ * e.g. "21 Nov, 6:00 PM"
+ */
+export function formatDateStandard(dateInput: string | Date | number, includeTime = true): string {
+  if (!dateInput) return "";
+  const date = new Date(dateInput);
+  if (isNaN(date.getTime())) return "";
+
+  const dayMonth = date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  if (!includeTime) return dayMonth;
+
+  const time = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  return `${dayMonth}, ${time}`;
+}
+
+/**
+ * Format enrollment date for My Learning course cards (A1)
+ * e.g. "Enrolled 12 Nov 2026"
+ */
+export function formatEnrollmentDate(dateInput?: string | Date | null): string {
+  if (!dateInput) return "Enrolled";
+  const date = new Date(dateInput);
+  if (isNaN(date.getTime())) return "Enrolled";
+  return `Enrolled ${date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
+}
+
+/**
+ * Format expiry date for course cards only if expiry exists (A1)
+ * e.g. "Access until 12 Nov 2027", otherwise null
+ */
+export function formatExpiryDate(dateInput?: string | Date | null): string | null {
+  if (!dateInput) return null;
+  const date = new Date(dateInput);
+  if (isNaN(date.getTime())) return null;
+  return `Access until ${date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
+}
+
+/**
+ * Live session countdown updated dynamically (B3)
+ * e.g. "Starts in 1h 20m", "Starts in 15m", "Starts in 2m"
+ */
+export function getCountdownText(targetDateInput: string | Date): string {
+  if (!targetDateInput) return "";
+  const target = new Date(targetDateInput).getTime();
+  if (isNaN(target)) return "";
+
+  const now = Date.now();
+  const diffMs = target - now;
+
+  if (diffMs <= 0) {
+    // Session is live or passed
+    const diffHours = (now - target) / (1000 * 60 * 60);
+    if (diffHours < 2.5) return "Live Now";
+    return "Concluded";
+  }
+
+  const totalMinutes = Math.floor(diffMs / (1000 * 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const days = Math.floor(hours / 24);
+
+  if (days > 1) return `Starts in ${days} days`;
+  if (days === 1) return `Starts in 1 day ${hours % 24}h`;
+  if (hours > 0) return `Starts in ${hours}h ${minutes}m`;
+  return `Starts in ${minutes}m`;
+}
+
+/**
+ * Join button status & restrictions for live sessions (B3)
+ * Rule: Join button disabled until 10 minutes before start ("Opens 10 min before"),
+ * active while live, replaced by "Watch recording" after if recording exists.
+ */
+export function getLiveJoinStatus(
+  item: any,
+  unlockAtInput?: string | Date | null
+): {
+  canJoin: boolean;
+  label: string;
+  isLive: boolean;
+  isUpcoming: boolean;
+  isConcluded: boolean;
+  hasRecording: boolean;
+  recordingUrl?: string;
+  meetUrl: string;
+  userTimeZone: string;
+} {
+  const userTimeZone =
+    (typeof Intl !== "undefined" && Intl.DateTimeFormat().resolvedOptions().timeZone) || "UTC";
+  const tzShort =
+    (typeof Intl !== "undefined" &&
+      new Date().toLocaleTimeString(undefined, { timeZoneName: "short" }).split(" ")[2]) ||
+    "Local";
+
+  const unlockAt = unlockAtInput || item?.unlockAt;
+  const meetUrl = item?.liveMeetingUrl || item?.meetUrl || "https://meet.google.com/new";
+  const hasRecording = !!(item?.videoUrl || item?.recordingUrl);
+  const recordingUrl = item?.videoUrl || item?.recordingUrl;
+
+  if (!unlockAt) {
+    return {
+      canJoin: false,
+      label: "Opens 10 min before",
+      isLive: false,
+      isUpcoming: true,
+      isConcluded: false,
+      hasRecording,
+      recordingUrl,
+      meetUrl,
+      userTimeZone: `${userTimeZone} (${tzShort})`,
+    };
+  }
+
+  const startMs = new Date(unlockAt).getTime();
+  const nowMs = Date.now();
+  const diffMs = startMs - nowMs;
+  const tenMinutesMs = 10 * 60 * 1000;
+  const durationMs = 2.5 * 60 * 60 * 1000; // standard 2.5 hours session length
+
+  if (diffMs > tenMinutesMs) {
+    return {
+      canJoin: false,
+      label: "Opens 10 min before",
+      isLive: false,
+      isUpcoming: true,
+      isConcluded: false,
+      hasRecording,
+      recordingUrl,
+      meetUrl,
+      userTimeZone: `${userTimeZone} (${tzShort})`,
+    };
+  }
+
+  if (diffMs <= tenMinutesMs && nowMs < startMs + durationMs) {
+    return {
+      canJoin: true,
+      label: "Join Live",
+      isLive: true,
+      isUpcoming: false,
+      isConcluded: false,
+      hasRecording,
+      recordingUrl,
+      meetUrl,
+      userTimeZone: `${userTimeZone} (${tzShort})`,
+    };
+  }
+
+  // Concluded
+  return {
+    canJoin: hasRecording,
+    label: hasRecording ? "Watch recording" : "Concluded",
+    isLive: false,
+    isUpcoming: false,
+    isConcluded: true,
+    hasRecording,
+    recordingUrl,
+    meetUrl,
+    userTimeZone: `${userTimeZone} (${tzShort})`,
+  };
+}
+
+/**
+ * Greeting helper: real student first name, fallback to "there", never "LMS" (B1)
+ */
+export function getStudentFirstName(user: any): string {
+  if (!user) return "there";
+  const raw = (user.name || user.firstName || "").trim();
+  if (!raw || raw.toLowerCase() === "lms" || raw.toLowerCase().includes("test user")) {
+    return "there";
+  }
+  const first = raw.split(" ")[0];
+  if (!first || first.toLowerCase() === "lms") return "there";
+  return first;
+}
+
+/**
+ * Generate .ics calendar download content for events (C4)
+ */
+export function generateIcsCalendar(
+  title: string,
+  description: string,
+  startTime: string | Date,
+  durationMinutes = 120,
+  location = ""
+): string {
+  const start = new Date(startTime);
+  const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+
+  const formatIcsDate = (d: Date) =>
+    d.toISOString().replace(/-|:|\.\d\d\d/g, "");
+
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Unisole LMS//Calendar Event//EN",
+    "CALSCALE:GREGORIAN",
+    "BEGIN:VEVENT",
+    `UID:${Date.now()}-${Math.random().toString(36).substring(2, 9)}@unisole.lms`,
+    `DTSTAMP:${formatIcsDate(new Date())}`,
+    `DTSTART:${formatIcsDate(start)}`,
+    `DTEND:${formatIcsDate(end)}`,
+    `SUMMARY:${title}`,
+    `DESCRIPTION:${description.replace(/\n/g, "\\n")}`,
+    location ? `LOCATION:${location}` : "",
+    "STATUS:CONFIRMED",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ]
+    .filter(Boolean)
+    .join("\r\n");
+}
+
