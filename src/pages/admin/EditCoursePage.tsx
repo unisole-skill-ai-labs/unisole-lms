@@ -1026,54 +1026,71 @@ export default function EditCoursePage() {
 
       {/* Main Split-Screen Workspace */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        {/* Left Column (30%): Modules & Activities Outline */}
-        <div className="w-full md:w-80 lg:w-96 border-r border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0B1120] flex flex-col md:h-[calc(100vh-56px)] overflow-y-auto">
-          <div className="p-4 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Modules & Activities
-            </span>
-            <div className="flex items-center gap-1.5">
-              {displayModules.length > 0 && canManageCurriculum && (
-                <button
-                  type="button"
-                  onClick={handleClearAllChapters}
-                  className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
-                  title="Remove all existing modules"
-                >
-                  <Trash2 className="w-3 h-3 stroke-[2]" />
-                  <span>Clear All</span>
-                </button>
-              )}
-              {canManageCurriculum && (courseId === "cs-agentic" || courseId === "course1" || course?.slug === "cs-agentic") && (
-                <button
-                  type="button"
-                  disabled={isSyncing}
-                  onClick={async () => {
-                    try {
-                      await syncCanonicalCourses(undefined).unwrap();
-                      refetchModules();
-                    } catch (err) {
-                      console.error("Failed to seed curriculum:", err);
-                    }
-                  }}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-                  title="Seed or restore 12-week AI Agent curriculum"
-                >
-                  <Sparkles className="w-3 h-3 stroke-[2.2]" />
-                  <span>{isSyncing ? "Seeding..." : "Seed 12-W"}</span>
-                </button>
-              )}
+        {/* Left Column: Modules & Activities Outline */}
+        <div className="w-full md:w-[380px] lg:w-[420px] xl:w-[450px] shrink-0 border-r border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0B1120] flex flex-col md:h-[calc(100vh-56px)] overflow-y-auto">
+          {/* Header & Quick Actions Toolbar */}
+          <div className="p-3.5 border-b border-slate-200/80 dark:border-slate-800/80 bg-slate-50/60 dark:bg-[#070A11]/40 space-y-2.5">
+            {/* Top Row: Section Title + Count & Primary + Add Module button */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Modules & Activities
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                  {displayModules.length}
+                </span>
+              </div>
+
               {canManageCurriculum && (
                 <button
                   type="button"
                   onClick={() => setShowAddModule(true)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded-lg transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-sky-500 hover:bg-sky-400 rounded-xl transition-all shadow-xs shrink-0 cursor-pointer whitespace-nowrap"
                 >
                   <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                   <span>Add Module</span>
                 </button>
               )}
             </div>
+
+            {/* Secondary Utility Row: Seed & Clear All */}
+            {canManageCurriculum && (
+              <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60">
+                <div className="flex items-center gap-2">
+                  {(courseId === "cs-agentic" || courseId === "course1" || course?.slug === "cs-agentic" || course?.title?.toLowerCase().includes("agent")) && (
+                    <button
+                      type="button"
+                      disabled={isSyncing}
+                      onClick={async () => {
+                        try {
+                          await syncCanonicalCourses(undefined).unwrap();
+                          refetchModules();
+                        } catch (err) {
+                          console.error("Failed to seed curriculum:", err);
+                        }
+                      }}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200/60 dark:border-blue-800/60 rounded-lg transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                      title="Seed or restore 12-week AI Agent curriculum from canonical database"
+                    >
+                      <Sparkles className="w-3 h-3 stroke-[2.2]" />
+                      <span>{isSyncing ? "Seeding..." : "Seed 12-W"}</span>
+                    </button>
+                  )}
+                </div>
+
+                {displayModules.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearAllChapters}
+                    className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+                    title="Remove all existing modules"
+                  >
+                    <Trash2 className="w-3 h-3 stroke-[2]" />
+                    <span>Clear All</span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Inline Add Module Form */}
@@ -2428,6 +2445,15 @@ function ChapterSection({
     setTempTitle(moduleTitle || "");
   }, [moduleTitle]);
 
+  const formattedTitle = useMemo(() => {
+    if (!moduleTitle) return `Module ${position}`;
+    const clean = moduleTitle.trim();
+    if (/^(week|module)\s*\d+/i.test(clean)) {
+      return clean;
+    }
+    return `Module ${position}: ${clean}`;
+  }, [moduleTitle, position]);
+
   useEffect(() => {
     setModUnlockInput(moduleUnlockAt ? new Date(moduleUnlockAt).toISOString().slice(0, 16) : "");
     setModLockInput(moduleLockAt ? new Date(moduleLockAt).toISOString().slice(0, 16) : "");
@@ -2973,15 +2999,27 @@ function ChapterSection({
           : "border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0B1120] shadow-2xs"
       }`}
     >
-      {/* Module Header (Drag handle, Title inline edit, Schedule lock popover, + Activity, Delete) */}
-      <div className="p-3 flex items-center justify-between bg-slate-50/70 dark:bg-[#070A11]/60 border-b border-slate-100 dark:border-slate-800/60 gap-2">
+      {/* Module Header (Drag handle, Title, Schedule lock popover, + Activity, Delete) */}
+      <div className="p-2.5 flex items-center justify-between bg-slate-50/80 dark:bg-[#070A11]/70 border-b border-slate-100 dark:border-slate-800/60 gap-2">
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
           <div
             title="Drag to reorder module"
-            className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-0.5"
+            className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-0.5 shrink-0"
           >
             <GripVertical className="w-4 h-4 stroke-[2.2]" />
           </div>
+
+          <button
+            type="button"
+            onClick={() => setCollapsed(!collapsed)}
+            className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-0.5 shrink-0 cursor-pointer"
+          >
+            {collapsed ? (
+              <ChevronRight className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </button>
 
           {isEditingTitle ? (
             <form
@@ -3003,7 +3041,7 @@ function ChapterSection({
               />
               <button
                 type="submit"
-                className="p-1 rounded bg-sky-500 text-white hover:bg-sky-400 cursor-pointer"
+                className="p-1 rounded bg-sky-500 text-white hover:bg-sky-400 cursor-pointer shrink-0"
                 title="Save title"
               >
                 <Check className="w-3 h-3 stroke-[2.5]" />
@@ -3014,7 +3052,7 @@ function ChapterSection({
                   setTempTitle(moduleTitle || "");
                   setIsEditingTitle(false);
                 }}
-                className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer shrink-0"
                 title="Cancel"
               >
                 <X className="w-3 h-3" />
@@ -3025,16 +3063,10 @@ function ChapterSection({
               <button
                 type="button"
                 onClick={() => setCollapsed(!collapsed)}
-                className="flex items-center gap-1 text-left truncate flex-1 min-w-0 cursor-pointer"
+                title={formattedTitle}
+                className="text-left font-bold text-xs text-slate-800 dark:text-slate-200 truncate flex-1 min-w-0 cursor-pointer hover:text-sky-600 dark:hover:text-sky-400 transition-colors"
               >
-                {collapsed ? (
-                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
-                )}
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                  Module {position}{moduleTitle && moduleTitle !== `Module ${position}` ? ` — ${moduleTitle}` : ""}
-                </span>
+                {formattedTitle}
               </button>
 
               {canManageCurriculum && (
@@ -3042,116 +3074,112 @@ function ChapterSection({
                   type="button"
                   onClick={() => setIsEditingTitle(true)}
                   title="Rename module"
-                  className="p-1 rounded-md text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors cursor-pointer"
+                  className="p-1 rounded text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors cursor-pointer shrink-0"
                 >
                   <Edit3 className="w-3 h-3 stroke-[2.2]" />
                 </button>
               )}
-
-              {/* Module Schedule Lock Badge & Popover */}
-              <div className="relative">
-                {canManageCurriculum ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowSchedulePopover(!showSchedulePopover)}
-                    title="Set module lock / unlock schedule"
-                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors cursor-pointer border ${
-                      moduleUnlockAt
-                        ? new Date(moduleUnlockAt).getTime() > Date.now()
-                          ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20"
-                          : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 hover:text-sky-500 hover:border-sky-500/30"
-                    }`}
-                  >
-                    <Lock className="w-2.5 h-2.5" />
-                    <span>
-                      {moduleUnlockAt
-                        ? new Date(moduleUnlockAt).getTime() > Date.now()
-                          ? `Unlocks ${new Date(moduleUnlockAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
-                          : "Live"
-                        : "Schedule"}
-                    </span>
-                  </button>
-                ) : moduleUnlockAt ? (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/30">
-                    <Lock className="w-2.5 h-2.5" />
-                    <span>{new Date(moduleUnlockAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
-                  </span>
-                ) : null}
-
-                {/* Schedule Popover */}
-                {showSchedulePopover && (
-                  <div className="absolute left-0 top-full mt-1.5 w-64 p-3 bg-white dark:bg-[#0B1120] rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl z-50 space-y-2.5 animate-fade-in">
-                    <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        Module Release Schedule
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setShowSchedulePopover(false)}
-                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
-                        Unlock Date & Time:
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={modUnlockInput}
-                        onChange={(e) => setModUnlockInput(e.target.value)}
-                        className="w-full px-2 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#070A11] text-slate-900 dark:text-slate-100"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
-                        Auto-Lock Date & Time (Optional):
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={modLockInput}
-                        onChange={(e) => setModLockInput(e.target.value)}
-                        className="w-full px-2 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#070A11] text-slate-900 dark:text-slate-100"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between pt-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setModUnlockInput("");
-                          setModLockInput("");
-                          onUpdateModuleSchedule?.(null, null);
-                          setShowSchedulePopover(false);
-                        }}
-                        className="text-[10px] font-semibold text-rose-500 hover:underline cursor-pointer"
-                      >
-                        Clear
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onUpdateModuleSchedule?.(
-                            modUnlockInput ? new Date(modUnlockInput).toISOString() : null,
-                            modLockInput ? new Date(modLockInput).toISOString() : null
-                          );
-                          setShowSchedulePopover(false);
-                        }}
-                        className="px-2.5 py-1 text-xs font-bold text-slate-950 bg-sky-400 hover:bg-sky-300 rounded-lg shadow-xs cursor-pointer"
-                      >
-                        Save Schedule
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           )}
         </div>
 
-        {/* Module Actions: + Activity & Delete */}
+        {/* Module Actions: Schedule Lock, + Activity & Delete */}
         <div className="flex items-center gap-1 shrink-0">
+          {/* Module Schedule Lock Badge & Popover */}
+          <div className="relative">
+            {canManageCurriculum ? (
+              <button
+                type="button"
+                onClick={() => setShowSchedulePopover(!showSchedulePopover)}
+                title={
+                  moduleUnlockAt
+                    ? `Locked until ${new Date(moduleUnlockAt).toLocaleString()}`
+                    : "Set module release schedule"
+                }
+                className={`p-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer border ${
+                  moduleUnlockAt
+                    ? new Date(moduleUnlockAt).getTime() > Date.now()
+                      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20"
+                      : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 hover:text-sky-500 hover:border-sky-500/30"
+                }`}
+              >
+                <Lock className="w-3 h-3" />
+              </button>
+            ) : moduleUnlockAt ? (
+              <span className="p-1.5 rounded-lg text-[10px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/30">
+                <Lock className="w-3 h-3" />
+              </span>
+            ) : null}
+
+            {/* Schedule Popover */}
+            {showSchedulePopover && (
+              <div className="absolute right-0 top-full mt-1.5 w-64 p-3 bg-white dark:bg-[#0B1120] rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl z-50 space-y-2.5 animate-fade-in">
+                <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Module Release Schedule
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowSchedulePopover(false)}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
+                    Unlock Date & Time:
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={modUnlockInput}
+                    onChange={(e) => setModUnlockInput(e.target.value)}
+                    className="w-full px-2 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#070A11] text-slate-900 dark:text-slate-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
+                    Auto-Lock Date & Time (Optional):
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={modLockInput}
+                    onChange={(e) => setModLockInput(e.target.value)}
+                    className="w-full px-2 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#070A11] text-slate-900 dark:text-slate-100"
+                  />
+                </div>
+                <div className="flex items-center justify-between pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModUnlockInput("");
+                      setModLockInput("");
+                      onUpdateModuleSchedule?.(null, null);
+                      setShowSchedulePopover(false);
+                    }}
+                    className="text-[10px] font-semibold text-rose-500 hover:underline cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onUpdateModuleSchedule?.(
+                        modUnlockInput ? new Date(modUnlockInput).toISOString() : null,
+                        modLockInput ? new Date(modLockInput).toISOString() : null
+                      );
+                      setShowSchedulePopover(false);
+                    }}
+                    className="px-2.5 py-1 text-xs font-bold text-slate-950 bg-sky-400 hover:bg-sky-300 rounded-lg shadow-xs cursor-pointer"
+                  >
+                    Save Schedule
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {canManageCurriculum && (
             <button
               type="button"
@@ -3161,7 +3189,7 @@ function ChapterSection({
                 setShowAddMenu(!showAddMenu);
               }}
               title="Add activity to this module"
-              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer shadow-2xs ${
+              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer shadow-2xs whitespace-nowrap ${
                 showAddMenu
                   ? "bg-sky-500 text-white border-sky-500"
                   : "bg-sky-50 dark:bg-sky-500/15 text-sky-600 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-500/25 border-sky-200/80 dark:border-sky-500/30"
@@ -3353,6 +3381,7 @@ function ChapterSection({
                                   <button
                                     type="button"
                                     onClick={() => onSelectLesson(cLes.lessonId)}
+                                    title={cDisplayTitle}
                                     className="flex-1 text-left min-w-0 flex items-center gap-1.5 cursor-pointer"
                                   >
                                     <span className="text-xs font-semibold truncate flex-1">
@@ -3361,7 +3390,7 @@ function ChapterSection({
                                     {cLes.unlockAt && (
                                       <span
                                         title={`Unlocks at ${new Date(cLes.unlockAt).toLocaleString()}`}
-                                        className={`inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[8px] font-bold shrink-0 ${
+                                        className={`inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[8px] font-bold shrink-0 whitespace-nowrap ${
                                           new Date(cLes.unlockAt).getTime() > Date.now()
                                             ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
                                             : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
@@ -3372,7 +3401,7 @@ function ChapterSection({
                                       </span>
                                     )}
                                     <span
-                                      className={`text-[8px] font-mono uppercase px-1.5 py-0.5 rounded-full shrink-0 ${cBadge.bg}`}
+                                      className={`text-[8px] font-mono uppercase px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap ${cBadge.bg}`}
                                     >
                                       {cBadge.label}
                                     </span>
@@ -3436,6 +3465,7 @@ function ChapterSection({
                     <button
                       type="button"
                       onClick={() => onSelectLesson(item.lessonId)}
+                      title={displayTitle}
                       className="flex-1 text-left min-w-0 flex items-center gap-2 cursor-pointer"
                     >
                       <span className="text-xs font-semibold truncate flex-1">
@@ -3444,7 +3474,7 @@ function ChapterSection({
                       {item.unlockAt && (
                         <span
                           title={`Unlocks at ${new Date(item.unlockAt).toLocaleString()}`}
-                          className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold shrink-0 ${
+                          className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold shrink-0 whitespace-nowrap ${
                             new Date(item.unlockAt).getTime() > Date.now()
                               ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
                               : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
@@ -3455,7 +3485,7 @@ function ChapterSection({
                         </span>
                       )}
                       <span
-                        className={`text-[9px] font-mono uppercase px-1.5 py-0.5 rounded-full shrink-0 ${badge.bg}`}
+                        className={`text-[9px] font-mono uppercase px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap ${badge.bg}`}
                       >
                         {badge.label}
                       </span>
