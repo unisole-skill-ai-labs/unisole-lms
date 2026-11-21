@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import {
@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { logout } from "../../store/authSlice";
 import { useTheme } from "../../context/ThemeContext";
-import { useGetMyPathwaysQuery } from "../../store/apiSlice";
+import { useGetMyPathwaysQuery, useGetStudentActivitiesQuery } from "../../store/apiSlice";
 
 interface LearnerDrawerProps {
   isOpen: boolean;
@@ -34,14 +34,24 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const drawerRef = useRef<HTMLDivElement>(null);
 
   const [cohortDropdownOpen, setCohortDropdownOpen] = useState(false);
   const [selectedCohort, setSelectedCohort] = useState<string>("");
   const [activeModal, setActiveModal] = useState<"support" | "notifications" | null>(null);
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
 
   const { data: myPathways = [] } = useGetMyPathwaysQuery(undefined, {
     skip: !isAuthenticated,
   });
+
+  const { data: activitiesData } = useGetStudentActivitiesQuery(undefined, {
+    skip: !isAuthenticated,
+  });
+
+  const unreadCount =
+    (activitiesData?.missed?.length || 0) +
+    (activitiesData?.upcoming?.filter((u: any) => u.isToday || u.isUrgent)?.length || 0);
 
   const enrolledCourses = useMemo(() => {
     return myPathways
@@ -64,6 +74,7 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
     } else {
       document.body.style.overflow = "unset";
       setCohortDropdownOpen(false);
+      setConfirmSignOut(false);
     }
     return () => {
       document.body.style.overflow = "unset";
@@ -74,7 +85,9 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (activeModal) {
+        if (confirmSignOut) {
+          setConfirmSignOut(false);
+        } else if (activeModal) {
           setActiveModal(null);
         } else if (isOpen) {
           onClose();
@@ -83,31 +96,30 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, activeModal, onClose]);
+  }, [isOpen, activeModal, confirmSignOut, onClose]);
 
   // Close on route change
   useEffect(() => {
     onClose();
     setActiveModal(null);
+    setConfirmSignOut(false);
   }, [location.pathname, location.search]);
 
   const handleLogout = () => {
+    setConfirmSignOut(false);
     onClose();
     dispatch(logout());
     navigate("/login");
   };
 
-  const formatPhoneNumber = (phone?: string) => {
+  const maskPhoneNumber = (phone?: string) => {
     if (!phone) return "";
-    const cleaned = phone.trim();
-    if (cleaned.startsWith("+91")) {
-      const rest = cleaned.slice(3).trim();
-      return `+91 ${rest}`;
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length >= 10) {
+      const last3 = digits.slice(-3);
+      return `+91 ••••• ••${last3}`;
     }
-    if (cleaned.startsWith("91") && cleaned.length >= 12) {
-      return `+91 ${cleaned.slice(2)}`;
-    }
-    return `+91 ${cleaned}`;
+    return phone;
   };
 
   const isCurrentActive = (type: string, path?: string) => {
@@ -163,6 +175,7 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
       name: "Notifications",
       icon: Bell,
       isAction: true,
+      badge: unreadCount > 0 ? unreadCount : null,
       onClick: () => setActiveModal("notifications"),
     },
     {
@@ -170,20 +183,21 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
       name: "Support",
       icon: HelpCircle,
       isAction: true,
+      badge: null,
       onClick: () => setActiveModal("support"),
     },
   ];
 
   return (
     <>
-      {/* Drawer Container (Pre-mounted for instant zero-lag slide on low-end mobile) */}
+      {/* Drawer Container (Pre-mounted for zero lag) */}
       <div
         className={`fixed inset-0 z-50 transition-[visibility] duration-200 ${
           isOpen ? "visible pointer-events-auto" : "invisible pointer-events-none"
         }`}
         aria-hidden={!isOpen}
       >
-        {/* Backdrop (Solid alpha overlay, zero GPU blur choke on budget phones) */}
+        {/* Backdrop */}
         <div
           className={`fixed inset-0 bg-black/60 transition-opacity duration-200 ease-out ${
             isOpen ? "opacity-100" : "opacity-0"
@@ -192,252 +206,305 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
           aria-hidden="true"
         />
 
-        {/* Drawer Panel (Dedicated GPU Compositor Layer, hardware translate3d) */}
+        {/* Drawer Panel */}
         <aside
+          ref={drawerRef}
           aria-label="Learner Navigation Drawer"
           className={`fixed inset-y-0 left-0 z-50 w-[300px] sm:w-[330px] max-w-[85vw] bg-white dark:bg-[#121622] text-slate-900 dark:text-slate-100 shadow-xl flex flex-col border-r border-slate-200/80 dark:border-slate-800/80 select-none overflow-hidden transform-gpu will-change-transform transition-transform duration-200 ease-out ${
             isOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-        {/* Drawer Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800/80">
-          <Link to="/" onClick={onClose} className="flex items-center gap-2.5">
-            <img
-              src="https://res.cloudinary.com/hehmsemf/image/upload/f_auto,q_auto,w_64/v1785299421/Unisole_logo_new_mhqbma.png"
-              alt="Unisole Logo"
-              className="w-7 h-7 rounded-lg object-contain shadow-xs"
-            />
-            <div className="flex flex-col">
-              <span className="font-extrabold text-base tracking-tight leading-none text-slate-900 dark:text-white">
-                Unisole <span className="text-blue-600 dark:text-blue-400">LMS</span>
-              </span>
-              <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-0.5">
-                Skill AI Labs
-              </span>
-            </div>
-          </Link>
-
-          {/* Close Button */}
-          <button
-            onClick={onClose}
-            aria-label="Close navigation"
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5 stroke-[2]" />
-          </button>
-        </div>
-
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5 scrollbar-thin">
-          {/* Cohort / Experience Selector Card */}
-          <div className="relative">
-            <button
-              onClick={() => setCohortDropdownOpen((prev) => !prev)}
-              className="w-full flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/70 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 transition-all text-left shadow-2xs group cursor-pointer"
-            >
-              <div className="flex items-center gap-3 min-w-0 pr-2">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-sky-500 text-white flex items-center justify-center shrink-0 shadow-xs">
-                  <GraduationCap className="w-5 h-5" />
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                    {activeCohortTitle}
-                  </span>
-                  <span className="text-[11px] text-slate-400 dark:text-slate-500 truncate mt-0.5 font-medium">
-                    {enrolledCourses.length > 0
-                      ? `${enrolledCourses.length} Enrolled ${enrolledCourses.length === 1 ? "Program" : "Programs"}`
-                      : "No Active Enrollments"}
-                  </span>
-                </div>
-              </div>
-              <ChevronDown
-                className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${
-                  cohortDropdownOpen ? "rotate-180 text-blue-600 dark:text-blue-400" : ""
-                }`}
+          {/* Drawer Header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800/80">
+            <Link to="/" onClick={onClose} className="flex items-center gap-2.5">
+              <img
+                src="https://res.cloudinary.com/hehmsemf/image/upload/f_auto,q_auto,w_64/v1785299421/Unisole_logo_new_mhqbma.png"
+                alt="Unisole Logo"
+                className="w-7 h-7 rounded-lg object-contain shadow-xs"
               />
-            </button>
+              <div className="flex flex-col">
+                <span className="font-extrabold text-base tracking-tight leading-none text-slate-900 dark:text-white">
+                  Unisole <span className="text-blue-600 dark:text-blue-400">LMS</span>
+                </span>
+                <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-0.5">
+                  Skill AI Labs
+                </span>
+              </div>
+            </Link>
 
-            {/* Cohort Dropdown */}
-            {cohortDropdownOpen && (
-              <div className="absolute top-full left-0 right-0 mt-1.5 p-2 bg-white dark:bg-[#121622] rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 z-30 animate-fade-in space-y-1">
-                <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Enrolled Programs ({enrolledCourses.length})
-                </div>
-                {enrolledCourses.length === 0 ? (
-                  <div className="p-3 text-center space-y-2">
-                    <p className="text-xs text-slate-500">No enrolled programs yet</p>
-                    <Link
-                      to="/catalog"
-                      onClick={() => {
-                        setCohortDropdownOpen(false);
-                        onClose();
-                      }}
-                      className="inline-block text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                      Browse Catalog →
-                    </Link>
+            {/* Close Button */}
+            <button
+              onClick={onClose}
+              aria-label="Close navigation"
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5 stroke-[2]" />
+            </button>
+          </div>
+
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5 scrollbar-thin">
+            {/* Cohort / Experience Selector Card */}
+            <div className="relative">
+              <button
+                onClick={() => setCohortDropdownOpen((prev) => !prev)}
+                className="w-full flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/70 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 transition-all text-left shadow-2xs group cursor-pointer"
+              >
+                <div className="flex items-center gap-3 min-w-0 pr-2">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-sky-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <GraduationCap className="w-5 h-5" />
                   </div>
-                ) : (
-                  enrolledCourses.map((c: any) => {
-                    const title = c.title || c.name;
-                    const isSelected = activeCohortTitle === title;
-                    return (
-                      <button
-                        key={c.id || title}
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                      {activeCohortTitle}
+                    </span>
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500 truncate mt-0.5 font-medium">
+                      {enrolledCourses.length > 0
+                        ? `${enrolledCourses.length} Enrolled ${enrolledCourses.length === 1 ? "Program" : "Programs"}`
+                        : "No Active Enrollments"}
+                    </span>
+                  </div>
+                </div>
+                <ChevronDown
+                  className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${
+                    cohortDropdownOpen ? "rotate-180 text-blue-600 dark:text-blue-400" : ""
+                  }`}
+                />
+              </button>
+
+              {/* Cohort Dropdown */}
+              {cohortDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1.5 p-2 bg-white dark:bg-[#121622] rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 z-30 animate-fade-in space-y-1">
+                  <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Enrolled Programs ({enrolledCourses.length})
+                  </div>
+                  {enrolledCourses.length === 0 ? (
+                    <div className="p-3 text-center space-y-2">
+                      <p className="text-xs text-slate-500">No enrolled programs yet</p>
+                      <Link
+                        to="/catalog"
                         onClick={() => {
-                          setSelectedCohort(title);
                           setCohortDropdownOpen(false);
-                          if (c.id) {
-                            navigate(`/learn/${c.id}`);
-                            onClose();
-                          }
+                          onClose();
                         }}
-                        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-left transition-colors cursor-pointer ${
-                          isSelected
-                            ? "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-bold"
-                            : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60"
-                        }`}
+                        className="inline-block text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
                       >
-                        <span className="truncate">{title}</span>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
-                      </button>
-                    );
-                  })
+                        Browse Catalog →
+                      </Link>
+                    </div>
+                  ) : (
+                    enrolledCourses.map((c: any) => {
+                      const title = c.title || c.name;
+                      const isSelected = activeCohortTitle === title;
+                      return (
+                        <button
+                          key={c.id || title}
+                          onClick={() => {
+                            setSelectedCohort(title);
+                            setCohortDropdownOpen(false);
+                            if (c.id) {
+                              navigate(`/learn/${c.id}`);
+                              onClose();
+                            }
+                          }}
+                          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-left transition-colors cursor-pointer ${
+                            isSelected
+                              ? "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-bold"
+                              : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60"
+                          }`}
+                        >
+                          <span className="truncate">{title}</span>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Navigation Items List */}
+            <nav className="space-y-1.5">
+              {navItems.map((item) => {
+                const active = isCurrentActive(item.id, item.to);
+                const Icon = item.icon;
+
+                if (item.isAction) {
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={item.onClick}
+                      className="w-full flex items-center justify-between px-3.5 py-2.5 min-h-[44px] rounded-xl text-[13px] sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-colors cursor-pointer text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className="w-[18px] h-[18px] text-slate-500 dark:text-slate-400 stroke-[1.8]" />
+                        <span>{item.name}</span>
+                      </div>
+                      {item.badge !== null && item.badge > 0 && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white leading-none shadow-2xs">
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                }
+
+                return (
+                  <Link
+                    key={item.id}
+                    to={item.to!}
+                    onClick={onClose}
+                    className={`flex items-center justify-between px-3.5 py-2.5 min-h-[44px] rounded-xl text-[13px] sm:text-sm transition-colors ${
+                      active
+                        ? "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-semibold shadow-2xs"
+                        : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 font-medium"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon
+                        className={`w-[18px] h-[18px] ${
+                          active ? "text-blue-600 dark:text-blue-400 stroke-[2.2]" : "text-slate-500 dark:text-slate-400 stroke-[1.8]"
+                        }`}
+                      />
+                      <span>{item.name}</span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* Drawer Footer: User Profile & Quick Actions */}
+          <div
+            className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 space-y-3.5"
+            style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom, 1.25rem))" }}
+          >
+            {isAuthenticated && user ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-sky-500 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-2xs overflow-hidden">
+                      {user.avatar ? (
+                        <img src={user.avatar} alt={user.name || "Avatar"} className="w-full h-full object-cover" />
+                      ) : (
+                        user.name ? user.name.charAt(0).toUpperCase() : (user.phone ? user.phone.charAt(0) : "S")
+                      )}
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                        {user.name || "Student"}
+                      </span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono truncate">
+                        {user.email || maskPhoneNumber(user.phone) || "Verified Learner"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Theme Toggle Button */}
+                  <button
+                    onClick={toggleTheme}
+                    aria-label="Toggle Theme"
+                    className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  >
+                    {theme === "dark" ? (
+                      <Sun className="w-4 h-4 text-amber-400" />
+                    ) : (
+                      <Moon className="w-4 h-4 text-slate-600" />
+                    )}
+                  </button>
+                </div>
+
+                {/* Admin / Mentor CMS Link if authorized */}
+                {["ADMIN", "SUPER_ADMIN", "MENTOR"].includes(user.role) && (
+                  <Link
+                    to="/admin"
+                    onClick={onClose}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50/90 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors border border-blue-200/70 dark:border-blue-800/60"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Layers className="w-3.5 h-3.5" />
+                      <span>Course Studio & CMS</span>
+                    </div>
+                    <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-blue-200/70 dark:bg-blue-900 text-blue-800 dark:text-blue-200 tracking-wider">
+                      Admin
+                    </span>
+                  </Link>
                 )}
+
+                {/* Logout Button */}
+                <button
+                  onClick={() => setConfirmSignOut(true)}
+                  className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sign Out</span>
+                </button>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <Link
+                  to="/login"
+                  onClick={onClose}
+                  className="w-full flex items-center justify-center py-2.5 px-4 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-colors shadow-xs"
+                >
+                  Sign In / Register
+                </Link>
+                <div className="flex items-center justify-center">
+                  <button
+                    onClick={toggleTheme}
+                    className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center gap-1.5 py-1 cursor-pointer"
+                  >
+                    {theme === "dark" ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5" />}
+                    <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
+        </aside>
+      </div>
 
-          {/* Navigation Items List */}
-          <nav className="space-y-1.5">
-            {navItems.map((item) => {
-              const active = isCurrentActive(item.id, item.to);
-              const Icon = item.icon;
-
-              if (item.isAction) {
-                return (
-                  <button
-                    key={item.id}
-                    onClick={item.onClick}
-                    className="w-full flex items-center justify-between px-3.5 py-2.5 min-h-[44px] rounded-xl text-[13px] sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-colors cursor-pointer text-left"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon className="w-[18px] h-[18px] text-slate-500 dark:text-slate-400 stroke-[1.8]" />
-                      <span>{item.name}</span>
-                    </div>
-                  </button>
-                );
-              }
-
-              return (
-                <Link
-                  key={item.id}
-                  to={item.to!}
-                  onClick={onClose}
-                  className={`flex items-center justify-between px-3.5 py-2.5 min-h-[44px] rounded-xl text-[13px] sm:text-sm transition-colors ${
-                    active
-                      ? "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-semibold shadow-2xs"
-                      : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 font-medium"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon
-                      className={`w-[18px] h-[18px] ${
-                        active ? "text-blue-600 dark:text-blue-400 stroke-[2.2]" : "text-slate-500 dark:text-slate-400 stroke-[1.8]"
-                      }`}
-                    />
-                    <span>{item.name}</span>
-                  </div>
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Drawer Footer: User Profile & Quick Actions */}
-        <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 space-y-3.5">
-          {isAuthenticated && user ? (
-            <>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-sky-500 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-2xs overflow-hidden">
-                    {user.avatar ? (
-                      <img src={user.avatar} alt={user.name || "Avatar"} className="w-full h-full object-cover" />
-                    ) : (
-                      user.name ? user.name.charAt(0).toUpperCase() : (user.phone ? user.phone.charAt(0) : "S")
-                    )}
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
-                      {user.name || "Student"}
-                    </span>
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono truncate">
-                      {user.phone ? formatPhoneNumber(user.phone) : user.email || "Verified Learner"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Theme Toggle Button */}
-                <button
-                  onClick={toggleTheme}
-                  aria-label="Toggle Theme"
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                >
-                  {theme === "dark" ? (
-                    <Sun className="w-4 h-4 text-amber-400" />
-                  ) : (
-                    <Moon className="w-4 h-4 text-slate-600" />
-                  )}
-                </button>
+      {/* Confirmation Modal: Sign Out (D1) */}
+      {confirmSignOut && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 animate-fade-in"
+          onClick={() => setConfirmSignOut(false)}
+        >
+          <div
+            className="bg-white dark:bg-[#121622] max-w-sm w-full rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl space-y-4 animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400">
+                <LogOut className="w-5 h-5" />
               </div>
-
-              {/* Admin / Mentor CMS Link if authorized */}
-              {["ADMIN", "SUPER_ADMIN", "MENTOR", "MEMBER"].includes(user.role) && (
-                <Link
-                  to="/admin"
-                  onClick={onClose}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50/90 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors border border-blue-200/70 dark:border-blue-800/60"
-                >
-                  <div className="flex items-center gap-2">
-                    <Layers className="w-3.5 h-3.5" />
-                    <span>Course Studio & CMS</span>
-                  </div>
-                  <ExternalLink className="w-3 h-3 opacity-60" />
-                </Link>
-              )}
-
-              {/* Logout Button */}
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Sign Out</span>
-              </button>
-            </>
-          ) : (
-            <div className="space-y-2">
-              <Link
-                to="/login"
-                onClick={onClose}
-                className="w-full flex items-center justify-center py-2.5 px-4 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-colors shadow-xs"
-              >
-                Sign In / Register
-              </Link>
-              <div className="flex items-center justify-center">
-                <button
-                  onClick={toggleTheme}
-                  className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center gap-1.5 py-1 cursor-pointer"
-                >
-                  {theme === "dark" ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5" />}
-                  <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
-                </button>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Sign out of Unisole LMS?</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Are you sure you want to end your current session?
+                </p>
               </div>
             </div>
-          )}
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setConfirmSignOut(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white transition-colors cursor-pointer shadow-xs"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
         </div>
-      </aside>
-      </div>
+      )}
 
       {/* Modal: Support */}
       {activeModal === "support" && (
@@ -513,7 +580,11 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
               </button>
             </div>
             <div className="p-4 text-center text-xs text-slate-400">
-              No new unread notifications. You are all caught up!
+              {unreadCount > 0 ? (
+                <span>You have {unreadCount} unread notification{unreadCount === 1 ? "" : "s"}. Check your Activities tab!</span>
+              ) : (
+                "No new unread notifications. You are all caught up!"
+              )}
             </div>
           </div>
         </div>
