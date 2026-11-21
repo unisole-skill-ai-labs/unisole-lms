@@ -1044,6 +1044,25 @@ export default function EditCoursePage() {
                   <span>Clear All</span>
                 </button>
               )}
+              {canManageCurriculum && (courseId === "cs-agentic" || courseId === "course1" || course?.slug === "cs-agentic") && (
+                <button
+                  type="button"
+                  disabled={isSyncing}
+                  onClick={async () => {
+                    try {
+                      await syncCanonicalCourses(undefined).unwrap();
+                      refetchModules();
+                    } catch (err) {
+                      console.error("Failed to seed curriculum:", err);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                  title="Seed or restore 12-week AI Agent curriculum"
+                >
+                  <Sparkles className="w-3 h-3 stroke-[2.2]" />
+                  <span>{isSyncing ? "Seeding..." : "Seed 12-W"}</span>
+                </button>
+              )}
               {canManageCurriculum && (
                 <button
                   type="button"

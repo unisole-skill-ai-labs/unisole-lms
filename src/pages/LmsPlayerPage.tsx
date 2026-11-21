@@ -345,8 +345,8 @@ export default function LmsPlayerPage() {
         };
       });
     }
-    return canonical.modules || [];
-  }, [courses, canonical]);
+    return [];
+  }, [courses]);
 
   // Milestones & Mentorship State
   const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
