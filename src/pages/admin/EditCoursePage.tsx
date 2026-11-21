@@ -69,6 +69,7 @@ import {
   useGetAdminLessonByIdQuery,
   useUpdateAdminLessonMutation,
   useClearAdminCourseModulesMutation,
+  useSyncCanonicalCoursesMutation,
   useGetAdminStudentsQuery,
   useGetAdminMentorsQuery,
   useAssignMentorMutation,
@@ -112,6 +113,7 @@ export default function EditCoursePage() {
   const [moveLessonApi] = useMoveAdminModuleLessonMutation();
   const [updateLessonMutation] = useUpdateAdminLessonMutation();
   const [clearCourseModulesMutation] = useClearAdminCourseModulesMutation();
+  const [syncCanonicalCourses, { isLoading: isSyncing }] = useSyncCanonicalCoursesMutation();
 
   // Mentorship & Cohort Allocation State
   const { user } = useSelector((state: any) => state.auth);
@@ -1103,15 +1105,35 @@ export default function EditCoursePage() {
           {/* Modules & Activities Tree */}
           <div className="p-3 space-y-3 flex-1">
             {displayModules.length === 0 ? (
-              <div className="py-12 text-center text-xs text-slate-400 space-y-2">
+              <div className="py-12 text-center text-xs text-slate-400 space-y-3">
                 <p>No modules in this course yet.</p>
                 {canManageCurriculum && (
-                  <button
-                    onClick={() => setShowAddModule(true)}
-                    className="text-sky-600 dark:text-sky-400 font-bold hover:underline cursor-pointer"
-                  >
-                    + Add First Module
-                  </button>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddModule(true)}
+                      className="px-4 py-2 rounded-xl border border-sky-500/40 text-sky-600 dark:text-sky-400 font-bold hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors cursor-pointer"
+                    >
+                      + Add First Module
+                    </button>
+                    {(courseId === "cs-agentic" || courseId === "course1" || course?.title?.toLowerCase().includes("agent")) && (
+                      <button
+                        type="button"
+                        disabled={isSyncing}
+                        onClick={async () => {
+                          try {
+                            await syncCanonicalCourses(undefined).unwrap();
+                            refetchModules();
+                          } catch (err: any) {
+                            alert(err?.data?.message || "Failed to seed curriculum. Please check server logs.");
+                          }
+                        }}
+                        className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold shadow-xs transition-colors cursor-pointer"
+                      >
+                        {isSyncing ? "Seeding Curriculum..." : "⚡ Seed 12-Week AI Agent Curriculum"}
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             ) : (
