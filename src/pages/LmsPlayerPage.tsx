@@ -42,6 +42,11 @@ import {
   Layers,
   Lock,
   Calendar,
+  ChevronDown,
+  ChevronUp,
+  Circle,
+  Clock,
+  Radio,
 } from "lucide-react";
 import {
   useGetPathwayContentQuery,
@@ -407,6 +412,8 @@ export default function LmsPlayerPage() {
   const [submitAssignmentApi] = useSubmitAssignmentMutation();
 
   const [localCompletedIds, setLocalCompletedIds] = useState<string[]>([]);
+  const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
+  const [isResourcesExpanded, setIsResourcesExpanded] = useState(false);
 
   const completedLessonIds: string[] = useMemo(() => {
     const fromServer = progressData?.completedLessonIds || [];
@@ -950,415 +957,724 @@ export default function LmsPlayerPage() {
   }
 
   // -------------------------------------------------------------
-  // VIEW 2: Chapter Details / Week Breakdown (Unisole Sky Theme)
+  // VIEW 2: Chapter Details / Week Breakdown (Mobile-First Unisole Sky Theme)
   // -------------------------------------------------------------
   if (currentView === "chapter") {
+    const currentModuleIndex = modules.findIndex((m) => m.id === selectedModule?.id);
+    const prevModule = currentModuleIndex > 0 ? modules[currentModuleIndex - 1] : null;
+    const nextModule =
+      currentModuleIndex >= 0 && currentModuleIndex < modules.length - 1
+        ? modules[currentModuleIndex + 1]
+        : null;
+
     const folderLessons =
       selectedModule?.items.filter((i) => i.category === "FOLDER" || i.type === "folder") || [];
-    const lectureLessons =
+    const flowLessons =
       selectedModule?.items.filter(
-        (i) => (i.category === "LECTURE" || i.type === "video") && i.category !== "FOLDER" && !i.folderId
-      ) || [];
-    const questionLessons =
-      selectedModule?.items.filter(
-        (i: any) =>
-          (i.type === "quiz" || (i.category === "PRACTICE" && (i.questions?.length || 0) > 0)) &&
-          i.category !== "FOLDER" &&
-          !i.folderId
-      ) || [];
-    const assignmentLessons =
-      selectedModule?.items.filter(
-        (i: any) =>
-          (i.type === "assignment" ||
-            i.type === "coding_test" ||
-            i.type === "subjective_test" ||
-            i.type === "video_test" ||
-            i.category === "TEST" ||
-            (i.category === "PRACTICE" && (i.questions?.length || 0) === 0)) &&
-          i.type !== "live" &&
-          i.category !== "LIVE" &&
-          !i.id?.includes("_live") &&
-          i.type !== "video" &&
-          i.category !== "LECTURE" &&
-          i.category !== "FOLDER" &&
-          !i.folderId
-      ) || [];
-    const liveLessons =
-      selectedModule?.items.filter(
-        (i: any) =>
-          (i.type === "live" || i.category === "LIVE" || i.id?.includes("_live")) &&
-          i.category !== "FOLDER" &&
-          !i.folderId
+        (i) => i.category !== "FOLDER" && i.type !== "folder" && !i.folderId
       ) || [];
 
+    const totalModuleLessons = flowLessons.length;
+    const completedModuleLessons = flowLessons.filter((i) =>
+      completedLessonIds.includes(i.id)
+    ).length;
+    const moduleProgressPercent =
+      totalModuleLessons > 0
+        ? Math.round((completedModuleLessons / totalModuleLessons) * 100)
+        : 0;
+
+    // Helper: Determine per-item completion & submission status
+    const getItemStatus = (item: any) => {
+      const isCompleted = completedLessonIds.includes(item.id);
+      const sub = Array.isArray(submissionsData)
+        ? submissionsData.find((s: any) => s.lessonId === item.id || s.assignmentId === item.id)
+        : null;
+
+      let status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" = "NOT_STARTED";
+      let scoreText: string | null = null;
+      let submissionStateText: string | null = null;
+
+      if (isCompleted) {
+        status = "COMPLETED";
+      }
+
+      if (item.type === "quiz") {
+        if (sub && sub.score !== null && sub.score !== undefined) {
+          scoreText = `${sub.score}/${sub.maxScore || (item.questions?.length || 3)}`;
+          status = "COMPLETED";
+        }
+      }
+
+      if (
+        item.type === "assignment" ||
+        item.type === "coding_test" ||
+        item.type === "subjective_test" ||
+        item.type === "video_test"
+      ) {
+        if (sub) {
+          if (sub.status === "GRADED") {
+            submissionStateText = `Graded (${sub.score}/${sub.maxScore || 100})`;
+            status = "COMPLETED";
+          } else if (sub.status === "SUBMITTED" || sub.status === "UNDER_REVIEW") {
+            submissionStateText = "Submitted";
+            if (!isCompleted) status = "IN_PROGRESS";
+          } else if (sub.status === "CHANGES_REQUESTED") {
+            submissionStateText = "Changes requested";
+            status = "IN_PROGRESS";
+          }
+        } else {
+          submissionStateText = "Not submitted";
+        }
+      }
+
+      const isOverdue =
+        !isCompleted && !!item.lockAt && new Date(item.lockAt).getTime() < Date.now();
+
+      return {
+        status,
+        isCompleted: status === "COMPLETED",
+        isInProgress: status === "IN_PROGRESS",
+        isNotStarted: status === "NOT_STARTED",
+        scoreText,
+        submissionStateText,
+        isOverdue,
+      };
+    };
+
+    // Helper: First incomplete item in recommended flow
+    const nextIncompleteItem = flowLessons.find((item) => {
+      const s = getItemStatus(item);
+      return !s.isCompleted && !item.isLocked;
+    }) || null;
+
+    // Helper: Clean concise meta line
+    const getItemMeta = (item: any, statusInfo: any) => {
+      const rawDur = item.duration || "15 min";
+      const duration = rawDur
+        .replace(/\s*Minutes?/i, " min")
+        .replace(/\s*Mins?/i, " min");
+      const parts: string[] = [duration];
+
+      if (item.type === "quiz") {
+        const qCount = item.questions?.length || 3;
+        parts.push(`${qCount} ${qCount === 1 ? "question" : "questions"}`);
+        if (statusInfo.scoreText) {
+          parts.push(`Score: ${statusInfo.scoreText}`);
+        }
+      } else if (
+        item.type === "assignment" ||
+        item.type === "coding_test" ||
+        item.type === "subjective_test" ||
+        item.type === "video_test"
+      ) {
+        if (statusInfo.submissionStateText) {
+          parts.push(statusInfo.submissionStateText);
+        } else {
+          parts.push("Hands-on Lab");
+        }
+      } else if (item.type === "live" || item.category === "LIVE") {
+        parts.push("Live Workshop");
+      }
+
+      return parts.join(" · ");
+    };
+
+    // Helper: Live session schedule & timezone calculations
+    const getLiveSessionDetails = (item: any) => {
+      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+      const tzShort =
+        new Date().toLocaleTimeString(undefined, { timeZoneName: "short" }).split(" ")[2] || "Local";
+
+      let relativeText = item.liveDate
+        ? `${item.liveDate}${item.liveTime ? ` at ${item.liveTime}` : ""}`
+        : "Weekend Session";
+      let isLiveNow = false;
+      let isConcluded = false;
+
+      if (item.unlockAt) {
+        const unlockDate = new Date(item.unlockAt);
+        const now = new Date();
+        const diffMs = unlockDate.getTime() - now.getTime();
+        const diffHours = diffMs / (1000 * 60 * 60);
+
+        if (diffMs > 0) {
+          const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+          if (diffDays <= 1 && unlockDate.getDate() === now.getDate()) {
+            relativeText = `Today at ${unlockDate.toLocaleTimeString(undefined, {
+              hour: "numeric",
+              minute: "2-digit",
+            })} ${tzShort}`;
+          } else if (diffDays <= 2) {
+            relativeText = `Tomorrow at ${unlockDate.toLocaleTimeString(undefined, {
+              hour: "numeric",
+              minute: "2-digit",
+            })} ${tzShort}`;
+          } else {
+            relativeText = `Starts in ${diffDays} days (${unlockDate.toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })})`;
+          }
+        } else {
+          if (Math.abs(diffHours) < 3) {
+            isLiveNow = true;
+            relativeText = "Live Now";
+          } else {
+            isConcluded = true;
+            relativeText = `Concluded on ${unlockDate.toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })}`;
+          }
+        }
+      }
+
+      // Google Calendar 1-Click Link
+      const calStart = item.unlockAt
+        ? new Date(item.unlockAt).toISOString().replace(/-|:|\.\d\d\d/g, "")
+        : "";
+      const calEnd = item.unlockAt
+        ? new Date(new Date(item.unlockAt).getTime() + 2 * 60 * 60 * 1000)
+            .toISOString()
+            .replace(/-|:|\.\d\d\d/g, "")
+        : "";
+      const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
+        `${item.title} (Unisole Live Workshop)`
+      )}${calStart ? `&dates=${calStart}/${calEnd}` : ""}&details=${encodeURIComponent(
+        `Interactive Live Architectural Masterclass.\nMeeting URL: ${
+          item.liveMeetingUrl || "https://meet.google.com/new"
+        }`
+      )}`;
+
+      return {
+        relativeText,
+        isLiveNow,
+        isConcluded,
+        userTimeZone: `${userTimeZone} (${tzShort})`,
+        calendarUrl,
+        meetUrl: item.liveMeetingUrl || "https://meet.google.com/new",
+        hasRecording: !!item.videoUrl,
+        recordingUrl: item.videoUrl,
+      };
+    };
+
     return (
-      <div className="min-h-[calc(100vh-4rem)] bg-[#F8FAFC] dark:bg-[#070A11] text-slate-900 dark:text-slate-100 animate-fade-in">
-        {/* Unisole Brand Header Bar */}
-        <div className="bg-white/95 dark:bg-[#0B1120]/95 border-b border-slate-200/80 dark:border-sky-500/20 text-slate-900 dark:text-white sticky top-0 z-30 shadow-xs dark:shadow-lg backdrop-blur-md">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3.5">
-              <button
-                onClick={() => setCurrentView("overview")}
-                aria-label="Back to Course Overview"
-                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-sky-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-sky-500/20 transition-all cursor-pointer"
-              >
-                <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
-              </button>
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-sky-600 dark:text-sky-400">
-                  Curriculum Module
+      <div className="min-h-[calc(100vh-4rem)] bg-[#F8FAFC] dark:bg-[#070A11] text-slate-900 dark:text-slate-100 animate-fade-in pb-28 sm:pb-12 overflow-x-hidden">
+        {/* Header Bar with Week Switcher and Progress Bar */}
+        <div className="bg-white/95 dark:bg-[#0B1120]/95 border-b border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white sticky top-0 z-30 shadow-xs backdrop-blur-md">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3.5 space-y-2.5">
+            {/* Top Navigation Row */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <button
+                  onClick={() => setCurrentView("overview")}
+                  aria-label="Back to Course Overview"
+                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white border border-slate-200/80 dark:border-slate-700/80 transition-all cursor-pointer shrink-0"
+                >
+                  <ArrowLeft className="w-4 h-4 stroke-[2.2]" />
+                </button>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-sky-600 dark:text-sky-400 shrink-0">
+                      Curriculum Module
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
+                      • Week {currentModuleIndex + 1} of {modules.length}
+                    </span>
+                  </div>
+                  <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
+                    {selectedModule?.title || "Module Curriculum"}
+                  </h1>
+                </div>
+              </div>
+
+              {/* Compact Week Switcher */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (prevModule) {
+                      setSelectedModule(prevModule);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }
+                  }}
+                  disabled={!prevModule}
+                  aria-label="Previous week"
+                  title={prevModule ? `Previous: ${prevModule.title}` : "First week"}
+                  className={`p-1.5 sm:px-2.5 sm:py-1 rounded-xl border text-xs flex items-center gap-1 transition-all ${
+                    prevModule
+                      ? "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 cursor-pointer"
+                      : "opacity-40 text-slate-400 border-transparent cursor-not-allowed"
+                  }`}
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline font-semibold">Prev</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (nextModule) {
+                      setSelectedModule(nextModule);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }
+                  }}
+                  disabled={!nextModule}
+                  aria-label="Next week"
+                  title={nextModule ? `Next: ${nextModule.title}` : "Last week"}
+                  className={`p-1.5 sm:px-2.5 sm:py-1 rounded-xl border text-xs flex items-center gap-1 transition-all ${
+                    nextModule
+                      ? "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 cursor-pointer"
+                      : "opacity-40 text-slate-400 border-transparent cursor-not-allowed"
+                  }`}
+                >
+                  <span className="hidden sm:inline font-semibold">Next</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Header Progress Bar and Progress Text */}
+            <div className="space-y-1 pt-0.5">
+              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                <span>
+                  {completedModuleLessons} of {totalModuleLessons} completed
                 </span>
-                <h1 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white truncate">
-                  {selectedModule?.title || "Module Curriculum"}
-                </h1>
+                <span className="font-bold text-sky-600 dark:text-sky-400">
+                  {moduleProgressPercent}%
+                </span>
+              </div>
+              <div className="w-full bg-slate-200/80 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                <div
+                  className="bg-sky-500 h-full rounded-full transition-all duration-300"
+                  style={{ width: `${moduleProgressPercent}%` }}
+                />
               </div>
             </div>
           </div>
         </div>
 
         {/* Content Area with Responsive Container */}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-7">
-          {/* Section 0: Resource Folders */}
-          {folderLessons.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-md bg-teal-50 dark:bg-teal-950/40 border border-teal-200/60 dark:border-teal-800/60 text-teal-600 dark:text-teal-400 flex items-center justify-center">
-                  <FolderOpen className="w-3.5 h-3.5" />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+          {/* Optional Week Summary Block (Collapsible) */}
+          {(selectedModule as any)?.description && (
+            <div className="bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setIsSummaryExpanded(!isSummaryExpanded)}
+                className="w-full px-4 py-3 sm:px-5 sm:py-3.5 flex items-center justify-between text-left hover:bg-slate-50/60 dark:hover:bg-[#0E1726] transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-6 h-6 rounded-lg bg-sky-50 dark:bg-sky-950/40 border border-sky-200/60 dark:border-sky-800/60 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200">
+                    What you'll learn in this week
+                  </span>
                 </div>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  Resources
-                </h2>
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                  {folderLessons.length}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {folderLessons.map((item: any) => {
-                  const isDone = completedLessonIds.includes(item.id);
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => {
-                        setSelectedLesson(item);
-                        setCurrentView("player");
-                      }}
-                      className="group bg-white dark:bg-[#0B1120] hover:bg-slate-50/80 dark:hover:bg-[#0E1726] rounded-xl border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 p-3.5 transition-all duration-150 shadow-2xs hover:shadow-xs flex items-center justify-between cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3 min-w-0 pr-2">
-                        <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-950/40 border border-teal-200/60 dark:border-teal-800/60 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
-                          <Folder className="w-4 h-4 stroke-[2]" />
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="text-xs font-semibold text-slate-900 dark:text-white truncate group-hover:text-teal-600 dark:group-hover:text-teal-300">
-                            {cleanLessonTitle(item.title)}
-                          </h3>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                            {item.attachments?.length || 0} Files & Notes
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {item.isLocked && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                            <Lock className="w-2.5 h-2.5" />
-                            <span>Locked</span>
-                          </span>
-                        )}
-                        {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
-                        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-teal-500 group-hover:translate-x-0.5 transition-transform" />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-400 font-semibold">
+                  <span className="hidden sm:inline">{isSummaryExpanded ? "Hide" : "Show"}</span>
+                  {isSummaryExpanded ? (
+                    <ChevronUp className="w-4 h-4 text-slate-400" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                  )}
+                </div>
+              </button>
+              {isSummaryExpanded && (
+                <div className="px-4 pb-4 sm:px-5 sm:pb-4 pt-1 border-t border-slate-100 dark:border-slate-800 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+                  {(selectedModule as any).description}
+                </div>
+              )}
             </div>
           )}
 
-          {/* Section 1: Lectures */}
-          {lectureLessons.length > 0 && (
-            <div className="space-y-3">
+          {/* Unified Recommended Learning Flow */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-md bg-sky-50 dark:bg-sky-950/40 border border-sky-200/60 dark:border-sky-800/60 text-sky-600 dark:text-sky-400 flex items-center justify-center">
-                  <PlayCircle className="w-3.5 h-3.5" />
+                  <Layers className="w-3.5 h-3.5" />
                 </div>
                 <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  Lectures
+                  Recommended Learning Flow
                 </h2>
                 <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                  {lectureLessons.length}
+                  {flowLessons.length} Steps
                 </span>
               </div>
-
-              <div className="space-y-2">
-                {lectureLessons.map((item) => {
-                  const isDone = completedLessonIds.includes(item.id);
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => {
-                        setSelectedLesson(item);
-                        setCurrentView("player");
-                      }}
-                      className="group bg-white dark:bg-[#0B1120] hover:bg-slate-50/80 dark:hover:bg-[#0E1726] rounded-xl border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 p-3.5 sm:p-4 transition-all duration-150 shadow-2xs hover:shadow-xs flex items-center justify-between cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0 pr-2">
-                        <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-950/50 border border-sky-200/60 dark:border-sky-800/60 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                          <PlayCircle className="w-4.5 h-4.5 stroke-[2]" />
-                        </div>
-
-                        <div className="min-w-0">
-                          <h3 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors line-clamp-2">
-                            {cleanLessonTitle(item.title)}
-                          </h3>
-                          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
-                            {item.duration && <span>{item.duration}</span>}
-                            {item.duration && item.description && <span className="text-slate-300 dark:text-slate-600">•</span>}
-                            {item.description && <span className="truncate">{item.description}</span>}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        {item.isLocked && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                            <Lock className="w-2.5 h-2.5" />
-                            <span>Locked{item.unlockAt ? ` · ${new Date(item.unlockAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}</span>
-                          </span>
-                        )}
-                        {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
-                        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 group-hover:translate-x-0.5 transition-all" />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
+                Sequence: Lecture → Quiz → Assignment → Live Workshop
+              </span>
             </div>
-          )}
 
-          {/* Section 2: Quizzes */}
-          {questionLessons.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-md bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                  <FileQuestion className="w-3.5 h-3.5" />
-                </div>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  Quizzes
-                </h2>
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                  {questionLessons.length}
-                </span>
+            {flowLessons.length === 0 ? (
+              <div className="p-8 text-center bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                  No learning activities scheduled for this module yet.
+                </p>
               </div>
+            ) : (
+              <div className="space-y-2.5">
+                {flowLessons.map((item: any, idx: number) => {
+                  const itemState = getItemStatus(item);
+                  const isDone = itemState.isCompleted;
+                  const isInProgress = itemState.isInProgress;
+                  const isNext = nextIncompleteItem?.id === item.id;
+                  const stepNum = idx + 1;
 
-              <div className="space-y-2">
-                {questionLessons.map((item: any) => {
-                  const isDone = completedLessonIds.includes(item.id);
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => {
-                        setSelectedLesson(item);
-                        setCurrentView("player");
-                      }}
-                      className="group bg-white dark:bg-[#0B1120] hover:bg-slate-50/80 dark:hover:bg-[#0E1726] rounded-xl border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 p-3.5 sm:p-4 transition-all duration-150 shadow-2xs hover:shadow-xs flex items-center justify-between cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0 pr-2">
-                        <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200/60 dark:border-amber-800/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                          <FileQuestion className="w-4.5 h-4.5 stroke-[2]" />
-                        </div>
+                  const isVideo =
+                    item.category === "VIDEO" ||
+                    item.type === "video" ||
+                    item.category === "LECTURE" ||
+                    item.type === "lecture";
+                  const isQuiz =
+                    item.category === "QUIZ" ||
+                    item.category === "ASSESSMENT" ||
+                    item.type === "quiz";
+                  const isAssignment =
+                    item.category === "ASSIGNMENT" ||
+                    item.type === "assignment" ||
+                    item.type === "project" ||
+                    item.type === "coding_test" ||
+                    item.type === "video_test" ||
+                    item.type === "subjective_test";
+                  const isLive =
+                    item.category === "LIVE" ||
+                    item.type === "live" ||
+                    item.category === "WORKSHOP" ||
+                    item.type === "workshop";
 
-                        <div className="min-w-0">
-                          <h3 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors line-clamp-2">
-                            {cleanLessonTitle(item.title)}
-                          </h3>
-                          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
-                            <span>{item.duration || "15 Mins"}</span>
-                            <span className="text-slate-300 dark:text-slate-600">•</span>
-                            <span>{(item.questions?.length || 3)} Questions</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        <span className="hidden sm:inline-flex text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/60 shrink-0">
-                          Quiz MCQ
-                        </span>
-                        {item.isLocked && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                            <Lock className="w-2.5 h-2.5" />
-                            <span>Locked{item.unlockAt ? ` · ${new Date(item.unlockAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}</span>
-                          </span>
-                        )}
-                        {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
-                        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 group-hover:translate-x-0.5 transition-all" />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Section 3: Assignments */}
-          {assignmentLessons.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-md bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                  <Code2 className="w-3.5 h-3.5" />
-                </div>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  Assignments
-                </h2>
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                  {assignmentLessons.length}
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                {assignmentLessons.map((item: any) => {
-                  const isDone = completedLessonIds.includes(item.id);
-                  const isCoding = item.type === "coding_test" || item.type === "code";
-                  const isVideo = item.type === "video_test";
-                  const isSubjective = item.type === "subjective_test";
-
-                  const badgeLabel = isCoding
-                    ? "Coding Test"
-                    : isVideo
-                    ? "Video Viva"
-                    : isSubjective
-                    ? "Subjective Test"
-                    : "Practical Project";
-
-                  const cleanSubtitle = (item.instructions || item.description || "")
-                    .replace(/^Hands-on Practical Work:\s*/i, "")
-                    .replace(/^Mini Project Deliverable:\s*/i, "")
-                    .replace(/^Project Deliverable:\s*/i, "")
-                    .replace(/^Deliverables:\s*/i, "")
-                    .split("\n")[0]
-                    .trim();
+                  const liveInfo = isLive ? getLiveSessionDetails(item) : null;
+                  const metaText = getItemMeta(item, itemState);
+                  const isOverdue =
+                    item.lockAt &&
+                    new Date(item.lockAt) < new Date() &&
+                    !isDone;
 
                   return (
                     <div
                       key={item.id}
                       onClick={() => {
+                        if (item.isLocked) return;
                         setSelectedLesson(item);
                         setCurrentView("player");
                       }}
-                      className="group bg-white dark:bg-[#0B1120] hover:bg-slate-50/80 dark:hover:bg-[#0E1726] rounded-xl border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 p-3.5 sm:p-4 transition-all duration-150 shadow-2xs hover:shadow-xs flex items-center justify-between cursor-pointer"
+                      className={`group relative rounded-xl border p-3.5 sm:p-4 transition-all duration-150 shadow-2xs hover:shadow-xs flex items-center justify-between min-h-[56px] active:scale-[0.99] ${
+                        item.isLocked
+                          ? "opacity-60 bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 cursor-not-allowed"
+                          : isNext
+                          ? "bg-sky-50/40 dark:bg-sky-950/20 border-sky-500/80 dark:border-sky-500/80 ring-2 ring-sky-500/20 cursor-pointer"
+                          : "bg-white dark:bg-[#0B1120] hover:bg-slate-50/80 dark:hover:bg-[#0E1726] border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 cursor-pointer"
+                      }`}
                     >
-                      <div className="flex items-center gap-3.5 min-w-0 pr-2">
-                        <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/60 dark:border-emerald-800/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                          {isCoding ? (
-                            <Code2 className="w-4.5 h-4.5 stroke-[2]" />
-                          ) : isVideo ? (
-                            <VideoIcon className="w-4.5 h-4.5 stroke-[2]" />
+                      {/* Left: Step number, Status icon, Type icon, and Titles */}
+                      <div className="flex items-center gap-3 min-w-0 pr-2 flex-1">
+                        {/* Step Number Badge */}
+                        <div
+                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                            isDone
+                              ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
+                              : isNext
+                              ? "bg-sky-600 text-white"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                          }`}
+                        >
+                          {stepNum}
+                        </div>
+
+                        {/* Status Icon */}
+                        <div className="shrink-0">
+                          {isDone ? (
+                            <CheckCircle2
+                              className="w-5 h-5 text-emerald-500"
+                              aria-label="Completed"
+                            />
+                          ) : isInProgress ? (
+                            <Clock
+                              className="w-5 h-5 text-amber-500"
+                              aria-label="In Progress"
+                            />
                           ) : (
-                            <FileText className="w-4.5 h-4.5 stroke-[2]" />
+                            <Circle
+                              className="w-5 h-5 text-slate-300 dark:text-slate-600"
+                              aria-label="Not Started"
+                            />
                           )}
                         </div>
 
-                        <div className="min-w-0">
-                          <h3 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-2">
-                            {cleanLessonTitle(item.title)}
-                          </h3>
-                          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
-                            <span>{item.duration || "90 Mins"}</span>
-                            {cleanSubtitle && <span className="text-slate-300 dark:text-slate-600">•</span>}
-                            {cleanSubtitle && <span className="truncate">{cleanSubtitle}</span>}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        <span className="hidden sm:inline-flex text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/60 shrink-0">
-                          {badgeLabel}
-                        </span>
-                        {item.isLocked && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                            <Lock className="w-2.5 h-2.5" />
-                            <span>Locked{item.unlockAt ? ` · ${new Date(item.unlockAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}</span>
-                          </span>
-                        )}
-                        {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
-                        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 group-hover:translate-x-0.5 transition-all" />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Section 4: Live Workshops & Interactive Sessions */}
-          {liveLessons.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-md bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-                  <VideoIcon className="w-3.5 h-3.5" />
-                </div>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  Live Workshops & Cohort Classes
-                </h2>
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                  {liveLessons.length}
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                {liveLessons.map((item: any) => {
-                  const isDone = completedLessonIds.includes(item.id);
-
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => {
-                        setSelectedLesson(item);
-                        setCurrentView("player");
-                      }}
-                      className="group bg-white dark:bg-[#0B1120] hover:bg-slate-50/80 dark:hover:bg-[#0E1726] rounded-xl border border-slate-200/90 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-500/40 p-3.5 sm:p-4 transition-all duration-150 shadow-2xs hover:shadow-xs flex items-center justify-between cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0 pr-2">
-                        <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                          <VideoIcon className="w-4.5 h-4.5 stroke-[2]" />
+                        {/* Type Icon Badge */}
+                        <div
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                            isVideo
+                              ? "bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 border border-sky-200/60 dark:border-sky-800/60"
+                              : isQuiz
+                              ? "bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60"
+                              : isAssignment
+                              ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60"
+                              : isLive
+                              ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60"
+                              : "bg-slate-50 dark:bg-slate-900 text-slate-600 border border-slate-200 dark:border-slate-700"
+                          }`}
+                        >
+                          {isVideo ? (
+                            <PlayCircle className="w-4 h-4 stroke-[2]" />
+                          ) : isQuiz ? (
+                            <FileQuestion className="w-4 h-4 stroke-[2]" />
+                          ) : isAssignment ? (
+                            <Code2 className="w-4 h-4 stroke-[2]" />
+                          ) : isLive ? (
+                            <VideoIcon className="w-4 h-4 stroke-[2]" />
+                          ) : (
+                            <BookOpen className="w-4 h-4 stroke-[2]" />
+                          )}
                         </div>
 
-                        <div className="min-w-0">
-                          <h3 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2">
+                        {/* Title and Meta Information */}
+                        <div className="min-w-0 flex-1">
+                          <h3
+                            className={`text-xs sm:text-sm font-semibold truncate transition-colors ${
+                              isDone
+                                ? "text-slate-700 dark:text-slate-300"
+                                : isNext
+                                ? "text-sky-700 dark:text-sky-300 font-bold"
+                                : "text-slate-900 dark:text-white"
+                            }`}
+                          >
                             {cleanLessonTitle(item.title)}
                           </h3>
-                          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
-                            <span>{item.duration || "120 Mins"}</span>
-                            <span className="text-slate-300 dark:text-slate-600">•</span>
-                            <span>{item.liveDate || "Weekend Interactive Workshop"}</span>
-                            {item.liveTime && (
+
+                          {/* Desktop description snippet (hidden on mobile) */}
+                          {item.description && (
+                            <p className="hidden sm:block text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                              {item.description}
+                            </p>
+                          )}
+
+                          {/* Concise Meta Line */}
+                          <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
+                            <span>{metaText}</span>
+
+                            {/* Live Relative Time */}
+                            {liveInfo && (
                               <>
                                 <span className="text-slate-300 dark:text-slate-600">•</span>
-                                <span>{item.liveTime}</span>
+                                <span
+                                  className={
+                                    liveInfo.isLiveNow
+                                      ? "font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1"
+                                      : "text-indigo-600 dark:text-indigo-400 font-medium"
+                                  }
+                                >
+                                  {liveInfo.isLiveNow && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                                  )}
+                                  {liveInfo.relativeText}
+                                </span>
                               </>
+                            )}
+
+                            {/* Overdue Tag */}
+                            {isOverdue && (
+                              <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                                Overdue
+                              </span>
+                            )}
+
+                            {/* Locked Tag */}
+                            {item.isLocked && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                <Lock className="w-2.5 h-2.5" />
+                                <span>
+                                  Locked
+                                  {item.unlockAt
+                                    ? ` · ${new Date(item.unlockAt).toLocaleDateString(
+                                        undefined,
+                                        { month: "short", day: "numeric" }
+                                      )}`
+                                    : ""}
+                                </span>
+                              </span>
                             )}
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60">
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
-                          <span>Live Session</span>
-                        </span>
-                        {item.isLocked && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                            <Lock className="w-2.5 h-2.5" />
-                            <span>Locked{item.unlockAt ? ` · ${new Date(item.unlockAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}</span>
+                      {/* Right: Action Buttons and Indicators */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* Live Session Actions */}
+                        {liveInfo && (
+                          <div className="flex items-center gap-1.5">
+                            {liveInfo.isLiveNow ? (
+                              <a
+                                href={liveInfo.meetUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white flex items-center gap-1 shadow-xs animate-pulse"
+                              >
+                                <Radio className="w-3 h-3" />
+                                <span>Join Live</span>
+                              </a>
+                            ) : liveInfo.hasRecording ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedLesson(item);
+                                  setCurrentView("player");
+                                }}
+                                className="px-2 py-1 rounded-lg text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60 hover:bg-indigo-100 transition-colors"
+                              >
+                                Watch Recording
+                              </button>
+                            ) : (
+                              <a
+                                href={liveInfo.calendarUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                title={`Add to Google Calendar (${liveInfo.userTimeZone})`}
+                                className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+                              >
+                                <Calendar className="w-3 h-3" />
+                                <span>Calendar</span>
+                              </a>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Next Incomplete Highlight Button (Desktop) */}
+                        {isNext && !item.isLocked && (
+                          <span className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold shadow-xs">
+                            {isInProgress ? "Continue" : "Start"}
+                            <ChevronRight className="w-3.5 h-3.5" />
                           </span>
                         )}
-                        {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
-                        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 group-hover:translate-x-0.5 transition-all" />
+
+                        <ChevronRight
+                          className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${
+                            isNext
+                              ? "text-sky-600 dark:text-sky-400"
+                              : "text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200"
+                          }`}
+                        />
                       </div>
                     </div>
                   );
                 })}
               </div>
+            )}
+          </div>
+
+          {/* Section: Resource Folders (Collapsible) */}
+          {folderLessons.length > 0 && (
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setIsResourcesExpanded(!isResourcesExpanded)}
+                  className="flex items-center gap-2 group cursor-pointer"
+                >
+                  <div className="w-6 h-6 rounded-md bg-teal-50 dark:bg-teal-950/40 border border-teal-200/60 dark:border-teal-800/60 text-teal-600 dark:text-teal-400 flex items-center justify-center">
+                    <FolderOpen className="w-3.5 h-3.5" />
+                  </div>
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
+                    Resources & Files
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                    {folderLessons.length}
+                  </span>
+                  {isResourcesExpanded ? (
+                    <ChevronUp className="w-4 h-4 text-slate-400 ml-1" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-slate-400 ml-1" />
+                  )}
+                </button>
+              </div>
+
+              {isResourcesExpanded && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {folderLessons.map((item: any) => {
+                    const isDone = completedLessonIds.includes(item.id);
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => {
+                          setSelectedLesson(item);
+                          setCurrentView("player");
+                        }}
+                        className="group bg-white dark:bg-[#0B1120] hover:bg-slate-50/80 dark:hover:bg-[#0E1726] rounded-xl border border-slate-200/90 dark:border-slate-800 hover:border-teal-300 dark:hover:border-teal-700 p-3.5 transition-all duration-150 shadow-2xs hover:shadow-xs flex items-center justify-between cursor-pointer min-h-[56px] active:scale-[0.99]"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 pr-2">
+                          <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-950/40 border border-teal-200/60 dark:border-teal-800/60 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                            <Folder className="w-4 h-4 stroke-[2]" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="text-xs font-semibold text-slate-900 dark:text-white truncate group-hover:text-teal-600 dark:group-hover:text-teal-300">
+                              {cleanLessonTitle(item.title)}
+                            </h3>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                              {item.attachments?.length || 0} Files & Notes
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {item.isLocked && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                              <Lock className="w-2.5 h-2.5" />
+                              <span>Locked</span>
+                            </span>
+                          )}
+                          {isDone && (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                          )}
+                          <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-teal-500 group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Sticky Bottom "Continue" Mobile Bar (Mobile only, < 768px) */}
+        <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 p-3 shadow-lg">
+          {nextIncompleteItem ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedLesson(nextIncompleteItem);
+                setCurrentView("player");
+              }}
+              className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all"
+            >
+              <span>
+                {getItemStatus(nextIncompleteItem).isInProgress
+                  ? "Continue"
+                  : "Start"}{" "}
+                Next: {cleanLessonTitle(nextIncompleteItem.title)}
+              </span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          ) : nextModule ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedModule(nextModule);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all"
+            >
+              <span>Next Week: {nextModule.title}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          ) : (
+            <div className="text-center py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>All module activities completed!</span>
             </div>
           )}
         </div>
