@@ -82,6 +82,16 @@ import {
   getSubmissionForLesson,
 } from "../utils/submissionsStorage";
 import { renderMarkdownToHtml, cleanLessonTitle } from "../utils/formatContent";
+import {
+  getCourseFlowStats,
+  getItemStatus,
+  getLiveSessionDetails,
+  getItemMeta,
+  formatWeekTitle,
+  getActivityType,
+  WeekStats,
+  CourseFlowStats,
+} from "../utils/courseFlow";
 
 export default function LmsPlayerPage() {
   const { pathwayId } = useParams();
@@ -115,7 +125,7 @@ export default function LmsPlayerPage() {
         !m.title.toLowerCase().includes("intro to ai")
     );
 
-    if (validCourseModules.length >= 12) {
+    if (validCourseModules.length > 0) {
       return validCourseModules.map((m: any, idx: number) => {
         const backendLessons = m.lessons || [];
         const liveCount = backendLessons.filter(
@@ -365,8 +375,11 @@ export default function LmsPlayerPage() {
         };
       });
     }
+    if (canonical.modules && canonical.modules.length > 0) {
+      return canonical.modules;
+    }
     return [];
-  }, [courses]);
+  }, [courses, canonical]);
 
   // Milestones & Mentorship State
   const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
@@ -419,6 +432,11 @@ export default function LmsPlayerPage() {
     const fromServer = progressData?.completedLessonIds || [];
     return Array.from(new Set([...fromServer, ...localCompletedIds]));
   }, [progressData, localCompletedIds]);
+
+  // Unified single source of truth for course progress and flow
+  const courseFlow = useMemo(() => {
+    return getCourseFlowStats(modules, completedLessonIds, submissionsData || []);
+  }, [modules, completedLessonIds, submissionsData]);
 
   const markLessonComplete = async (lessonId: string) => {
     setLocalCompletedIds((prev) => (prev.includes(lessonId) ? prev : [...prev, lessonId]));
@@ -565,48 +583,25 @@ export default function LmsPlayerPage() {
     return allLessonItems.filter((l) => l.type !== "folder" && (l as any).category !== "FOLDER");
   }, [allLessonItems]);
 
-  const totalLessons = actionableLessons.length;
+  const totalLessons = courseFlow.totalActivities;
   const completedLessonsInCourse = useMemo(() => {
     return actionableLessons.filter((l) => completedLessonIds.includes(l.id));
   }, [actionableLessons, completedLessonIds]);
-  const completedCount = completedLessonsInCourse.length;
-  const progressPercent = totalLessons > 0 ? Math.min(100, Math.round((completedCount / totalLessons) * 100)) : 0;
+  const completedCount = courseFlow.completedActivities;
+  const progressPercent = courseFlow.progressPercent;
 
-  // Breakdown of actual content types
-  const lectureItems = useMemo(() => {
-    return actionableLessons.filter((l) => l.type === "video" || (l as any).category === "LECTURE");
-  }, [actionableLessons]);
-  const totalVideos = lectureItems.length;
-  const completedVideos = useMemo(() => {
-    return lectureItems.filter((l) => completedLessonIds.includes(l.id)).length;
-  }, [lectureItems, completedLessonIds]);
-
-  const practiceItems = useMemo(() => {
-    return actionableLessons.filter(
-      (l) => (l as any).category === "PRACTICE" || (l.type === "quiz" && (l as any).category !== "TEST")
-    );
-  }, [actionableLessons]);
-  const practiceTasksCount = practiceItems.length;
-
-  const testItems = useMemo(() => {
+  // Breakdown of actual content types from courseFlow
+  const totalVideos = courseFlow.totalVideos;
+  const completedVideos = courseFlow.completedVideos;
+  const totalAssessments = courseFlow.totalQuizzes + courseFlow.totalLabs;
+  const completedAssessments = courseFlow.completedQuizzes + courseFlow.completedLabs;
+  const assessmentItems = useMemo(() => {
     return actionableLessons.filter(
       (l) =>
-        (l as any).category === "TEST" ||
-        (l as any).type === "coding_test" ||
-        (l as any).type === "subjective_test" ||
-        (l as any).type === "video_test" ||
-        (l.type === "assignment" && (l as any).category !== "PRACTICE")
+        getActivityType(l) === "quiz" ||
+        getActivityType(l) === "lab"
     );
   }, [actionableLessons]);
-  const testTasksCount = testItems.length;
-
-  const assessmentItems = useMemo(() => {
-    return [...practiceItems, ...testItems];
-  }, [practiceItems, testItems]);
-  const totalAssessments = assessmentItems.length;
-  const completedAssessments = useMemo(() => {
-    return assessmentItems.filter((l) => completedLessonIds.includes(l.id)).length;
-  }, [assessmentItems, completedLessonIds]);
 
   const maxMarks = useMemo(() => {
     return assessmentItems.reduce((acc, l) => acc + ((l as any).maxScore || 10), 0);
@@ -618,25 +613,13 @@ export default function LmsPlayerPage() {
       .reduce((acc, l) => acc + ((l as any).maxScore || 10), 0);
   }, [assessmentItems, completedLessonIds]);
 
-  // Dynamic syllabus summary text (strictly synced with actual course content and taxonomy)
+  // Dynamic syllabus summary text (1 line as required: "2% complete · 1 of 47 activities")
   const statsSummary = useMemo(() => {
     if (totalLessons === 0) {
       return "Curriculum in preparation · 0 / 0 Completed";
     }
-    const parts: string[] = [];
-    if (totalVideos > 0) {
-      parts.push(`${completedVideos} / ${totalVideos} ${totalVideos === 1 ? "Video" : "Videos"}`);
-    }
-    if (totalAssessments > 0) {
-      parts.push(
-        completedAssessments > 0
-          ? `${completedAssessments} / ${totalAssessments} ${totalAssessments === 1 ? "Assessment" : "Assessments"}`
-          : `${totalAssessments} ${totalAssessments === 1 ? "Assessment" : "Assessments"}`
-      );
-    }
-    parts.push(`${completedCount} / ${totalLessons} Completed`);
-    return parts.join(" · ");
-  }, [totalLessons, completedVideos, totalVideos, totalAssessments, completedAssessments, completedCount]);
+    return `${progressPercent}% complete · ${completedCount} of ${totalLessons} activities`;
+  }, [totalLessons, progressPercent, completedCount]);
 
   // Contextual status badge (replaces false "AT RISK" on new/empty courses)
   const statusBadge = useMemo(() => {
