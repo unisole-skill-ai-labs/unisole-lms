@@ -437,24 +437,50 @@ export default function LmsPlayerPage() {
     return getCourseFlowStats(modules, completedLessonIds, submissionsData || []);
   }, [modules, completedLessonIds, submissionsData]);
 
-  // Overview page: inline expanded weeks, current week ref, and scroll-collapse header
-  const [expandedWeekIds, setExpandedWeekIds] = useState<Record<string, boolean>>({});
+  // Overview page: single open week accordion, week card refs, and scroll-collapse header
+  const [openWeekId, setOpenWeekId] = useState<string | null>(null);
+  const [hasUserToggled, setHasUserToggled] = useState(false);
   const currentWeekRef = useRef<HTMLDivElement | null>(null);
+  const weekCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);
   const isScrolledRef = useRef(false);
   const hasAutoScrolled = useRef(false);
 
-  // Auto-expand current week by default on overview
+  // Default on first load: the current week (first incomplete) is open and the others are closed. If every week is complete, all closed.
   useEffect(() => {
-    if (courseFlow.currentWeek?.id) {
-      setExpandedWeekIds((prev) => {
-        if (Object.keys(prev).length === 0) {
-          return { [courseFlow.currentWeek!.id]: true };
-        }
-        return prev;
-      });
+    if (!hasUserToggled && courseFlow.weekStats.length > 0) {
+      const allCompleted = courseFlow.weekStats.every((ws) => ws.isCompleted);
+      if (allCompleted) {
+        setOpenWeekId(null);
+      } else {
+        const targetId = courseFlow.currentWeek?.id || courseFlow.weekStats[0]?.module.id;
+        setOpenWeekId(targetId || null);
+      }
     }
-  }, [courseFlow.currentWeek?.id]);
+  }, [hasUserToggled, courseFlow.currentWeek?.id, courseFlow.weekStats]);
+
+  // Accordion toggle: open selected week and close previous, or close if already open
+  const handleToggleWeek = (weekId: string) => {
+    setHasUserToggled(true);
+    setOpenWeekId((prev) => {
+      const nextId = prev === weekId ? null : weekId;
+      if (nextId) {
+        // Smoothly scroll into view just below sticky header only if its top is out of view
+        requestAnimationFrame(() => {
+          const el = weekCardRefs.current[nextId];
+          if (el) {
+            const rect = el.getBoundingClientRect();
+            // Header is ~176px tall (nav 64 + course header 112)
+            const stickyThreshold = 180;
+            if (rect.top < stickyThreshold || rect.top > window.innerHeight - 100) {
+              el.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+          }
+        });
+      }
+      return nextId;
+    });
+  };
 
   // Mobile scroll listener with hysteresis (collapse at > 80px, expand at < 20px) to eliminate feedback flicker
   useEffect(() => {
@@ -982,12 +1008,15 @@ export default function LmsPlayerPage() {
               <div className="space-y-3.5">
                 {courseFlow.weekStats.map((ws) => {
                   const isCurrentWeek = ws.module.id === courseFlow.currentWeek?.id;
-                  const isExpanded = !!expandedWeekIds[ws.module.id];
+                  const isOpen = openWeekId === ws.module.id;
 
                   return (
                     <div
                       key={ws.module.id}
-                      ref={isCurrentWeek ? currentWeekRef : undefined}
+                      ref={(el) => {
+                        weekCardRefs.current[ws.module.id] = el;
+                        if (isCurrentWeek) currentWeekRef.current = el;
+                      }}
                       style={{ scrollMarginTop: "calc(var(--nav-h, 4rem) + 128px)" }}
                       className={`rounded-2xl border transition-all duration-150 overflow-hidden shadow-2xs ${
                         isCurrentWeek
@@ -997,15 +1026,14 @@ export default function LmsPlayerPage() {
                           : "border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] hover:border-slate-300 dark:hover:border-slate-700"
                       }`}
                     >
-                      {/* Week Card Header (tappable to expand inline) */}
-                      <div
-                        onClick={() => {
-                          setExpandedWeekIds((prev) => ({
-                            ...prev,
-                            [ws.module.id]: !prev[ws.module.id],
-                          }));
-                        }}
-                        className="p-4 sm:p-4.5 cursor-pointer flex items-center justify-between gap-3 group"
+                      {/* Week Card Header (tappable button to toggle accordion) */}
+                      <button
+                        type="button"
+                        id={`week-header-${ws.module.id}`}
+                        aria-expanded={isOpen}
+                        aria-controls={`week-content-${ws.module.id}`}
+                        onClick={() => handleToggleWeek(ws.module.id)}
+                        className="w-full text-left p-4 sm:p-4.5 cursor-pointer flex items-center justify-between gap-3 group focus:outline-hidden focus-visible:ring-2 focus-visible:ring-sky-500 rounded-2xl transition-colors"
                       >
                         <div className="min-w-0 flex-1">
                           {/* Title and Status Badge */}
@@ -1094,19 +1122,27 @@ export default function LmsPlayerPage() {
                         {/* Expand / Collapse Indicator */}
                         <div className="flex items-center gap-1.5 shrink-0 text-slate-400 group-hover:text-sky-500 transition-colors">
                           <span className="text-xs font-semibold hidden sm:inline">
-                            {isExpanded ? "Collapse" : "Details"}
+                            {isOpen ? "Collapse" : "Details"}
                           </span>
-                          {isExpanded ? (
-                            <ChevronUp className="w-4 h-4 transition-transform" />
-                          ) : (
-                            <ChevronDown className="w-4 h-4 transition-transform" />
-                          )}
+                          <ChevronDown
+                            className={`w-4 h-4 transition-transform duration-250 ease-out ${
+                              isOpen ? "rotate-180 text-sky-500" : ""
+                            }`}
+                          />
                         </div>
-                      </div>
+                      </button>
 
-                      {/* Inline Expanded Items & Week Navigation (A3) */}
-                      {isExpanded && (
-                        <div className="border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 p-3 sm:p-4 space-y-2">
+                      {/* Inline Expanded Items & Week Navigation (A3) with Grid Height Animation */}
+                      <div
+                        id={`week-content-${ws.module.id}`}
+                        role="region"
+                        aria-labelledby={`week-header-${ws.module.id}`}
+                        className={`grid transition-[grid-template-rows] duration-250 ease-out ${
+                          isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                        }`}
+                      >
+                        <div className="overflow-hidden">
+                          <div className="border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 p-3 sm:p-4 space-y-2">
                           <div className="space-y-1.5">
                             {ws.flowLessons.map((item, idx) => {
                               const itemStatus = getItemStatus(
@@ -1209,9 +1245,10 @@ export default function LmsPlayerPage() {
                             <ArrowRight className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                      )}
+                      </div>
                     </div>
-                  );
+                  </div>
+                );
                 })}
               </div>
             )}
