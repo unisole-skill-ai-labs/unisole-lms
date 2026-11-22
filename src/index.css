@@ -4,6 +4,7 @@
 
 @layer base {
   :root {
+    --nav-h: 4rem;
     --background: 0 0% 100%; /* #ffffff */
     --foreground: 240 10% 4%; /* #09090b */
     

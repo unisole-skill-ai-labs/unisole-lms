@@ -33,8 +33,9 @@ const AdminLoginPage = lazy(() => import("./pages/admin/AdminLoginPage"));
 
 function PageLoader() {
   return (
-    <div className="min-h-[50vh] flex items-center justify-center">
-      <div className="w-8 h-8 border-3 border-sky-600 border-t-transparent rounded-full animate-spin" />
+    <div className="w-full min-h-[50vh] flex flex-col items-center justify-center p-6 animate-fade-in transition-opacity duration-200">
+      <div className="w-7 h-7 border-2 border-sky-500 border-t-transparent rounded-full animate-spin mb-2.5" />
+      <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 font-mono tracking-wider">Loading...</span>
     </div>
   );
 }
