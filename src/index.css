@@ -5,6 +5,12 @@
 @layer base {
   :root {
     --nav-h: 4rem;
+    --motion-duration-fast: 150ms;
+    --motion-duration-base: 200ms;
+    --motion-duration-moderate: 250ms;
+    --motion-duration-slow: 300ms;
+    --motion-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --motion-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
     --background: 0 0% 100%; /* #ffffff */
     --foreground: 240 10% 4%; /* #09090b */
     
