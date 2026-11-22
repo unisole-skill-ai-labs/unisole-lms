@@ -60,6 +60,7 @@ const baseQueryWithReauth = async (args: any, api: any, extraOptions: any) => {
 export const apiSlice = createApi({
   reducerPath: "api",
   baseQuery: baseQueryWithReauth,
+  keepUnusedDataFor: 300,
   tagTypes: [
     "Pathway",
     "Category",

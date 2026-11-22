@@ -32,6 +32,40 @@ import {
   formatDateStandard,
 } from "../utils/courseFlow";
 
+// Isolated Minute-by-minute countdown badge (A3: prevents entire dashboard from re-rendering every minute)
+const LiveCountdownBadge = React.memo(function LiveCountdownBadge({
+  targetDate,
+  isLive,
+}: {
+  targetDate?: string | null;
+  isLive?: boolean;
+}) {
+  const [countdown, setCountdown] = useState<string | null>(targetDate ? getCountdownText(targetDate) : null);
+
+  useEffect(() => {
+    if (!targetDate) return;
+    setCountdown(getCountdownText(targetDate));
+    const timer = setInterval(() => {
+      setCountdown(getCountdownText(targetDate));
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [targetDate]);
+
+  if (!countdown) return null;
+
+  return (
+    <span
+      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+        isLive
+          ? "bg-rose-500 text-white animate-pulse"
+          : "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300"
+      }`}
+    >
+      {countdown}
+    </span>
+  );
+});
+
 export default function DashboardPage() {
   const { isAuthenticated, user } = useSelector((state: any) => state.auth);
   const navigate = useNavigate();
@@ -95,15 +129,6 @@ export default function DashboardPage() {
   const refetchActivities = refetchSummary;
   const refetchCalendar = refetchSummary;
 
-  // Minute-by-minute timer for live class countdowns (B3)
-  const [, setMinuteTick] = useState(0);
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setMinuteTick((t) => t + 1);
-    }, 60000);
-    return () => clearInterval(timer);
-  }, []);
-
   // Shared Course Flow computation (Single source of truth)
   const modules = useMemo(() => {
     return pathwayContent?.courses?.[0]?.modules || [];
@@ -143,6 +168,7 @@ export default function DashboardPage() {
         userTimeZone: details.userTimeZone,
         meetUrl: details.meetUrl,
         countdown,
+        rawTargetDate: item.unlockAt,
         status,
         type: "live",
         lessonId: item.id,
@@ -166,6 +192,7 @@ export default function DashboardPage() {
         userTimeZone: status.userTimeZone,
         meetUrl: liveActivity.meetUrl || status.meetUrl,
         countdown,
+        rawTargetDate: liveActivity.unlockAt,
         status,
         type: "live",
         lessonId: liveActivity.lessonId || liveActivity.id,
@@ -192,6 +219,7 @@ export default function DashboardPage() {
         userTimeZone: status.userTimeZone,
         meetUrl: futureCal.meet_url || status.meetUrl,
         countdown,
+        rawTargetDate: futureCal.start_time,
         status,
         type: "live",
         lessonId: futureCal.lesson_id,
@@ -475,17 +503,10 @@ export default function DashboardPage() {
                     <span className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-300">
                       {upcomingLive.dateFormatted} • {upcomingLive.timeFormatted}
                     </span>
-                    {upcomingLive.countdown && (
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          upcomingLive.status.isLive
-                            ? "bg-rose-500 text-white animate-pulse"
-                            : "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300"
-                        }`}
-                      >
-                        {upcomingLive.countdown}
-                      </span>
-                    )}
+                    <LiveCountdownBadge
+                      targetDate={upcomingLive.rawTargetDate}
+                      isLive={upcomingLive.status.isLive}
+                    />
                   </div>
                   <h3 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate mt-0.5">
                     {upcomingLive.title}

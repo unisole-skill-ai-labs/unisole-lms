@@ -80,13 +80,22 @@ export default function StudentsPage() {
   const isCourseManager =
     (userRoles.includes("COURSE_MANAGER") || userRoles.includes("PROGRAM_MANAGER")) && !isAdmin;
 
-  // Filter & Search states
+  // Filter & Search states (debounced 250ms to prevent heavy re-filtering on every keystroke)
   const [selectedCourseId, setSelectedCourseId] = useState<string>("ALL");
   const [selectedMentorIdFilter, setSelectedMentorIdFilter] = useState<string>("ALL");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [assignmentFilter, setAssignmentFilter] = useState<"ALL" | "ASSIGNED" | "UNASSIGNED">("ALL");
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [hideTestAccounts, setHideTestAccounts] = useState(false);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearch(searchInput);
+      setCurrentPage(1);
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [searchInput]);
 
   // Sorting & Pagination states (D2: 25 per page)
   const [sortField, setSortField] = useState<"name" | "progress" | "lastActive" | "status">("name");
@@ -565,8 +574,8 @@ export default function StudentsPage() {
           <input
             type="text"
             placeholder="Search by student name, mentor, phone, or course..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/40 shadow-2xs"
           />
         </div>

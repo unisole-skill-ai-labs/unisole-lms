@@ -91,9 +91,17 @@ export default function AdminCoursesPage() {
   const [importCourse, { isLoading: isImporting }] = useImportAdminCourseMutation();
   const [deleteCourse, { isLoading: isDeleting }] = useDeleteAdminCourseMutation();
 
-  // Filter & Search states
+  // Filter & Search states (debounced 250ms)
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "PUBLISHED" | "DRAFT">("ALL");
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearch(searchInput);
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [searchInput]);
 
   // Active Menu state
   const [activeMenuCourseId, setActiveMenuCourseId] = useState<string | null>(null);
@@ -539,13 +547,16 @@ export default function AdminCoursesPage() {
           <input
             type="text"
             placeholder="Search courses by title, slug, or summary..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl bg-white dark:bg-[#0B1120] border border-slate-200/80 dark:border-slate-800/80 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
           />
-          {search && (
+          {searchInput && (
             <button
-              onClick={() => setSearch("")}
+              onClick={() => {
+                setSearchInput("");
+                setSearch("");
+              }}
               className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             >
               <X className="w-3.5 h-3.5" />
