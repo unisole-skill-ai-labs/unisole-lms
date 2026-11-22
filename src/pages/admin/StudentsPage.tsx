@@ -98,6 +98,12 @@ export default function StudentsPage() {
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [bulkAssignModalOpen, setBulkAssignModalOpen] = useState(false);
   const [bulkSelectedMentorId, setBulkSelectedMentorId] = useState("");
+  const [bulkStep, setBulkStep] = useState<"SELECT" | "CONFIRM" | "RESULT">("SELECT");
+  const [bulkResultSummary, setBulkResultSummary] = useState<{
+    totalProcessed: number;
+    mentorName: string;
+    studentNames: string[];
+  } | null>(null);
 
   // Student Detail Drawer state (D5)
   const [drawerStudent, setDrawerStudent] = useState<any | null>(null);
@@ -301,10 +307,18 @@ export default function StudentsPage() {
     );
   };
 
-  // Bulk Mentor Assign
-  const handleBulkAssign = async (e: React.FormEvent) => {
+  // Bulk Mentor Assign Handlers
+  const handleBulkAssignReview = (e: React.FormEvent) => {
     e.preventDefault();
     if (!bulkSelectedMentorId || selectedStudentIds.length === 0) return;
+    setBulkStep("CONFIRM");
+  };
+
+  const handleConfirmBulkAssign = async () => {
+    if (!bulkSelectedMentorId || selectedStudentIds.length === 0) return;
+
+    const chosenMentor = mentors.find((m: any) => m.id === bulkSelectedMentorId);
+    const chosenStudents = studentsList.filter((s: any) => selectedStudentIds.includes(s.id));
 
     try {
       setFeedback(null);
@@ -314,18 +328,20 @@ export default function StudentsPage() {
         courseId: selectedCourseId !== "ALL" ? selectedCourseId : undefined,
       }).unwrap();
 
-      setFeedback({
-        type: "success",
-        message: `Successfully assigned ${selectedStudentIds.length} learners to the selected mentor!`,
+      setBulkResultSummary({
+        totalProcessed: selectedStudentIds.length,
+        mentorName: chosenMentor?.name || "Designated Mentor",
+        studentNames: chosenStudents.map((s: any) => s.name || s.phone || "Student"),
       });
+      setBulkStep("RESULT");
       setSelectedStudentIds([]);
-      setBulkAssignModalOpen(false);
       refetchStudents();
     } catch (err: any) {
       setFeedback({
         type: "error",
         message: err?.data?.error || "Failed to execute bulk mentor assignment.",
       });
+      setBulkStep("SELECT");
     }
   };
 
@@ -1180,73 +1196,198 @@ export default function StudentsPage() {
       )}
 
       {/* ------------------------------------------------------------- */}
-      {/* Bulk Assign Mentor Modal (D3)                                 */}
+      {/* Bulk Assign Mentor Modal (D3 with Confirmation & Result Summary) */}
       {/* ------------------------------------------------------------- */}
       {bulkAssignModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 animate-fade-in"
-          onClick={() => setBulkAssignModalOpen(false)}
+          onClick={() => {
+            setBulkAssignModalOpen(false);
+            setBulkStep("SELECT");
+            setBulkResultSummary(null);
+          }}
         >
           <div
-            className="bg-white dark:bg-[#0B1120] max-w-md w-full rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 animate-scale-in"
+            className="bg-white dark:bg-[#0B1120] max-w-lg w-full rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 animate-scale-in"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Modal Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <UserCheck className="w-5 h-5 text-purple-600" />
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                  Bulk Assign Mentor
+                  {bulkStep === "CONFIRM"
+                    ? "Confirm Bulk Mentor Allocation"
+                    : bulkStep === "RESULT"
+                    ? "Allocation Result Summary"
+                    : "Bulk Assign Mentor"}
                 </h3>
               </div>
               <button
-                onClick={() => setBulkAssignModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600"
+                onClick={() => {
+                  setBulkAssignModalOpen(false);
+                  setBulkStep("SELECT");
+                  setBulkResultSummary(null);
+                }}
+                className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-600 dark:text-slate-300">
-              Assign <strong>{selectedStudentIds.length}</strong> selected learners to a designated academic mentor.
-            </p>
+            {/* STEP 1: Mentor Selection */}
+            {bulkStep === "SELECT" && (
+              <form onSubmit={handleBulkAssignReview} className="space-y-4">
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  Assign <strong>{selectedStudentIds.length}</strong> selected learners to a designated academic faculty mentor.
+                </p>
 
-            <form onSubmit={handleBulkAssign} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Select Mentor (Current Workload Balance)
-                </label>
-                <select
-                  required
-                  value={bulkSelectedMentorId}
-                  onChange={(e) => setBulkSelectedMentorId(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] text-xs font-semibold focus:outline-none"
-                >
-                  <option value="">Choose designated mentor...</option>
-                  {mentors.map((m: any) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} ({m.activeMenteesCount || 0} active students) — {m.specialization || "Mentor"}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Select Designated Mentor (Workload Balance)
+                  </label>
+                  <select
+                    required
+                    value={bulkSelectedMentorId}
+                    onChange={(e) => setBulkSelectedMentorId(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] text-xs font-semibold focus:outline-hidden"
+                  >
+                    <option value="">Choose designated mentor...</option>
+                    {mentors.map((m: any) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} ({m.activeMenteesCount || 0} active students) — {m.specialization || "Mentor"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setBulkAssignModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isAssigning || !bulkSelectedMentorId}
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white shadow-xs"
-                >
-                  {isAssigning ? "Allocating..." : `Assign ${selectedStudentIds.length} Learners`}
-                </button>
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setBulkAssignModalOpen(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!bulkSelectedMentorId || selectedStudentIds.length === 0}
+                    className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white shadow-xs cursor-pointer disabled:opacity-50"
+                  >
+                    Review Allocation Summary ({selectedStudentIds.length})
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* STEP 2: Confirmation Dialog with Summary */}
+            {bulkStep === "CONFIRM" && (
+              <div className="space-y-4 animate-fade-in">
+                <div className="p-3.5 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200/60 dark:border-purple-800/40 space-y-2 text-xs">
+                  <div className="flex justify-between items-center text-slate-700 dark:text-slate-300">
+                    <span className="text-slate-500">Designated Mentor:</span>
+                    <strong className="text-purple-700 dark:text-purple-300">
+                      {mentors.find((m: any) => m.id === bulkSelectedMentorId)?.name || "Selected Mentor"}
+                    </strong>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-700 dark:text-slate-300">
+                    <span className="text-slate-500">Specialization:</span>
+                    <span>{mentors.find((m: any) => m.id === bulkSelectedMentorId)?.specialization || "AI Faculty"}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-700 dark:text-slate-300">
+                    <span className="text-slate-500">Workload Impact:</span>
+                    <span>
+                      {mentors.find((m: any) => m.id === bulkSelectedMentorId)?.activeMenteesCount || 0} &rarr;{" "}
+                      <strong>
+                        {(mentors.find((m: any) => m.id === bulkSelectedMentorId)?.activeMenteesCount || 0) + selectedStudentIds.length}{" "}
+                        active students
+                      </strong>
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-700 dark:text-slate-300">
+                    <span className="text-slate-500">Learners Count:</span>
+                    <strong>{selectedStudentIds.length} learners</strong>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Learners to be allocated ({selectedStudentIds.length}):
+                  </h4>
+                  <div className="max-h-36 overflow-y-auto space-y-1 p-2 rounded-xl bg-slate-50 dark:bg-[#070A11] border border-slate-200 dark:border-slate-800 text-xs">
+                    {studentsList
+                      .filter((s: any) => selectedStudentIds.includes(s.id))
+                      .map((st: any) => (
+                        <div key={st.id} className="flex items-center justify-between py-1 px-2 border-b border-slate-100 dark:border-slate-800/50 last:border-none">
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{st.name || "Student"}</span>
+                          <span className="text-[10px] text-slate-400 font-mono">{st.phone || st.id.slice(0, 8)}</span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setBulkStep("SELECT")}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isAssigning}
+                    onClick={handleConfirmBulkAssign}
+                    className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white shadow-xs cursor-pointer"
+                  >
+                    {isAssigning ? "Processing..." : `Confirm & Allocate (${selectedStudentIds.length})`}
+                  </button>
+                </div>
               </div>
-            </form>
+            )}
+
+            {/* STEP 3: Result Summary Dialog */}
+            {bulkStep === "RESULT" && bulkResultSummary && (
+              <div className="space-y-4 animate-fade-in text-center py-2">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mx-auto">
+                  <Check className="w-6 h-6 stroke-[2.5]" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                    Allocation Completed Successfully
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
+                    Allocated <strong>{bulkResultSummary.totalProcessed}</strong> learners to{" "}
+                    <strong className="text-purple-600 dark:text-purple-400">{bulkResultSummary.mentorName}</strong>.
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#070A11] border border-slate-200 dark:border-slate-800 text-left max-h-32 overflow-y-auto">
+                  <div className="text-[11px] font-bold text-slate-500 mb-1">Assigned Learners:</div>
+                  <div className="flex flex-wrap gap-1">
+                    {bulkResultSummary.studentNames.map((name, i) => (
+                      <span key={i} className="inline-block px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-[10px] font-semibold">
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBulkAssignModalOpen(false);
+                      setBulkStep("SELECT");
+                      setBulkResultSummary(null);
+                    }}
+                    className="w-full py-2.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white shadow-xs cursor-pointer"
+                  >
+                    Done & Return to Roster
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
