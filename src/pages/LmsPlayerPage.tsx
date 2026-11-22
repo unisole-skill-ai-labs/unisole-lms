@@ -2194,13 +2194,14 @@ export default function LmsPlayerPage() {
                   </div>
                 </div>
 
-                {/* Embedded YouTube Player */}
+                {/* Embedded YouTube Player (A4: lazy loading & mobile data preservation) */}
                 <div className="flex-1 w-full h-full relative">
                   <iframe
                     src={getEmbedVideoUrl(selectedLesson?.videoUrl)}
                     title={selectedLesson?.title || "Curriculum Video"}
                     className="w-full h-full border-0 absolute inset-0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    loading="lazy"
+                    allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
                   />
                 </div>
