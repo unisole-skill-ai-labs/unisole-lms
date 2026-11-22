@@ -889,85 +889,83 @@ export default function LmsPlayerPage() {
   // -------------------------------------------------------------
   if (currentView === "overview") {
     return (
-      <div className="min-h-[calc(100vh-4rem)] bg-white dark:bg-[#070A11] flex flex-col justify-between pb-24 sm:pb-16 overflow-x-hidden">
-        <div className="animate-fade-in">
-          {/* Cosmic Midnight Navy Banner Header (A1) - Fixed Layout Height with Transform/Opacity Visual Collapse */}
-          <div
-            data-testid="course-sticky-header"
-            style={{ top: "calc(var(--nav-h, 4rem) + env(safe-area-inset-top, 0px))" }}
-            className="bg-gradient-to-br from-[#070A11] via-[#0B1120] to-[#0D1D38] border-b border-sky-500/20 text-white sticky z-30 shadow-md backdrop-blur-md h-[104px] sm:h-[112px] flex flex-col justify-center overflow-hidden"
-          >
-            <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 w-full space-y-2">
-              {/* Top Navigation Row */}
-              <div className="flex items-center justify-between gap-3 h-8">
-                <button
-                  onClick={() => navigate("/")}
-                  aria-label="Back to Dashboard"
-                  className="p-1.5 -ml-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
-                >
-                  <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
-                </button>
-                <div className="flex-1 min-w-0">
-                  <h2
-                    className={`text-xs sm:text-sm font-bold text-white truncate transition-all duration-200 ${
-                      isHeaderScrolled
-                        ? "opacity-100 translate-y-0"
-                        : "opacity-0 -translate-y-1 pointer-events-none"
-                    }`}
-                  >
-                    {courseTitle}
-                  </h2>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => navigate("/catalog")}
-                    aria-label="Search curriculum"
-                    className="p-1.5 -mr-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                  >
-                    <Search className="w-4.5 h-4.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Title & Stats Row (visually collapses via transform/opacity without changing layout height) */}
-              <div className="relative h-6">
-                <div
-                  className={`absolute inset-0 flex items-center justify-between gap-3 transition-all duration-200 ${
+      <div className="min-h-[calc(100vh-4rem)] bg-white dark:bg-[#070A11] flex flex-col justify-between pb-24 sm:pb-16">
+        {/* Cosmic Midnight Navy Banner Header (A1) - Fixed Layout Height with Transform/Opacity Visual Collapse */}
+        <div
+          data-testid="course-sticky-header"
+          style={{ top: "calc(var(--nav-h, 4rem) + env(safe-area-inset-top, 0px))" }}
+          className="bg-gradient-to-br from-[#070A11] via-[#0B1120] to-[#0D1D38] border-b border-sky-500/20 text-white sticky z-30 shadow-md backdrop-blur-md h-[104px] sm:h-[112px] flex flex-col justify-center overflow-hidden"
+        >
+          <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 w-full space-y-2">
+            {/* Top Navigation Row */}
+            <div className="flex items-center justify-between gap-3 h-8">
+              <button
+                onClick={() => navigate("/")}
+                aria-label="Back to Dashboard"
+                className="p-1.5 -ml-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+              >
+                <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
+              </button>
+              <div className="flex-1 min-w-0">
+                <h2
+                  className={`text-xs sm:text-sm font-bold text-white truncate transition-all duration-200 ${
                     isHeaderScrolled
-                      ? "opacity-0 -translate-y-2 pointer-events-none"
-                      : "opacity-100 translate-y-0"
+                      ? "opacity-100 translate-y-0"
+                      : "opacity-0 -translate-y-1 pointer-events-none"
                   }`}
                 >
-                  <h1 className="text-sm sm:text-base font-bold tracking-tight text-white truncate">
-                    {courseTitle}
-                  </h1>
-                  <p className="text-[11px] text-sky-200/90 font-medium shrink-0 font-mono">
-                    {statsSummary}
-                  </p>
-                </div>
+                  {courseTitle}
+                </h2>
               </div>
-
-              {/* Progress Bar with Percentage placed directly next to the bar (A1) */}
-              <div className="flex items-center gap-2.5 h-4">
-                <span className="text-xs font-bold text-sky-400 font-mono shrink-0">
-                  {courseFlow.progressPercent}%
-                </span>
-                <div className="flex-1 h-2 bg-slate-800/90 rounded-full overflow-hidden border border-slate-700/50">
-                  <div
-                    className="h-full bg-gradient-to-r from-sky-400 to-blue-500 rounded-full transition-all duration-500 shadow-sm shadow-sky-400/50"
-                    style={{ width: `${courseFlow.progressPercent}%` }}
-                  />
-                </div>
-                <span className="text-[11px] font-semibold text-slate-300 shrink-0 font-mono">
-                  {courseFlow.completedActivities} of {courseFlow.totalActivities}
-                </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => navigate("/catalog")}
+                  aria-label="Search curriculum"
+                  className="p-1.5 -mr-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  <Search className="w-4.5 h-4.5" />
+                </button>
               </div>
             </div>
+
+            {/* Title & Stats Row (visually collapses via transform/opacity without changing layout height) */}
+            <div className="relative h-6">
+              <div
+                className={`absolute inset-0 flex items-center justify-between gap-3 transition-all duration-200 ${
+                  isHeaderScrolled
+                    ? "opacity-0 -translate-y-2 pointer-events-none"
+                    : "opacity-100 translate-y-0"
+                }`}
+              >
+                <h1 className="text-sm sm:text-base font-bold tracking-tight text-white truncate">
+                  {courseTitle}
+                </h1>
+                <p className="text-[11px] text-sky-200/90 font-medium shrink-0 font-mono">
+                  {statsSummary}
+                </p>
+              </div>
+            </div>
+
+            {/* Progress Bar with Percentage placed directly next to the bar (A1) */}
+            <div className="flex items-center gap-2.5 h-4">
+              <span className="text-xs font-bold text-sky-400 font-mono shrink-0">
+                {courseFlow.progressPercent}%
+              </span>
+              <div className="flex-1 h-2 bg-slate-800/90 rounded-full overflow-hidden border border-slate-700/50">
+                <div
+                  className="h-full bg-gradient-to-r from-sky-400 to-blue-500 rounded-full transition-all duration-500 shadow-sm shadow-sky-400/50"
+                  style={{ width: `${courseFlow.progressPercent}%` }}
+                />
+              </div>
+              <span className="text-[11px] font-semibold text-slate-300 shrink-0 font-mono">
+                {courseFlow.completedActivities} of {courseFlow.totalActivities}
+              </span>
+            </div>
           </div>
+        </div>
 
-
-          {/* Course Curriculum Weeks List (A2 & A3) */}
-          <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 py-6">
+        {/* Course Curriculum Weeks List (A2 & A3) */}
+        <div className="animate-fade-in max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 py-6 w-full flex-1">
             {courseFlow.weekStats.length === 0 ? (
               <div className="bg-white dark:bg-[#0B1120] rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-12 text-center space-y-3">
                 <BookOpen className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto stroke-[1.5]" />
@@ -990,8 +988,8 @@ export default function LmsPlayerPage() {
                     <div
                       key={ws.module.id}
                       ref={isCurrentWeek ? currentWeekRef : undefined}
-                      style={isCurrentWeek ? { scrollMarginTop: "calc(var(--nav-h, 4rem) + 120px)" } : undefined}
-                      className={`rounded-2xl border transition-all duration-150 overflow-hidden shadow-2xs scroll-mt-48 ${
+                      style={{ scrollMarginTop: "calc(var(--nav-h, 4rem) + 128px)" }}
+                      className={`rounded-2xl border transition-all duration-150 overflow-hidden shadow-2xs ${
                         isCurrentWeek
                           ? "border-sky-500 dark:border-sky-500 ring-2 ring-sky-500/20 bg-white dark:bg-[#0B1120]"
                           : ws.isCompleted
@@ -1218,7 +1216,6 @@ export default function LmsPlayerPage() {
               </div>
             )}
           </div>
-        </div>
 
         {/* Sticky Bottom Floating Bar (A4) */}
         <div className="fixed sm:sticky bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 py-3 px-4 shadow-lg">
@@ -1321,7 +1318,7 @@ export default function LmsPlayerPage() {
       }) || null;
 
     return (
-      <div className="min-h-[calc(100vh-4rem)] bg-[#F8FAFC] dark:bg-[#070A11] text-slate-900 dark:text-slate-100 animate-fade-in pb-28 sm:pb-12 overflow-x-hidden">
+      <div className="min-h-[calc(100vh-4rem)] bg-[#F8FAFC] dark:bg-[#070A11] text-slate-900 dark:text-slate-100 animate-fade-in pb-28 sm:pb-12">
         {/* Header Bar with Week Switcher and Progress Bar */}
         <div
           style={{ top: "calc(var(--nav-h, 4rem) + env(safe-area-inset-top, 0px))" }}
