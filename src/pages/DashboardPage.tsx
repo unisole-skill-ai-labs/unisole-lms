@@ -20,11 +20,7 @@ import {
 } from "lucide-react";
 import {
   useGetMyPathwaysQuery,
-  useGetPathwayContentQuery,
-  useGetStudentProgressQuery,
-  useGetStudentActivitiesQuery,
-  useGetCalendarEventsQuery,
-  useGetStudentSubmissionsQuery,
+  useGetDashboardSummaryQuery,
 } from "../store/apiSlice";
 import { cleanLessonTitle } from "../utils/formatContent";
 import {
@@ -75,39 +71,29 @@ export default function DashboardPage() {
   const currentProgramId = activeProgram.id || activeProgram.slug || "cs-agentic";
   const programTitle = activeProgram.title || activeProgram.name || "AI Agent Engineering";
 
-  // 2. Pathway Curriculum & Lessons
+  // 2. Aggregated Single Endpoint (B2) - Reduces mobile dashboard requests from 5 to 1
   const {
-    data: pathwayContent,
-    isLoading: isContentLoading,
+    data: summaryData,
+    isLoading: isSummaryLoading,
     isError: isContentError,
-    refetch: refetchContent,
-  } = useGetPathwayContentQuery(currentProgramId, { skip: !currentProgramId });
+    refetch: refetchSummary,
+  } = useGetDashboardSummaryQuery(currentProgramId, { skip: !currentProgramId || !isAuthenticated });
 
-  // 3. Student Progress
-  const {
-    data: progressData,
-    isLoading: isProgressLoading,
-    refetch: refetchProgress,
-  } = useGetStudentProgressQuery(currentProgramId, { skip: !currentProgramId });
+  const pathwayContent = summaryData?.pathwayContent;
+  const progressData = summaryData?.progress;
+  const submissionsData = summaryData?.submissions;
+  const activitiesData = summaryData?.activities;
+  const calendarEvents = summaryData?.calendarEvents || [];
 
-  // 4. Student Submissions
-  const { data: submissionsData, refetch: refetchSubmissions } = useGetStudentSubmissionsQuery(
-    currentProgramId,
-    { skip: !currentProgramId }
-  );
+  const isContentLoading = isSummaryLoading && !pathwayContent;
+  const isProgressLoading = isSummaryLoading && !progressData;
+  const isActivitiesLoading = isSummaryLoading && !activitiesData;
 
-  // 5. Student Activities (missed, upcoming, completed)
-  const {
-    data: activitiesData,
-    isLoading: isActivitiesLoading,
-    refetch: refetchActivities,
-  } = useGetStudentActivitiesQuery(undefined, { skip: !isAuthenticated });
-
-  // 6. Calendar Events
-  const { data: calendarEvents = [], refetch: refetchCalendar } = useGetCalendarEventsQuery(
-    undefined,
-    { skip: !isAuthenticated }
-  );
+  const refetchContent = refetchSummary;
+  const refetchProgress = refetchSummary;
+  const refetchSubmissions = refetchSummary;
+  const refetchActivities = refetchSummary;
+  const refetchCalendar = refetchSummary;
 
   // Minute-by-minute timer for live class countdowns (B3)
   const [, setMinuteTick] = useState(0);

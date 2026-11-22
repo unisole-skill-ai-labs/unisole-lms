@@ -179,13 +179,31 @@ export const apiSlice = createApi({
     }),
 
     // ─── Student LMS Endpoints (Authenticated) ───────────────────────────────────
+    getDashboardSummary: builder.query({
+      query: (params) => {
+        const pId = typeof params === "string" ? params : params?.pathwayId;
+        return pId
+          ? `/api/lms/dashboard/summary?pathwayId=${encodeURIComponent(pId)}`
+          : "/api/lms/dashboard/summary";
+      },
+      providesTags: ["Progress", "Submissions", "Activities", "CalendarEvents"],
+    }),
     getMyPathways: builder.query({
       query: () => "/api/lms/pathways",
       providesTags: [{ type: "Pathway", id: "MY_LIST" }, { type: "Enrollment", id: "LIST" }],
     }),
     getPathwayContent: builder.query({
-      query: (pathwayId) => `/api/lms/pathways/${pathwayId}`,
-      providesTags: (_result, _error, id) => [{ type: "Pathway", id: `${id}-CONTENT` }],
+      query: (arg) => {
+        if (typeof arg === "object" && arg !== null) {
+          const qs = arg.summary ? "?summary=true" : "";
+          return `/api/lms/pathways/${arg.pathwayId || arg.id}${qs}`;
+        }
+        return `/api/lms/pathways/${arg}`;
+      },
+      providesTags: (_result, _error, arg) => {
+        const id = typeof arg === "object" && arg !== null ? (arg.pathwayId || arg.id) : arg;
+        return [{ type: "Pathway", id: `${id}-CONTENT` }];
+      },
     }),
     getLessonContent: builder.query({
       query: (lessonId) => `/api/lms/lessons/${lessonId}`,
@@ -667,6 +685,7 @@ export const {
   useGetAdminEnrollmentsQuery,
 
   // Student LMS Progress & Submissions hooks
+  useGetDashboardSummaryQuery,
   useGetStudentProgressQuery,
   useMarkLessonProgressMutation,
   useGetStudentSubmissionsQuery,

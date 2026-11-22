@@ -28,9 +28,12 @@ function CourseCard({ item, submissionsData }: CourseCardProps) {
   const pathway = item.pathway || item;
   const pathwayId = pathway?.id || "cs-agentic";
 
-  const { data: pathwayContent } = useGetPathwayContentQuery(pathwayId, {
-    skip: !pathwayId,
-  });
+  const { data: pathwayContent } = useGetPathwayContentQuery(
+    { pathwayId, summary: true },
+    {
+      skip: !pathwayId,
+    }
+  );
   const { data: progressData } = useGetStudentProgressQuery(pathwayId, {
     skip: !pathwayId,
   });
