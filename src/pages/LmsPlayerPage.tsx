@@ -441,6 +441,7 @@ export default function LmsPlayerPage() {
   const [expandedWeekIds, setExpandedWeekIds] = useState<Record<string, boolean>>({});
   const currentWeekRef = useRef<HTMLDivElement | null>(null);
   const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);
+  const isScrolledRef = useRef(false);
   const hasAutoScrolled = useRef(false);
 
   // Auto-expand current week by default on overview
@@ -455,23 +456,50 @@ export default function LmsPlayerPage() {
     }
   }, [courseFlow.currentWeek?.id]);
 
-  // Mobile scroll listener to collapse header into a slim bar
+  // Mobile scroll listener with hysteresis (collapse at > 80px, expand at < 20px) to eliminate feedback flicker
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      setIsHeaderScrolled(window.scrollY > 40);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const y = window.scrollY;
+          if (y > 80 && !isScrolledRef.current) {
+            isScrolledRef.current = true;
+            setIsHeaderScrolled(true);
+          } else if (y < 20 && isScrolledRef.current) {
+            isScrolledRef.current = false;
+            setIsHeaderScrolled(false);
+          }
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Auto-scroll to current week on initial overview load
+  // Auto-scroll to current week on initial overview load (canceled if user manually scrolls)
   useEffect(() => {
     if (currentView === "overview" && currentWeekRef.current && !hasAutoScrolled.current) {
-      hasAutoScrolled.current = true;
+      const cancelAutoScroll = () => {
+        hasAutoScrolled.current = true;
+      };
+      window.addEventListener("wheel", cancelAutoScroll, { passive: true, once: true });
+      window.addEventListener("touchstart", cancelAutoScroll, { passive: true, once: true });
+
       const timer = setTimeout(() => {
-        currentWeekRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 300);
-      return () => clearTimeout(timer);
+        if (!hasAutoScrolled.current && currentWeekRef.current) {
+          hasAutoScrolled.current = true;
+          currentWeekRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 350);
+
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener("wheel", cancelAutoScroll);
+        window.removeEventListener("touchstart", cancelAutoScroll);
+      };
     }
   }, [currentView, courseFlow.currentWeek?.id]);
 
@@ -650,7 +678,7 @@ export default function LmsPlayerPage() {
       .reduce((acc, l) => acc + ((l as any).maxScore || 10), 0);
   }, [assessmentItems, completedLessonIds]);
 
-  // Dynamic syllabus summary text (1 line as required: "2% complete · 1 of 47 activities")
+  // Dynamic syllabus summary text (1 line as required: "2% complete · 1 of 48 activities")
   const statsSummary = useMemo(() => {
     if (totalLessons === 0) {
       return "Curriculum in preparation · 0 / 0 Completed";
@@ -863,52 +891,64 @@ export default function LmsPlayerPage() {
     return (
       <div className="min-h-[calc(100vh-4rem)] bg-white dark:bg-[#070A11] flex flex-col justify-between pb-24 sm:pb-16 overflow-x-hidden">
         <div className="animate-fade-in">
-          {/* Cosmic Midnight Navy Banner Header (A1) */}
+          {/* Cosmic Midnight Navy Banner Header (A1) - Fixed Layout Height with Transform/Opacity Visual Collapse */}
           <div
-            className={`bg-gradient-to-br from-[#070A11] via-[#0B1120] to-[#0D1D38] border-b border-sky-500/20 text-white sticky top-0 z-30 transition-all duration-200 backdrop-blur-md ${
-              isHeaderScrolled ? "py-2.5 shadow-md" : "py-5 sm:py-6"
-            }`}
+            data-testid="course-sticky-header"
+            style={{ top: "calc(var(--nav-h, 4rem) + env(safe-area-inset-top, 0px))" }}
+            className="bg-gradient-to-br from-[#070A11] via-[#0B1120] to-[#0D1D38] border-b border-sky-500/20 text-white sticky z-30 shadow-md backdrop-blur-md h-[104px] sm:h-[112px] flex flex-col justify-center overflow-hidden"
           >
-            <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 space-y-3">
+            <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 w-full space-y-2">
               {/* Top Navigation Row */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3 h-8">
                 <button
                   onClick={() => navigate("/")}
                   aria-label="Back to Dashboard"
-                  className="p-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  className="p-1.5 -ml-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
                 >
                   <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
                 </button>
-                {isHeaderScrolled && (
-                  <h2 className="text-xs sm:text-sm font-bold text-white truncate max-w-[200px] sm:max-w-md animate-fade-in">
+                <div className="flex-1 min-w-0">
+                  <h2
+                    className={`text-xs sm:text-sm font-bold text-white truncate transition-all duration-200 ${
+                      isHeaderScrolled
+                        ? "opacity-100 translate-y-0"
+                        : "opacity-0 -translate-y-1 pointer-events-none"
+                    }`}
+                  >
                     {courseTitle}
                   </h2>
-                )}
-                <div className="flex items-center gap-2">
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => navigate("/catalog")}
                     aria-label="Search curriculum"
-                    className="p-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                    className="p-1.5 -mr-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                   >
                     <Search className="w-4.5 h-4.5" />
                   </button>
                 </div>
               </div>
 
-              {/* Title and Single Consistent Progress Stats Line (A1) */}
-              {!isHeaderScrolled && (
-                <div className="pt-0.5 space-y-1">
-                  <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-white line-clamp-1">
+              {/* Title & Stats Row (visually collapses via transform/opacity without changing layout height) */}
+              <div className="relative h-6">
+                <div
+                  className={`absolute inset-0 flex items-center justify-between gap-3 transition-all duration-200 ${
+                    isHeaderScrolled
+                      ? "opacity-0 -translate-y-2 pointer-events-none"
+                      : "opacity-100 translate-y-0"
+                  }`}
+                >
+                  <h1 className="text-sm sm:text-base font-bold tracking-tight text-white truncate">
                     {courseTitle}
                   </h1>
-                  <p className="text-xs text-sky-200/90 font-medium">
+                  <p className="text-[11px] text-sky-200/90 font-medium shrink-0 font-mono">
                     {statsSummary}
                   </p>
                 </div>
-              )}
+              </div>
 
               {/* Progress Bar with Percentage placed directly next to the bar (A1) */}
-              <div className="flex items-center gap-2.5 pt-0.5 pb-0.5">
+              <div className="flex items-center gap-2.5 h-4">
                 <span className="text-xs font-bold text-sky-400 font-mono shrink-0">
                   {courseFlow.progressPercent}%
                 </span>
@@ -950,7 +990,8 @@ export default function LmsPlayerPage() {
                     <div
                       key={ws.module.id}
                       ref={isCurrentWeek ? currentWeekRef : undefined}
-                      className={`rounded-2xl border transition-all duration-150 overflow-hidden shadow-2xs ${
+                      style={isCurrentWeek ? { scrollMarginTop: "calc(var(--nav-h, 4rem) + 120px)" } : undefined}
+                      className={`rounded-2xl border transition-all duration-150 overflow-hidden shadow-2xs scroll-mt-48 ${
                         isCurrentWeek
                           ? "border-sky-500 dark:border-sky-500 ring-2 ring-sky-500/20 bg-white dark:bg-[#0B1120]"
                           : ws.isCompleted
@@ -1282,7 +1323,10 @@ export default function LmsPlayerPage() {
     return (
       <div className="min-h-[calc(100vh-4rem)] bg-[#F8FAFC] dark:bg-[#070A11] text-slate-900 dark:text-slate-100 animate-fade-in pb-28 sm:pb-12 overflow-x-hidden">
         {/* Header Bar with Week Switcher and Progress Bar */}
-        <div className="bg-white/95 dark:bg-[#0B1120]/95 border-b border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white sticky top-0 z-30 shadow-xs backdrop-blur-md">
+        <div
+          style={{ top: "calc(var(--nav-h, 4rem) + env(safe-area-inset-top, 0px))" }}
+          className="bg-white/95 dark:bg-[#0B1120]/95 border-b border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-white sticky z-30 shadow-xs backdrop-blur-md"
+        >
           <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3.5 space-y-2.5">
             {/* Top Navigation Row */}
             <div className="flex items-center justify-between gap-3">
