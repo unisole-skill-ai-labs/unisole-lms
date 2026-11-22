@@ -1,35 +1,43 @@
-import React, { useEffect } from "react";
+import React, { useEffect, Suspense, lazy } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setCredentials } from "./store/authSlice";
 import Layout from "./components/layout/Layout";
 import ProtectedRoute from "./components/guards/ProtectedRoute";
 
-import DashboardPage from "./pages/DashboardPage";
-import CatalogPage from "./pages/CatalogPage";
-import PathwayDetailPage from "./pages/PathwayDetailPage";
-import EnrolledCoursesPage from "./pages/EnrolledCoursesPage";
-import ActivitiesPage from "./pages/ActivitiesPage";
-import LmsPlayerPage from "./pages/LmsPlayerPage";
-import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
-import ProfilePage from "./pages/ProfilePage";
-import PaymentSuccessPage from "./pages/PaymentSuccessPage";
-import NotFoundPage from "./pages/NotFoundPage";
-import CalendarPage from "./pages/CalendarPage";
-import ArticlesPage from "./pages/ArticlesPage";
-import NotificationsPage from "./pages/NotificationsPage";
+// Lazy-loaded student routes (A1: Code Splitting)
+const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const CatalogPage = lazy(() => import("./pages/CatalogPage"));
+const PathwayDetailPage = lazy(() => import("./pages/PathwayDetailPage"));
+const EnrolledCoursesPage = lazy(() => import("./pages/EnrolledCoursesPage"));
+const ActivitiesPage = lazy(() => import("./pages/ActivitiesPage"));
+const LmsPlayerPage = lazy(() => import("./pages/LmsPlayerPage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const RegisterPage = lazy(() => import("./pages/RegisterPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const PaymentSuccessPage = lazy(() => import("./pages/PaymentSuccessPage"));
+const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
+const CalendarPage = lazy(() => import("./pages/CalendarPage"));
+const ArticlesPage = lazy(() => import("./pages/ArticlesPage"));
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 
-// Admin & Mentor Portal
-import AdminGuard from "./components/guards/AdminGuard";
-import AdminLayout from "./components/layout/AdminLayout";
-import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
-import AdminCoursesPage from "./pages/admin/AdminCoursesPage";
-import EditCoursePage from "./pages/admin/EditCoursePage";
-import SubmissionsPage from "./pages/admin/SubmissionsPage";
-import FilesPage from "./pages/admin/FilesPage";
-import StudentsPage from "./pages/admin/StudentsPage";
-import AdminLoginPage from "./pages/admin/AdminLoginPage";
+// Lazy-loaded Admin & Mentor Portal (Isolated from student bundle)
+const AdminLayout = lazy(() => import("./components/layout/AdminLayout"));
+const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage"));
+const AdminCoursesPage = lazy(() => import("./pages/admin/AdminCoursesPage"));
+const EditCoursePage = lazy(() => import("./pages/admin/EditCoursePage"));
+const SubmissionsPage = lazy(() => import("./pages/admin/SubmissionsPage"));
+const FilesPage = lazy(() => import("./pages/admin/FilesPage"));
+const StudentsPage = lazy(() => import("./pages/admin/StudentsPage"));
+const AdminLoginPage = lazy(() => import("./pages/admin/AdminLoginPage"));
+
+function PageLoader() {
+  return (
+    <div className="min-h-[50vh] flex items-center justify-center">
+      <div className="w-8 h-8 border-3 border-sky-600 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 export default function App() {
   const dispatch = useDispatch();
@@ -47,163 +55,165 @@ export default function App() {
     }
   }, [location, dispatch]);
   return (
-    <Routes>
-      {/* Dedicated Admin & Mentor Login */}
-      <Route path="/admin/login" element={<AdminLoginPage />} />
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        {/* Dedicated Admin & Mentor Login */}
+        <Route path="/admin/login" element={<AdminLoginPage />} />
 
-      {/* Admin & Mentor Portal */}
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute
-            allowedRoles={["ADMIN", "SUPER_ADMIN", "MENTOR", "MEMBER", "COURSE_MANAGER", "PROGRAM_MANAGER"]}
-            redirectTo="/dashboard"
-          >
-            <AdminLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<AdminDashboardPage />} />
-        <Route path="dashboard" element={<AdminDashboardPage />} />
-        <Route path="courses" element={<AdminCoursesPage />} />
-        <Route path="courses/:courseId" element={<EditCoursePage />} />
-        <Route path="submissions" element={<SubmissionsPage />} />
-        <Route path="mentor-view" element={<SubmissionsPage initialMode="student" />} />
-        <Route path="calendar" element={<CalendarPage />} />
-        <Route path="files" element={<FilesPage />} />
-        <Route path="students" element={<StudentsPage />} />
-      </Route>
-      <Route path="/" element={<Layout />}>
-        {/* sargam - Public Auth Entrypoints */}
-        <Route path="login" element={<LoginPage />} />
-        <Route path="register" element={<RegisterPage />} />
-        <Route path="signup" element={<Navigate to="/register" replace />} />
+        {/* Admin & Mentor Portal */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute
+              allowedRoles={["ADMIN", "SUPER_ADMIN", "MENTOR", "MEMBER", "COURSE_MANAGER", "PROGRAM_MANAGER"]}
+              redirectTo="/dashboard"
+            >
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<AdminDashboardPage />} />
+          <Route path="dashboard" element={<AdminDashboardPage />} />
+          <Route path="courses" element={<AdminCoursesPage />} />
+          <Route path="courses/:courseId" element={<EditCoursePage />} />
+          <Route path="submissions" element={<SubmissionsPage />} />
+          <Route path="mentor-view" element={<SubmissionsPage initialMode="student" />} />
+          <Route path="calendar" element={<CalendarPage />} />
+          <Route path="files" element={<FilesPage />} />
+          <Route path="students" element={<StudentsPage />} />
+        </Route>
+        <Route path="/" element={<Layout />}>
+          {/* sargam - Public Auth Entrypoints */}
+          <Route path="login" element={<LoginPage />} />
+          <Route path="register" element={<RegisterPage />} />
+          <Route path="signup" element={<Navigate to="/register" replace />} />
 
-        {/* Protected LMS Routes - Full LMS Wall behind Login / Register */}
-        <Route
-          index
-          element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="catalog"
-          element={
-            <ProtectedRoute>
-              <CatalogPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="articles"
-          element={
-            <ProtectedRoute>
-              <ArticlesPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="pathways/:slug"
-          element={
-            <ProtectedRoute>
-              <PathwayDetailPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="courses/:slug"
-          element={
-            <ProtectedRoute>
-              <PathwayDetailPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="enrolled"
-          element={
-            <ProtectedRoute>
-              <EnrolledCoursesPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="activities"
-          element={
-            <ProtectedRoute>
-              <ActivitiesPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="notifications"
-          element={
-            <ProtectedRoute>
-              <NotificationsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="calendar"
-          element={
-            <ProtectedRoute>
-              <CalendarPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="learn/:pathwayId"
-          element={
-            <ProtectedRoute>
-              <LmsPlayerPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="player/:pathwayId"
-          element={
-            <ProtectedRoute>
-              <LmsPlayerPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="profile"
-          element={
-            <ProtectedRoute>
-              <ProfilePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="payment-success"
-          element={
-            <ProtectedRoute>
-              <PaymentSuccessPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="payment/success"
-          element={
-            <ProtectedRoute>
-              <PaymentSuccessPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="thank-you"
-          element={
-            <ProtectedRoute>
-              <PaymentSuccessPage />
-            </ProtectedRoute>
-          }
-        />
+          {/* Protected LMS Routes - Full LMS Wall behind Login / Register */}
+          <Route
+            index
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="catalog"
+            element={
+              <ProtectedRoute>
+                <CatalogPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="articles"
+            element={
+              <ProtectedRoute>
+                <ArticlesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="pathways/:slug"
+            element={
+              <ProtectedRoute>
+                <PathwayDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="courses/:slug"
+            element={
+              <ProtectedRoute>
+                <PathwayDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="enrolled"
+            element={
+              <ProtectedRoute>
+                <EnrolledCoursesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="activities"
+            element={
+              <ProtectedRoute>
+                <ActivitiesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="notifications"
+            element={
+              <ProtectedRoute>
+                <NotificationsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="calendar"
+            element={
+              <ProtectedRoute>
+                <CalendarPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="learn/:pathwayId"
+            element={
+              <ProtectedRoute>
+                <LmsPlayerPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="player/:pathwayId"
+            element={
+              <ProtectedRoute>
+                <LmsPlayerPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="profile"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="payment-success"
+            element={
+              <ProtectedRoute>
+                <PaymentSuccessPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="payment/success"
+            element={
+              <ProtectedRoute>
+                <PaymentSuccessPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="thank-you"
+            element={
+              <ProtectedRoute>
+                <PaymentSuccessPage />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* 404 Fallback */}
-        <Route path="*" element={<NotFoundPage />} />
-      </Route>
-    </Routes>
+          {/* 404 Fallback */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+      </Routes>
+    </Suspense>
   );
 }
