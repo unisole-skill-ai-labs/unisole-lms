@@ -16,8 +16,6 @@ import {
   LogOut,
   Layers,
   Check,
-  ExternalLink,
-  MessageSquare,
   GraduationCap,
 } from "lucide-react";
 import { logout } from "../../store/authSlice";
@@ -39,7 +37,6 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
 
   const [cohortDropdownOpen, setCohortDropdownOpen] = useState(false);
   const [selectedCohort, setSelectedCohort] = useState<string>("");
-  const [activeModal, setActiveModal] = useState<"support" | null>(null);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -263,9 +260,9 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
       id: "support",
       name: "Support",
       icon: HelpCircle,
-      isAction: true,
+      to: "/support",
+      isAction: false,
       badge: null,
-      onClick: () => setActiveModal("support"),
     },
   ];
 
@@ -595,52 +592,6 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
               >
                 Sign Out
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal: Support */}
-      {activeModal === "support" && (
-        <div
-          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60"
-          onClick={() => setActiveModal(null)}
-        >
-          <div
-            className="bg-white dark:bg-[#121622] max-w-md w-full rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
-                  <HelpCircle className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Learner Support</h3>
-                  <span className="text-[11px] text-slate-400">We are here to help you succeed</span>
-                </div>
-              </div>
-              <button
-                onClick={() => setActiveModal(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              Have doubts on your coursework, coding assignments, or platform features? Reach out directly to our mentor support channel.
-            </p>
-            <div className="space-y-2">
-              <a
-                href="mailto:support@unisole.in"
-                className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 transition-colors text-xs font-semibold text-slate-800 dark:text-slate-200"
-              >
-                <div className="flex items-center gap-2.5">
-                  <MessageSquare className="w-4 h-4 text-blue-600" />
-                  <span>Email Mentor Desk (support@unisole.in)</span>
-                </div>
-                <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-              </a>
             </div>
           </div>
         </div>

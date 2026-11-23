@@ -22,6 +22,7 @@ const NotFoundPage = lazy(routeLoaders.notFound);
 const CalendarPage = lazy(routeLoaders.calendar);
 const ArticlesPage = lazy(routeLoaders.articles);
 const NotificationsPage = lazy(routeLoaders.notifications);
+const SupportPage = lazy(routeLoaders.support);
 
 // Lazy-loaded Admin & Mentor Portal (Isolated from student bundle)
 const AdminLayout = lazy(routeLoaders.adminLayout);
@@ -181,6 +182,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <NotificationsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="support"
+          element={
+            <ProtectedRoute>
+              <SupportPage />
             </ProtectedRoute>
           }
         />

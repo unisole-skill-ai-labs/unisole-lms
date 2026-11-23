@@ -19,6 +19,7 @@ export const routeLoaders = {
   calendar: () => import("../pages/CalendarPage"),
   articles: () => import("../pages/ArticlesPage"),
   notifications: () => import("../pages/NotificationsPage"),
+  support: () => import("../pages/SupportPage"),
   notFound: () => import("../pages/NotFoundPage"),
 
   // Admin & Mentor Studio
@@ -60,6 +61,8 @@ export function prefetchByPath(path: string): void {
       routeLoaders.calendar();
     } else if (cleanPath === "/notifications") {
       routeLoaders.notifications();
+    } else if (cleanPath === "/support") {
+      routeLoaders.support();
     } else if (cleanPath === "/profile") {
       routeLoaders.profile();
     } else if (cleanPath === "/login") {
