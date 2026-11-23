@@ -165,8 +165,6 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
       if (e.key === "Escape") {
         if (confirmSignOut) {
           setConfirmSignOut(false);
-        } else if (activeModal) {
-          setActiveModal(null);
         } else if (isOpen) {
           onClose();
         }
@@ -174,12 +172,11 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, activeModal, confirmSignOut, onClose]);
+  }, [isOpen, confirmSignOut, onClose]);
 
   // Close on route change
   useEffect(() => {
     onClose();
-    setActiveModal(null);
     setConfirmSignOut(false);
   }, [location.pathname, location.search]);
 
@@ -225,35 +222,30 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
       name: "Dashboard",
       icon: LayoutGrid,
       to: "/",
-      isAction: false,
     },
     {
       id: "activities",
       name: "Activities",
       icon: Activity,
       to: "/activities",
-      isAction: false,
     },
     {
       id: "calendar",
       name: "Calendar",
       icon: Calendar,
       to: "/calendar",
-      isAction: false,
     },
     {
       id: "courses",
       name: "Courses",
       icon: BookOpen,
       to: "/enrolled",
-      isAction: false,
     },
     {
       id: "notifications",
       name: "Notifications",
       icon: Bell,
       to: "/notifications",
-      isAction: false,
       badge: unreadCount > 0 ? unreadCount : null,
     },
     {
@@ -261,7 +253,6 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
       name: "Support",
       icon: HelpCircle,
       to: "/support",
-      isAction: false,
       badge: null,
     },
   ];
@@ -406,38 +397,18 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
                 const active = isCurrentActive(item.id, item.to);
                 const Icon = item.icon;
 
-                if (item.isAction) {
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={item.onClick}
-                      className="w-full flex items-center justify-between px-3.5 py-2.5 min-h-[44px] rounded-xl text-[13px] sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer text-left transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon className="w-[18px] h-[18px] text-slate-500 dark:text-slate-400 stroke-[1.8]" />
-                        <span>{item.name}</span>
-                      </div>
-                      {item.badge !== null && item.badge > 0 && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white leading-none shadow-2xs">
-                          {item.badge}
-                        </span>
-                      )}
-                    </button>
-                  );
-                }
-
                 return (
                   <Link
                     key={item.id}
-                    to={item.to!}
-                    onMouseEnter={() => prefetchByPath(item.to!)}
-                    onTouchStart={() => prefetchByPath(item.to!)}
+                    to={item.to}
+                    onMouseEnter={() => prefetchByPath(item.to)}
+                    onTouchStart={() => prefetchByPath(item.to)}
                     onClick={(e) => {
                       e.preventDefault();
-                      prefetchByPath(item.to!);
+                      prefetchByPath(item.to);
                       onClose();
                       startTransition(() => {
-                        navigate(item.to!);
+                        navigate(item.to);
                       });
                     }}
                     className={`flex items-center justify-between px-3.5 py-2.5 min-h-[44px] rounded-xl text-[13px] sm:text-sm transition-colors ${
