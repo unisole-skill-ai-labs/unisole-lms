@@ -10,7 +10,6 @@ import {
   User,
   Sun,
   Moon,
-  Search,
   ChevronDown,
   Sparkles,
   Layers,
@@ -25,7 +24,7 @@ import {
 } from "lucide-react";
 import { logout } from "../../store/authSlice";
 import { useTheme } from "../../context/ThemeContext";
-import { useGetPublicPathwaysQuery, useGetStudentActivitiesQuery } from "../../store/apiSlice";
+import { useGetStudentActivitiesQuery } from "../../store/apiSlice";
 import Button from "../ui/Button";
 import LearnerDrawer from "./LearnerDrawer";
 import { prefetchByPath, getPrefetchHandlers } from "../../utils/routePrefetch";
@@ -38,13 +37,10 @@ export default function Header() {
   const { theme, toggleTheme } = useTheme();
 
   const [profileOpen, setProfileOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [feeModalOpen, setFeeModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const { data: pathways = [] } = useGetPublicPathwaysQuery(undefined);
   const { data: activitiesData } = useGetStudentActivitiesQuery(undefined, {
     skip: !isAuthenticated,
   });
@@ -70,15 +66,10 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Quick search shortcut (Cmd+K / Ctrl+K)
+  // Keyboard shortcuts (Escape closes drawer)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setSearchOpen((prev) => !prev);
-      }
       if (e.key === "Escape") {
-        setSearchOpen(false);
         setDrawerOpen(false);
       }
     };
@@ -88,7 +79,6 @@ export default function Header() {
 
   useEffect(() => {
     setProfileOpen(false);
-    setSearchOpen(false);
     setDrawerOpen(false);
   }, [location.pathname]);
 
@@ -103,13 +93,6 @@ export default function Header() {
     if (path !== "/" && location.pathname.startsWith(path)) return true;
     return false;
   };
-
-  const filteredSearchResults = pathways
-    .filter((p: any) =>
-      p.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.shortDescription?.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-    .slice(0, 5);
 
   return (
     <>
@@ -171,18 +154,8 @@ export default function Header() {
               </nav>
             </div>
 
-            {/* Right Controls: Search, Notifications Bell, Theme Toggle, Auth */}
+            {/* Right Controls: Notifications Bell, Theme Toggle, Auth */}
             <div className="flex items-center gap-1.5 sm:gap-2">
-              {/* Search Icon Button (opens search overlay) */}
-              <button
-                onClick={() => setSearchOpen(true)}
-                aria-label="Search pathways"
-                className="p-2 rounded-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                title="Search pathways (Cmd + K)"
-              >
-                <Search className="w-4 h-4" />
-              </button>
-
               {/* Notifications Bell Icon */}
               {isAuthenticated && (
                 <Link
@@ -334,65 +307,6 @@ export default function Header() {
           </div>
         </div>
       </header>
-
-      {/* Global Quick Search Modal */}
-      {searchOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-black/60 backdrop-blur-sm "
-          onClick={(e) => e.target === e.currentTarget && setSearchOpen(false)}
-        >
-          <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-2xl shadow-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden">
-            <div className="flex items-center px-4 py-3 border-b border-zinc-100 dark:border-zinc-800">
-              <Search className="w-4 h-4 text-zinc-400 shrink-0 mr-3" />
-              <input
-                type="text"
-                autoFocus
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search pathways, topics, curriculum..."
-                className="w-full bg-transparent text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-hidden"
-              />
-              <button
-                onClick={() => setSearchOpen(false)}
-                className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-2 max-h-80 overflow-y-auto">
-              {filteredSearchResults.length === 0 ? (
-                <div className="p-6 text-center text-xs text-zinc-400">
-                  {searchQuery ? "No pathways found matching your search." : "Type to discover structured AI & engineering pathways."}
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {filteredSearchResults.map((pathway: any) => (
-                    <Link
-                      key={pathway.id}
-                      to={`/pathways/${pathway.slug || pathway.id}`}
-                      onClick={() => setSearchOpen(false)}
-                      className="flex items-center justify-between p-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                    >
-                      <div className="pr-3">
-                        <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
-                          {pathway.title}
-                        </h4>
-                        <p className="text-[11px] text-zinc-500 line-clamp-1 mt-0.5">
-                          {pathway.shortDescription || pathway.description}
-                        </p>
-                      </div>
-                      <span className="text-[11px] font-extrabold text-blue-600 dark:text-blue-400 shrink-0">
-                        {pathway.pricePaise ? `₹${(pathway.pricePaise / 100).toLocaleString("en-IN")}` : "Free"}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Fee Payment Status Modal */}
       {feeModalOpen && (
