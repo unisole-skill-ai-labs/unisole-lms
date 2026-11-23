@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo, useRef, startTransition } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
+import { prefetchByPath } from "../../utils/routePrefetch";
 import {
   LayoutGrid,
   Calendar,
@@ -67,19 +68,90 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
 
   const activeCohortTitle = selectedCohort || (enrolledCourses[0]?.title || enrolledCourses[0]?.name) || "Select Program";
 
-  // Lock body scroll when drawer is open
+  // Lock body scroll when drawer is open, compensating for scrollbar width to prevent layout shift
   useEffect(() => {
     if (isOpen) {
+      const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
       document.body.style.overflow = "hidden";
+      if (scrollBarWidth > 0) {
+        document.body.style.paddingRight = `${scrollBarWidth}px`;
+      }
     } else {
       document.body.style.overflow = "unset";
+      document.body.style.paddingRight = "0px";
       setCohortDropdownOpen(false);
       setConfirmSignOut(false);
     }
     return () => {
       document.body.style.overflow = "unset";
+      document.body.style.paddingRight = "0px";
     };
   }, [isOpen]);
+
+  // Focus trap and focus restore
+  const lastActiveElementRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      lastActiveElementRef.current = document.activeElement as HTMLElement;
+      const timer = setTimeout(() => {
+        const focusable = drawerRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable && focusable.length > 0) {
+          focusable[0].focus();
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    } else {
+      if (lastActiveElementRef.current) {
+        lastActiveElementRef.current.focus();
+        lastActiveElementRef.current = null;
+      }
+    }
+  }, [isOpen]);
+
+  const handleTrapTab = (e: React.KeyboardEvent) => {
+    if (e.key !== "Tab" || !drawerRef.current) return;
+    const focusable = Array.from(
+      drawerRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter((el) => el.offsetParent !== null);
+
+    if (focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (e.shiftKey) {
+      if (document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  };
+
+  // Swipe-left gesture to close on mobile touch screens
+  const touchStartXRef = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartXRef.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartXRef.current;
+    if (deltaX < -45) {
+      onClose();
+    }
+    touchStartXRef.current = null;
+  };
 
   // Handle ESC key to close
   useEffect(() => {
@@ -192,8 +264,10 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
     <>
       {/* Drawer Container (Pre-mounted for zero lag) */}
       <div
-        className={`fixed inset-0 z-50 transition-[visibility] duration-200 ${
-          isOpen ? "visible pointer-events-auto" : "invisible pointer-events-none"
+        className={`fixed inset-0 z-50 transition-[visibility] ${
+          isOpen
+            ? "visible pointer-events-auto duration-0"
+            : "invisible pointer-events-none duration-300 delay-300"
         }`}
         aria-hidden={!isOpen}
       >
@@ -209,8 +283,11 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
         {/* Drawer Panel */}
         <aside
           ref={drawerRef}
+          onKeyDown={handleTrapTab}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
           aria-label="Learner Navigation Drawer"
-          className={`fixed inset-y-0 left-0 z-50 w-[300px] sm:w-[330px] max-w-[85vw] bg-white dark:bg-[#121622] text-slate-900 dark:text-slate-100 shadow-xl flex flex-col border-r border-slate-200/80 dark:border-slate-800/80 select-none overflow-hidden transform-gpu will-change-transform transition-transform duration-200 ease-out ${
+          className={`fixed inset-y-0 left-0 z-50 w-[300px] sm:w-[330px] max-w-[85vw] bg-white dark:bg-[#121622] text-slate-900 dark:text-slate-100 shadow-xl flex flex-col border-r border-slate-200/80 dark:border-slate-800/80 select-none overflow-hidden transform-gpu will-change-transform transition-transform duration-300 ease-out ${
             isOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
@@ -325,16 +402,23 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
 
             {/* Navigation Items List */}
             <nav className="space-y-1.5">
-              {navItems.map((item) => {
+              {navItems.map((item, idx) => {
                 const active = isCurrentActive(item.id, item.to);
                 const Icon = item.icon;
+                const staggerClass = `transition-all duration-200 ease-out ${
+                  isOpen ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-2"
+                }`;
+                const staggerStyle = {
+                  transitionDelay: isOpen && idx < 8 ? `${idx * 30}ms` : "0ms",
+                };
 
                 if (item.isAction) {
                   return (
                     <button
                       key={item.id}
                       onClick={item.onClick}
-                      className="w-full flex items-center justify-between px-3.5 py-2.5 min-h-[44px] rounded-xl text-[13px] sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-colors cursor-pointer text-left"
+                      style={staggerStyle}
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 min-h-[44px] rounded-xl text-[13px] sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 active:scale-[0.98] cursor-pointer text-left ${staggerClass}`}
                     >
                       <div className="flex items-center gap-3">
                         <Icon className="w-[18px] h-[18px] text-slate-500 dark:text-slate-400 stroke-[1.8]" />
@@ -353,8 +437,18 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
                   <Link
                     key={item.id}
                     to={item.to!}
-                    onClick={onClose}
-                    className={`flex items-center justify-between px-3.5 py-2.5 min-h-[44px] rounded-xl text-[13px] sm:text-sm transition-colors ${
+                    style={staggerStyle}
+                    onMouseEnter={() => prefetchByPath(item.to!)}
+                    onTouchStart={() => prefetchByPath(item.to!)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      prefetchByPath(item.to!);
+                      onClose();
+                      startTransition(() => {
+                        navigate(item.to!);
+                      });
+                    }}
+                    className={`flex items-center justify-between px-3.5 py-2.5 min-h-[44px] rounded-xl text-[13px] sm:text-sm active:scale-[0.98] ${staggerClass} ${
                       active
                         ? "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-semibold shadow-2xs"
                         : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 font-medium"

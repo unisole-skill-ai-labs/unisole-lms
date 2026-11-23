@@ -3,6 +3,9 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    scrollbar-gutter: stable;
+  }
   :root {
     --nav-h: 4rem;
     --motion-duration-fast: 150ms;
