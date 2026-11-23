@@ -83,7 +83,7 @@ export default function NotificationsPage() {
               <CheckCircle2 className="w-6 h-6 stroke-[1.8]" />
             </div>
             <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-              You're all caught up!
+              No notifications yet
             </h2>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-xs mx-auto leading-relaxed">
               No new notifications right now. Check back when new workshops or activities are scheduled.

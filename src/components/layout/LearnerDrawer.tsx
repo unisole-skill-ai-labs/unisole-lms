@@ -39,7 +39,7 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
 
   const [cohortDropdownOpen, setCohortDropdownOpen] = useState(false);
   const [selectedCohort, setSelectedCohort] = useState<string>("");
-  const [activeModal, setActiveModal] = useState<"support" | "notifications" | null>(null);
+  const [activeModal, setActiveModal] = useState<"support" | null>(null);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -255,9 +255,9 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
       id: "notifications",
       name: "Notifications",
       icon: Bell,
-      isAction: true,
+      to: "/notifications",
+      isAction: false,
       badge: unreadCount > 0 ? unreadCount : null,
-      onClick: () => setActiveModal("notifications"),
     },
     {
       id: "support",
@@ -457,6 +457,11 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
                       />
                       <span>{item.name}</span>
                     </div>
+                    {item.badge !== null && item.badge !== undefined && item.badge > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white leading-none shadow-2xs">
+                        {item.badge}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -636,44 +641,6 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
                 </div>
                 <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
               </a>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal: Notifications */}
-      {activeModal === "notifications" && (
-        <div
-          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60"
-          onClick={() => setActiveModal(null)}
-        >
-          <div
-            className="bg-white dark:bg-[#121622] max-w-md w-full rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
-                  <Bell className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Notifications</h3>
-                  <span className="text-[11px] text-slate-400">Recent alerts & feedback</span>
-                </div>
-              </div>
-              <button
-                onClick={() => setActiveModal(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-4 text-center text-xs text-slate-400">
-              {unreadCount > 0 ? (
-                <span>You have {unreadCount} unread notification{unreadCount === 1 ? "" : "s"}. Check your Activities tab!</span>
-              ) : (
-                "No new unread notifications. You are all caught up!"
-              )}
             </div>
           </div>
         </div>
