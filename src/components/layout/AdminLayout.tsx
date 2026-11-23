@@ -310,13 +310,19 @@ export default function AdminLayout() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 min-w-0 min-h-screen overflow-y-auto">
-        <ChunkErrorBoundary>
-          <Suspense fallback={<PageSkeletonFallback />}>
-            <Outlet />
-          </Suspense>
-        </ChunkErrorBoundary>
-      </main>
+      <div className="flex-1 min-w-0 min-h-screen flex flex-col overflow-y-auto">
+        <main className="flex-1">
+          <ChunkErrorBoundary>
+            <Suspense fallback={<PageSkeletonFallback />}>
+              <Outlet />
+            </Suspense>
+          </ChunkErrorBoundary>
+        </main>
+        <footer className="py-3 px-6 text-xs text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+          <span>© {new Date().getFullYear()} Unisole Skill AI Labs</span>
+          <span className="font-mono text-[11px]">Admin CMS Studio</span>
+        </footer>
+      </div>
     </div>
   );
 }
