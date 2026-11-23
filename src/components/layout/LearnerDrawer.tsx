@@ -41,6 +41,15 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
   const [selectedCohort, setSelectedCohort] = useState<string>("");
   const [activeModal, setActiveModal] = useState<"support" | "notifications" | null>(null);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  useEffect(() => {
+    setIsTransitioning(true);
+    const timer = setTimeout(() => {
+      setIsTransitioning(false);
+    }, 320);
+    return () => clearTimeout(timer);
+  }, [isOpen]);
 
   const { data: myPathways = [] } = useGetMyPathwaysQuery(undefined, {
     skip: !isAuthenticated,
@@ -282,12 +291,16 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
 
         {/* Drawer Panel */}
         <aside
+          id="learner-navigation-drawer"
           ref={drawerRef}
           onKeyDown={handleTrapTab}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
+          onTransitionEnd={() => setIsTransitioning(false)}
           aria-label="Learner Navigation Drawer"
-          className={`fixed inset-y-0 left-0 z-50 w-[300px] sm:w-[330px] max-w-[85vw] bg-white dark:bg-[#121622] text-slate-900 dark:text-slate-100 shadow-xl flex flex-col border-r border-slate-200/80 dark:border-slate-800/80 select-none overflow-hidden transform-gpu will-change-transform transition-transform duration-300 ease-out ${
+          className={`fixed inset-y-0 left-0 z-50 w-[300px] sm:w-[330px] max-w-[85vw] bg-white dark:bg-[#121622] text-slate-900 dark:text-slate-100 shadow-xl flex flex-col border-r border-slate-200/80 dark:border-slate-800/80 select-none overflow-hidden transform-gpu ${
+            isTransitioning ? "will-change-transform" : ""
+          } transition-transform duration-300 ease-drawer ${
             isOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
@@ -351,7 +364,7 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
 
               {/* Cohort Dropdown */}
               {cohortDropdownOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1.5 p-2 bg-white dark:bg-[#121622] rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 z-30 animate-fade-in space-y-1">
+                <div className="absolute top-full left-0 right-0 mt-1.5 p-2 bg-white dark:bg-[#121622] rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 z-30 space-y-1">
                   <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Enrolled Programs ({enrolledCourses.length})
                   </div>
@@ -402,23 +415,16 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
 
             {/* Navigation Items List */}
             <nav className="space-y-1.5">
-              {navItems.map((item, idx) => {
+              {navItems.map((item) => {
                 const active = isCurrentActive(item.id, item.to);
                 const Icon = item.icon;
-                const staggerClass = `transition-all duration-200 ease-out ${
-                  isOpen ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-2"
-                }`;
-                const staggerStyle = {
-                  transitionDelay: isOpen && idx < 8 ? `${idx * 30}ms` : "0ms",
-                };
 
                 if (item.isAction) {
                   return (
                     <button
                       key={item.id}
                       onClick={item.onClick}
-                      style={staggerStyle}
-                      className={`w-full flex items-center justify-between px-3.5 py-2.5 min-h-[44px] rounded-xl text-[13px] sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 active:scale-[0.98] cursor-pointer text-left ${staggerClass}`}
+                      className="w-full flex items-center justify-between px-3.5 py-2.5 min-h-[44px] rounded-xl text-[13px] sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer text-left transition-colors"
                     >
                       <div className="flex items-center gap-3">
                         <Icon className="w-[18px] h-[18px] text-slate-500 dark:text-slate-400 stroke-[1.8]" />
@@ -437,7 +443,6 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
                   <Link
                     key={item.id}
                     to={item.to!}
-                    style={staggerStyle}
                     onMouseEnter={() => prefetchByPath(item.to!)}
                     onTouchStart={() => prefetchByPath(item.to!)}
                     onClick={(e) => {
@@ -448,7 +453,7 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
                         navigate(item.to!);
                       });
                     }}
-                    className={`flex items-center justify-between px-3.5 py-2.5 min-h-[44px] rounded-xl text-[13px] sm:text-sm active:scale-[0.98] ${staggerClass} ${
+                    className={`flex items-center justify-between px-3.5 py-2.5 min-h-[44px] rounded-xl text-[13px] sm:text-sm transition-colors ${
                       active
                         ? "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-semibold shadow-2xs"
                         : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 font-medium"
@@ -561,11 +566,11 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
       {/* Confirmation Modal: Sign Out (D1) */}
       {confirmSignOut && (
         <div
-          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 animate-fade-in"
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60"
           onClick={() => setConfirmSignOut(false)}
         >
           <div
-            className="bg-white dark:bg-[#121622] max-w-sm w-full rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl space-y-4 animate-scale-in"
+            className="bg-white dark:bg-[#121622] max-w-sm w-full rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3">
@@ -603,7 +608,7 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
       {/* Modal: Support */}
       {activeModal === "support" && (
         <div
-          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 animate-fade-in"
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60"
           onClick={() => setActiveModal(null)}
         >
           <div
@@ -649,7 +654,7 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
       {/* Modal: Notifications */}
       {activeModal === "notifications" && (
         <div
-          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 animate-fade-in"
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60"
           onClick={() => setActiveModal(null)}
         >
           <div

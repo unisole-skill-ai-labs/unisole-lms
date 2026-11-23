@@ -123,8 +123,9 @@ export default function Header() {
                 type="button"
                 onClick={() => setDrawerOpen(true)}
                 aria-label="Open learner navigation drawer"
+                aria-controls="learner-navigation-drawer"
                 aria-expanded={drawerOpen}
-                className="p-2 -ml-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer active:scale-95"
+                className="p-2 -ml-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
               >
                 <Menu className="w-5 h-5 stroke-[2]" />
               </button>
@@ -133,7 +134,7 @@ export default function Header() {
                 <img
                   src="https://res.cloudinary.com/hehmsemf/image/upload/f_auto,q_auto,w_64/v1785299421/Unisole_logo_new_mhqbma.png"
                   alt="Unisole Logo"
-                  className="w-8 h-8 rounded-lg object-contain shadow-xs group-hover:scale-105 transition-transform"
+                  className="w-8 h-8 rounded-lg object-contain shadow-xs"
                 />
                 <div className="flex flex-col">
                   <span className="font-extrabold text-base sm:text-lg text-zinc-900 dark:text-zinc-100 tracking-tight leading-none">
@@ -230,7 +231,7 @@ export default function Header() {
 
                   {/* Profile Dropdown Menu */}
                   {profileOpen && (
-                    <div className="absolute right-0 mt-2 w-64 sm:w-72 bg-white dark:bg-[#121622] rounded-2xl shadow-xl border border-zinc-200/90 dark:border-zinc-800 p-3 animate-fade-in z-50">
+                    <div className="absolute right-0 mt-2 w-64 sm:w-72 bg-white dark:bg-[#121622] rounded-2xl shadow-xl border border-zinc-200/90 dark:border-zinc-800 p-3 z-50">
                       {/* User Header */}
                       <div className="flex items-center gap-3 pb-3 mb-2 border-b border-zinc-100 dark:border-zinc-800">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-sky-500 flex items-center justify-center text-white text-sm font-bold shadow-xs shrink-0 overflow-hidden">
@@ -337,7 +338,7 @@ export default function Header() {
       {/* Global Quick Search Modal */}
       {searchOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+          className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-black/60 backdrop-blur-sm "
           onClick={(e) => e.target === e.currentTarget && setSearchOpen(false)}
         >
           <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-2xl shadow-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden">
@@ -396,10 +397,10 @@ export default function Header() {
       {/* Fee Payment Status Modal */}
       {feeModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs "
           onClick={(e) => e.target === e.currentTarget && setFeeModalOpen(false)}
         >
-          <div className="bg-white dark:bg-[#121622] w-full max-w-sm rounded-3xl shadow-2xl border border-zinc-200/80 dark:border-zinc-800 p-6 space-y-4 animate-scale-in">
+          <div className="bg-white dark:bg-[#121622] w-full max-w-sm rounded-3xl shadow-2xl border border-zinc-200/80 dark:border-zinc-800 p-6 space-y-4 ">
             <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
               <div className="flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-blue-600 dark:text-blue-400" />
