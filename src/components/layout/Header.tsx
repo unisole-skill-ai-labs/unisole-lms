@@ -28,6 +28,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { useGetPublicPathwaysQuery, useGetStudentActivitiesQuery } from "../../store/apiSlice";
 import Button from "../ui/Button";
 import LearnerDrawer from "./LearnerDrawer";
+import { prefetchByPath, getPrefetchHandlers } from "../../utils/routePrefetch";
 
 export default function Header() {
   const { isAuthenticated, user } = useSelector((state: any) => state.auth);
@@ -122,7 +123,8 @@ export default function Header() {
                 type="button"
                 onClick={() => setDrawerOpen(true)}
                 aria-label="Open learner navigation drawer"
-                className="p-2 -ml-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                aria-expanded={drawerOpen}
+                className="p-2 -ml-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer active:scale-95"
               >
                 <Menu className="w-5 h-5 stroke-[2]" />
               </button>
@@ -153,6 +155,7 @@ export default function Header() {
                     <Link
                       key={link.name}
                       to={link.path}
+                      {...getPrefetchHandlers(link.path)}
                       className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
                         active
                           ? "bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 shadow-xs"
@@ -183,6 +186,7 @@ export default function Header() {
               {isAuthenticated && (
                 <Link
                   to="/notifications"
+                  {...getPrefetchHandlers("/notifications")}
                   aria-label="Notifications"
                   className="relative p-2 rounded-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                   title="Notifications"

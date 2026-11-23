@@ -1,7 +1,9 @@
-import React, { useEffect } from "react";
+import React, { useEffect, Suspense } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Header from "./Header";
 import MobileNav from "./MobileNav";
+import ChunkErrorBoundary from "../common/ChunkErrorBoundary";
+import PageSkeletonFallback from "../common/PageSkeletonFallback";
 
 export default function Layout() {
   const { pathname } = useLocation();
@@ -16,7 +18,11 @@ export default function Layout() {
     <div className="min-h-screen flex flex-col bg-background text-foreground antialiased transition-colors duration-200">
       <Header />
       <main className={`flex-1 ${isPlayer ? "" : "pb-20 md:pb-0"}`}>
-        <Outlet />
+        <ChunkErrorBoundary>
+          <Suspense fallback={<PageSkeletonFallback />}>
+            <Outlet />
+          </Suspense>
+        </ChunkErrorBoundary>
       </main>
       {!isPlayer && <MobileNav />}
     </div>

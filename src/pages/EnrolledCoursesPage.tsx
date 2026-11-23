@@ -11,6 +11,7 @@ import {
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import MacFolderIcon from "../components/ui/MacFolderIcon";
+import { getPrefetchHandlers } from "../utils/routePrefetch";
 import {
   formatEnrollmentDate,
   formatExpiryDate,
@@ -139,13 +140,14 @@ function CourseCard({ item, submissionsData }: CourseCardProps) {
       <div className="mt-5 pt-3.5 border-t border-zinc-100 dark:border-zinc-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
         <Link
           to={`/learn/${pathwayId}`}
+          {...getPrefetchHandlers(`/learn/${pathwayId}`)}
           className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 flex items-center justify-center sm:justify-start gap-1 py-1"
         >
           <span>Curriculum Overview</span>
           <ArrowRight className="w-3.5 h-3.5" />
         </Link>
 
-        <Link to={nextHref} className="w-full sm:w-auto">
+        <Link to={nextHref} {...getPrefetchHandlers(nextHref)} className="w-full sm:w-auto">
           <Button
             size="sm"
             variant="primary"

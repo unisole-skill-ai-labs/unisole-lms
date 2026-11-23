@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import ChunkErrorBoundary from "../common/ChunkErrorBoundary";
+import PageSkeletonFallback from "../common/PageSkeletonFallback";
 import { useSelector, useDispatch } from "react-redux";
 import {
   LayoutGrid,
@@ -309,7 +311,11 @@ export default function AdminLayout() {
 
       {/* Main Content Area */}
       <main className="flex-1 min-w-0 min-h-screen overflow-y-auto">
-        <Outlet />
+        <ChunkErrorBoundary>
+          <Suspense fallback={<PageSkeletonFallback />}>
+            <Outlet />
+          </Suspense>
+        </ChunkErrorBoundary>
       </main>
     </div>
   );

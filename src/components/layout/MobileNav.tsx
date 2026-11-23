@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Home, BookOpen, Activity, Calendar } from "lucide-react";
+import { getPrefetchHandlers } from "../../utils/routePrefetch";
 
 export default function MobileNav() {
   const location = useLocation();
@@ -32,6 +33,7 @@ export default function MobileNav() {
             <Link
               key={tab.name}
               to={tab.path}
+              {...getPrefetchHandlers(tab.path)}
               className={`flex-1 flex flex-col items-center justify-center min-h-[44px] py-1 rounded-xl transition-all duration-150 cursor-pointer active:scale-95 ${
                 active
                   ? "text-blue-600 dark:text-blue-400 font-bold"

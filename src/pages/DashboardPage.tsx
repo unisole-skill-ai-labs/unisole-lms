@@ -1,6 +1,7 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, startTransition } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { prefetchByPath } from "../utils/routePrefetch";
 import {
   Play,
   ArrowRight,
@@ -455,11 +456,16 @@ export default function DashboardPage() {
             {/* Full-width Action Button (min 44px tall, deep-links to exact lesson, B2) */}
             <button
               type="button"
+              onMouseEnter={() => prefetchByPath(`/learn/${currentProgramId}`)}
+              onTouchStart={() => prefetchByPath(`/learn/${currentProgramId}`)}
+              onFocus={() => prefetchByPath(`/learn/${currentProgramId}`)}
               onClick={() => {
                 const targetUrl = courseFlow.nextIncompleteItem
                   ? `/learn/${currentProgramId}?lesson=${courseFlow.nextIncompleteItem.id}`
                   : `/learn/${currentProgramId}`;
-                navigate(targetUrl);
+                startTransition(() => {
+                  navigate(targetUrl);
+                });
               }}
               className="w-full min-h-[44px] py-3 px-5 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white text-sm font-bold shadow-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
