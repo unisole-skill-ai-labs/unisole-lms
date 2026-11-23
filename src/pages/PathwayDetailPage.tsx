@@ -108,7 +108,7 @@ export default function PathwayDetailPage() {
         <p className="text-xs text-zinc-500 dark:text-zinc-400">The learning pathway you requested does not exist or has been archived.</p>
         <Link to="/">
           <Button variant="primary" size="sm" icon={ArrowLeft}>
-            Back to Catalog
+            Back to Dashboard
           </Button>
         </Link>
       </div>
@@ -123,7 +123,7 @@ export default function PathwayDetailPage() {
           to="/"
           className="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to Catalog
+          <ArrowLeft className="w-4 h-4" /> Back to Dashboard
         </Link>
       </div>
 

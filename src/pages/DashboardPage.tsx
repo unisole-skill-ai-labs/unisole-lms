@@ -754,17 +754,6 @@ export default function DashboardPage() {
             </div>
           )}
         </section>
-
-        {/* ─── B5. Subtle Bottom Catalog Card (Replaces upsell banner) ─── */}
-        <div className="pt-2 pb-4 text-center">
-          <Link
-            to="/catalog"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors py-2 px-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
-          >
-            <span>Explore all certification tracks in Catalog</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
       </div>
     </div>
   );

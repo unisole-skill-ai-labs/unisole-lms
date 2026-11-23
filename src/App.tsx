@@ -10,7 +10,6 @@ import { routeLoaders, prefetchCoreRoutesOnIdle } from "./utils/routePrefetch";
 
 // Lazy-loaded student routes (A1: Code Splitting + Part 2: Shared Prefetch Cache)
 const DashboardPage = lazy(routeLoaders.dashboard);
-const CatalogPage = lazy(routeLoaders.catalog);
 const PathwayDetailPage = lazy(routeLoaders.pathwayDetail);
 const EnrolledCoursesPage = lazy(routeLoaders.enrolled);
 const ActivitiesPage = lazy(routeLoaders.activities);
@@ -112,14 +111,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="catalog"
-          element={
-            <ProtectedRoute>
-              <CatalogPage />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="catalog" element={<Navigate to="/" replace />} />
         <Route
           path="articles"
           element={

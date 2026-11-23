@@ -945,7 +945,7 @@ export default function LmsPlayerPage() {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <button
-                  onClick={() => navigate("/catalog")}
+                  onClick={() => navigate("/")}
                   aria-label="Search curriculum"
                   className="p-1.5 -mr-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                 >

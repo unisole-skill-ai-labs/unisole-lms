@@ -371,16 +371,6 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
                   {enrolledCourses.length === 0 ? (
                     <div className="p-3 text-center space-y-2">
                       <p className="text-xs text-slate-500">No enrolled programs yet</p>
-                      <Link
-                        to="/catalog"
-                        onClick={() => {
-                          setCohortDropdownOpen(false);
-                          onClose();
-                        }}
-                        className="inline-block text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        Browse Catalog →
-                      </Link>
                     </div>
                   ) : (
                     enrolledCourses.map((c: any) => {

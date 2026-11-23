@@ -276,11 +276,11 @@ export default function EnrolledCoursesPage() {
             No active enrolled courses yet
           </h3>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-xs mx-auto">
-            You haven't enrolled in any courses yet. Browse our curated catalog to start your learning journey!
+            You haven't enrolled in any courses yet.
           </p>
-          <Link to="/catalog">
-            <Button variant="primary" size="sm" icon={Compass}>
-              Browse Pathways Catalog
+          <Link to="/">
+            <Button variant="primary" size="sm">
+              Go to Dashboard
             </Button>
           </Link>
         </div>
@@ -295,17 +295,6 @@ export default function EnrolledCoursesPage() {
           ))}
         </div>
       )}
-
-      {/* Demoted Explore Catalog text link at the bottom (A2) */}
-      <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800/80 text-center">
-        <Link
-          to="/catalog"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-        >
-          <Compass className="w-3.5 h-3.5" />
-          <span>Explore more courses in the catalog &rarr;</span>
-        </Link>
-      </div>
     </div>
   );
 }

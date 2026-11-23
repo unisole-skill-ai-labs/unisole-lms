@@ -8,7 +8,6 @@
 // Central dynamic import map shared between React.lazy and prefetch triggers
 export const routeLoaders = {
   dashboard: () => import("../pages/DashboardPage"),
-  catalog: () => import("../pages/CatalogPage"),
   pathwayDetail: () => import("../pages/PathwayDetailPage"),
   enrolled: () => import("../pages/EnrolledCoursesPage"),
   activities: () => import("../pages/ActivitiesPage"),
@@ -49,8 +48,6 @@ export function prefetchByPath(path: string): void {
   try {
     if (cleanPath === "/" || cleanPath === "/dashboard") {
       routeLoaders.dashboard();
-    } else if (cleanPath === "/catalog") {
-      routeLoaders.catalog();
     } else if (cleanPath.startsWith("/pathway/")) {
       routeLoaders.pathwayDetail();
     } else if (cleanPath === "/enrolled" || cleanPath.startsWith("/courses")) {

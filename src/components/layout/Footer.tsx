@@ -35,7 +35,7 @@ export default function Footer() {
         <div className="space-y-3">
           <h4 className="text-xs font-mono text-zinc-300 uppercase tracking-wider">Learning Platform</h4>
           <ul className="space-y-2 text-xs text-zinc-400">
-            <li><Link to="/" className="hover:text-white transition-colors">Pathways Catalog</Link></li>
+            <li><Link to="/" className="hover:text-white transition-colors">Dashboard</Link></li>
             <li><Link to="/enrolled" className="hover:text-white transition-colors">My Enrolled Curriculums</Link></li>
             <li><Link to="/profile" className="hover:text-white transition-colors">Learner Profile</Link></li>
           </ul>
