@@ -203,7 +203,7 @@ export default function MentorCockpitView({
   }
 
   return (
-    <div className="space-y-5 animate-fade-in font-sans">
+    <div className="space-y-5 font-sans">
       {/* ───────────────────────────────────────────────────────────── */}
       {/* 1. MINIMAL 3-STAT METRIC STRIP (Zero Fluff, High Signal)     */}
       {/* ───────────────────────────────────────────────────────────── */}

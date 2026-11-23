@@ -43,7 +43,7 @@ export default function AdminLoginPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#070A11] text-slate-800 dark:text-slate-100 flex flex-col justify-center items-center p-4 sm:p-6 lg:p-8 font-sans">
-      <div className="max-w-md w-full space-y-6 animate-fade-in">
+      <div className="max-w-md w-full space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2.5">
           <div className="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-500 mx-auto shadow-2xs">

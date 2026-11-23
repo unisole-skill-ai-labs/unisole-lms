@@ -439,7 +439,7 @@ export default function StudentsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-5 max-w-[1600px] mx-auto animate-fade-in font-sans">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-5 max-w-[1600px] mx-auto font-sans">
       {/* ------------------------------------------------------------- */}
       {/* Header & Canonical Roster Counts                              */}
       {/* ------------------------------------------------------------- */}
@@ -635,7 +635,7 @@ export default function StudentsPage() {
       {/* Bulk Action Bar (D3 - Admin Only)                             */}
       {/* ------------------------------------------------------------- */}
       {isAdmin && selectedStudentIds.length > 0 && (
-        <div className="sticky top-2 z-30 p-3 sm:px-5 rounded-2xl bg-slate-900 text-white dark:bg-white dark:text-slate-950 flex items-center justify-between shadow-xl animate-fade-in">
+        <div className="sticky top-2 z-30 p-3 sm:px-5 rounded-2xl bg-slate-900 text-white dark:bg-white dark:text-slate-950 flex items-center justify-between shadow-xl ">
           <div className="flex items-center gap-3">
             <span className="w-6 h-6 rounded-lg bg-purple-500 text-white text-xs font-black flex items-center justify-center">
               {selectedStudentIds.length}
@@ -973,11 +973,11 @@ export default function StudentsPage() {
       {/* ------------------------------------------------------------- */}
       {drawerStudent && (
         <div
-          className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs animate-fade-in"
+          className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs "
           onClick={() => setDrawerStudent(null)}
         >
           <aside
-            className="w-full sm:w-[480px] h-full bg-white dark:bg-[#0B1120] border-l border-slate-200 dark:border-slate-800 p-6 shadow-2xl overflow-y-auto space-y-6 animate-slide-left"
+            className="w-full sm:w-[480px] h-full bg-white dark:bg-[#0B1120] border-l border-slate-200 dark:border-slate-800 p-6 shadow-2xl overflow-y-auto space-y-6 "
             onClick={(e) => e.stopPropagation()}
           >
             {/* Drawer Header */}
@@ -1163,11 +1163,11 @@ export default function StudentsPage() {
       {/* ------------------------------------------------------------- */}
       {unenrollModalStudent && (
         <div
-          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 animate-fade-in"
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 "
           onClick={() => setUnenrollModalStudent(null)}
         >
           <div
-            className="bg-white dark:bg-[#0B1120] max-w-sm w-full rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 animate-scale-in"
+            className="bg-white dark:bg-[#0B1120] max-w-sm w-full rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 "
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3">
@@ -1209,7 +1209,7 @@ export default function StudentsPage() {
       {/* ------------------------------------------------------------- */}
       {bulkAssignModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 "
           onClick={() => {
             setBulkAssignModalOpen(false);
             setBulkStep("SELECT");
@@ -1217,7 +1217,7 @@ export default function StudentsPage() {
           }}
         >
           <div
-            className="bg-white dark:bg-[#0B1120] max-w-lg w-full rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 animate-scale-in"
+            className="bg-white dark:bg-[#0B1120] max-w-lg w-full rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 "
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -1291,7 +1291,7 @@ export default function StudentsPage() {
 
             {/* STEP 2: Confirmation Dialog with Summary */}
             {bulkStep === "CONFIRM" && (
-              <div className="space-y-4 animate-fade-in">
+              <div className="space-y-4 ">
                 <div className="p-3.5 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200/60 dark:border-purple-800/40 space-y-2 text-xs">
                   <div className="flex justify-between items-center text-slate-700 dark:text-slate-300">
                     <span className="text-slate-500">Designated Mentor:</span>
@@ -1357,7 +1357,7 @@ export default function StudentsPage() {
 
             {/* STEP 3: Result Summary Dialog */}
             {bulkStep === "RESULT" && bulkResultSummary && (
-              <div className="space-y-4 animate-fade-in text-center py-2">
+              <div className="space-y-4 text-center py-2">
                 <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mx-auto">
                   <Check className="w-6 h-6 stroke-[2.5]" />
                 </div>
@@ -1406,11 +1406,11 @@ export default function StudentsPage() {
       {/* ------------------------------------------------------------- */}
       {assignModalOpen && targetStudent && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 "
           onClick={() => setAssignModalOpen(false)}
         >
           <div
-            className="bg-white dark:bg-[#0B1120] max-w-md w-full rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 animate-scale-in"
+            className="bg-white dark:bg-[#0B1120] max-w-md w-full rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 "
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">

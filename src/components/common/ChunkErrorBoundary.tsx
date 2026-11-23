@@ -35,7 +35,7 @@ export default class ChunkErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="w-full min-h-[50vh] flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+        <div className="w-full min-h-[50vh] flex flex-col items-center justify-center p-6 text-center">
           <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-4 shadow-xs">
             <AlertCircle className="w-6 h-6" />
           </div>
@@ -48,7 +48,7 @@ export default class ChunkErrorBoundary extends Component<Props, State> {
           <button
             type="button"
             onClick={this.handleRetry}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-[0.98]"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-xs cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Reload Page</span>

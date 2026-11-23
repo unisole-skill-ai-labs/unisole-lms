@@ -34,7 +34,7 @@ export default function MobileNav() {
               key={tab.name}
               to={tab.path}
               {...getPrefetchHandlers(tab.path)}
-              className={`flex-1 flex flex-col items-center justify-center min-h-[44px] py-1 rounded-xl transition-all duration-150 cursor-pointer active:scale-95 ${
+              className={`flex-1 flex flex-col items-center justify-center min-h-[44px] py-1 rounded-xl transition-colors duration-150 cursor-pointer ${
                 active
                   ? "text-blue-600 dark:text-blue-400 font-bold"
                   : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 font-medium"

@@ -152,7 +152,7 @@ export default function LessonViewer({
   const isPassed = scorePercent >= passingScore;
 
   return (
-    <div className="p-2 sm:p-6 max-w-5xl mx-auto space-y-6 animate-fade-in">
+    <div className="p-2 sm:p-6 max-w-5xl mx-auto space-y-6 ">
       {/* Video Player Section */}
       {lesson.videoUrl ? (
         <div className="rounded-3xl overflow-hidden shadow-2xl border border-zinc-200/80 dark:border-zinc-800 bg-black aspect-video relative">

@@ -67,7 +67,7 @@ export default function CodingTestRunner({
   };
 
   return (
-    <div className="bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-6 animate-fade-in shadow-xs">
+    <div className="bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-6 shadow-xs">
       {/* Test Title & Instructions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>

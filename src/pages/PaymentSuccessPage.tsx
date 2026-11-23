@@ -22,7 +22,7 @@ export default function PaymentSuccessPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 py-8 sm:py-16 animate-fade-in">
+    <div className="max-w-md mx-auto px-4 py-8 sm:py-16">
       <div className="p-6 sm:p-8 text-center shadow-2xl border border-zinc-200/80 dark:border-zinc-800 rounded-3xl relative overflow-hidden bg-white dark:bg-zinc-900">
         {/* Top decorative gradient bar */}
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 via-indigo-500 to-purple-600" />

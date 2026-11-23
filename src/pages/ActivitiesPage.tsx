@@ -51,7 +51,7 @@ export default function ActivitiesPage() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-50/70 dark:bg-[#0B0D13] py-4 sm:py-8 transition-colors">
-      <div className="max-w-2xl lg:max-w-3xl mx-auto px-4 sm:px-6 space-y-5 animate-fade-in">
+      <div className="max-w-2xl lg:max-w-3xl mx-auto px-4 sm:px-6 space-y-5">
         {/* Title & Filter Chips Bar */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">

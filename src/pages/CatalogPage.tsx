@@ -50,7 +50,7 @@ export default function CatalogPage() {
   }, [pathways, selectedCategory, searchTerm]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-8 animate-fade-in">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-8">
       {/* Hero Header */}
       <div className="bg-gradient-to-br from-indigo-950 via-zinc-900 to-zinc-950 dark:from-indigo-950 dark:via-zinc-950 dark:to-black rounded-3xl p-6 sm:p-10 text-white shadow-2xl relative overflow-hidden border border-zinc-800/80">
         <div className="absolute right-0 top-0 translate-x-1/4 -translate-y-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />

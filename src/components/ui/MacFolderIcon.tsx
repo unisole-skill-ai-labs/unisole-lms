@@ -99,7 +99,7 @@ export default function MacFolderIcon({
 
   return (
     <div
-      className={`relative inline-flex items-center justify-center shrink-0 select-none group transition-transform duration-300 ease-out hover:scale-105 active:scale-95 ${sizeClasses[size]} ${className}`}
+      className={`relative inline-flex items-center justify-center shrink-0 select-none group ${sizeClasses[size]} ${className}`}
     >
       <svg
         viewBox="0 0 100 86"

@@ -96,7 +96,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-white dark:bg-[#0B0D13] py-6 sm:py-10 transition-colors">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 space-y-6 animate-fade-in">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 space-y-6">
         {/* Header */}
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
@@ -273,10 +273,10 @@ export default function ProfilePage() {
       {/* Edit Field Modal */}
       {activeModal && activeModal !== "resetPassword" && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs "
           onClick={(e) => e.target === e.currentTarget && setActiveModal(null)}
         >
-          <div className="bg-white dark:bg-[#121622] w-full max-w-sm rounded-3xl shadow-2xl border border-zinc-200/90 dark:border-zinc-800 p-6 space-y-4 animate-scale-in">
+          <div className="bg-white dark:bg-[#121622] w-full max-w-sm rounded-3xl shadow-2xl border border-zinc-200/90 dark:border-zinc-800 p-6 space-y-4 ">
             <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
               <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 capitalize">
                 Edit {activeModal}
@@ -322,10 +322,10 @@ export default function ProfilePage() {
       {/* Reset Password Modal */}
       {activeModal === "resetPassword" && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs "
           onClick={(e) => e.target === e.currentTarget && setActiveModal(null)}
         >
-          <div className="bg-white dark:bg-[#121622] w-full max-w-sm rounded-3xl shadow-2xl border border-zinc-200/90 dark:border-zinc-800 p-6 space-y-4 animate-scale-in">
+          <div className="bg-white dark:bg-[#121622] w-full max-w-sm rounded-3xl shadow-2xl border border-zinc-200/90 dark:border-zinc-800 p-6 space-y-4 ">
             <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
               <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
                 Reset Password

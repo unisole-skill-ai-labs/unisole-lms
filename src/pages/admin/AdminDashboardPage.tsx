@@ -134,7 +134,7 @@ export default function AdminDashboardPage() {
   }, [velocityData, maxCount]);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto animate-fade-in font-sans">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto font-sans">
       {/* ------------------------------------------------------------- */}
       {/* Top Header & Course Selector Filter (A7)                       */}
       {/* ------------------------------------------------------------- */}

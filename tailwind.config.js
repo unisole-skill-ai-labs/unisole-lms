@@ -4,13 +4,6 @@ import tailwindcssAnimate from 'tailwindcss-animate';
 export default {
   content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
   safelist: [
-    'animate-fade-in',
-    'animate-slide-up',
-    'animate-scale-in',
-    'animate-slide-left',
-    'animate-slide-right',
-    'animate-slide-down',
-    'animate-shimmer',
     'grid-rows-[0fr]',
     'grid-rows-[1fr]',
   ],
@@ -136,51 +129,13 @@ export default {
         300: '300ms',
       },
       transitionTimingFunction: {
+        'drawer': 'cubic-bezier(0.22, 1, 0.36, 1)',
         'ease-out-expo': 'cubic-bezier(0.16, 1, 0.3, 1)',
         'ease-in-out-smooth': 'cubic-bezier(0.4, 0, 0.2, 1)',
       },
       gridTemplateRows: {
         '0': '0fr',
         '1': '1fr',
-      },
-      keyframes: {
-        'fade-in': {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
-        },
-        'slide-up': {
-          '0%': { opacity: '0', transform: 'translateY(8px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
-        },
-        'scale-in': {
-          '0%': { opacity: '0', transform: 'scale(0.96)' },
-          '100%': { opacity: '1', transform: 'scale(1)' },
-        },
-        'slide-left': {
-          '0%': { transform: 'translateX(100%)' },
-          '100%': { transform: 'translateX(0)' },
-        },
-        'slide-right': {
-          '0%': { transform: 'translateX(-100%)' },
-          '100%': { transform: 'translateX(0)' },
-        },
-        'slide-down': {
-          '0%': { opacity: '0', transform: 'translateY(-8px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
-        },
-        shimmer: {
-          '0%': { backgroundPosition: '-200% 0' },
-          '100%': { backgroundPosition: '200% 0' },
-        },
-      },
-      animation: {
-        'fade-in': 'fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-        'slide-up': 'slide-up 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-        'scale-in': 'scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-        'slide-left': 'slide-left 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-        'slide-right': 'slide-right 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-        'slide-down': 'slide-down 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-        shimmer: 'shimmer 2s linear infinite',
       },
     },
   },

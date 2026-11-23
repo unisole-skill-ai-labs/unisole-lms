@@ -40,7 +40,7 @@ export default function NotificationsPage() {
   ];
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-slate-50/70 dark:bg-[#0B0D13] py-4 sm:py-8 transition-colors animate-fade-in">
+    <div className="min-h-[calc(100vh-4rem)] bg-slate-50/70 dark:bg-[#0B0D13] py-4 sm:py-8 transition-colors">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 space-y-4">
         {/* Top Header */}
         <div className="flex items-center gap-3">
@@ -109,7 +109,7 @@ export default function NotificationsPage() {
                       navigate(notif.link);
                     }
                   }}
-                  className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-200/80 dark:border-zinc-800 hover:border-blue-500/40 dark:hover:border-blue-500/40 shadow-xs flex items-start gap-3.5 cursor-pointer active:scale-[0.99] transition-all"
+                  className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-200/80 dark:border-zinc-800 hover:border-blue-500/40 dark:hover:border-blue-500/40 shadow-xs flex items-start gap-3.5 cursor-pointer transition-colors"
                 >
                   <div
                     className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${

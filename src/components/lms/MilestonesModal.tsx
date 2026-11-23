@@ -64,7 +64,7 @@ export default function MilestonesModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm ">
       <div className="bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-sky-500/20 text-slate-900 dark:text-white rounded-3xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="p-6 border-b border-slate-200 dark:border-slate-800/80 flex items-center justify-between bg-slate-50 dark:bg-gradient-to-r dark:from-[#0F172A] dark:to-[#0A192F]">

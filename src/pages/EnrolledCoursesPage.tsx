@@ -207,7 +207,7 @@ export default function EnrolledCoursesPage() {
   const [filterState, setFilterState] = useState<"all" | "in_progress" | "completed">("all");
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 animate-fade-in font-sans">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 font-sans">
       {/* Page Header (Consistent "Courses" naming) */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-zinc-100 dark:border-zinc-800/80">
         <div>

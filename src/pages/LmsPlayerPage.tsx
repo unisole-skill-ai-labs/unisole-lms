@@ -991,7 +991,7 @@ export default function LmsPlayerPage() {
         </div>
 
         {/* Course Curriculum Weeks List (A2 & A3) */}
-        <div className="animate-fade-in max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 py-6 w-full flex-1">
+        <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 py-6 w-full flex-1">
             {courseFlow.weekStats.length === 0 ? (
               <div className="bg-white dark:bg-[#0B1120] rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-12 text-center space-y-3">
                 <BookOpen className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto stroke-[1.5]" />
@@ -1167,7 +1167,7 @@ export default function LmsPlayerPage() {
                                   className={`group/item flex items-center justify-between gap-3 p-2.5 rounded-xl border text-xs transition-all ${
                                     item.isLocked || ws.isLocked
                                       ? "opacity-60 bg-slate-100 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 cursor-not-allowed"
-                                      : "bg-white dark:bg-[#0B1120] border-slate-200/80 dark:border-slate-800 hover:border-sky-400 dark:hover:border-sky-500 cursor-pointer shadow-2xs active:scale-[0.99]"
+                                      : "bg-white dark:bg-[#0B1120] border-slate-200/80 dark:border-slate-800 hover:border-sky-400 dark:hover:border-sky-500 cursor-pointer shadow-2xs"
                                   }`}
                                 >
                                   {/* Left: Step, Status, Icon, Title */}
@@ -1355,7 +1355,7 @@ export default function LmsPlayerPage() {
       }) || null;
 
     return (
-      <div className="min-h-[calc(100vh-4rem)] bg-[#F8FAFC] dark:bg-[#070A11] text-slate-900 dark:text-slate-100 animate-fade-in pb-28 sm:pb-12">
+      <div className="min-h-[calc(100vh-4rem)] bg-[#F8FAFC] dark:bg-[#070A11] text-slate-900 dark:text-slate-100 pb-28 sm:pb-12">
         {/* Header Bar with Week Switcher and Progress Bar */}
         <div
           style={{ top: "calc(var(--nav-h, 4rem) + env(safe-area-inset-top, 0px))" }}
@@ -1540,7 +1540,7 @@ export default function LmsPlayerPage() {
                         setSelectedLesson(item);
                         setCurrentView("player");
                       }}
-                      className={`group relative rounded-xl border p-3.5 sm:p-4 transition-all duration-150 shadow-2xs hover:shadow-xs flex items-center justify-between min-h-[56px] active:scale-[0.99] ${
+                      className={`group relative rounded-xl border p-3.5 sm:p-4 transition-colors duration-150 shadow-2xs hover:shadow-xs flex items-center justify-between min-h-[56px] ${
                         item.isLocked
                           ? "opacity-60 bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 cursor-not-allowed"
                           : isNext
@@ -1784,7 +1784,7 @@ export default function LmsPlayerPage() {
                           setSelectedLesson(item);
                           setCurrentView("player");
                         }}
-                        className="group bg-white dark:bg-[#0B1120] hover:bg-slate-50/80 dark:hover:bg-[#0E1726] rounded-xl border border-slate-200/90 dark:border-slate-800 hover:border-teal-300 dark:hover:border-teal-700 p-3.5 transition-all duration-150 shadow-2xs hover:shadow-xs flex items-center justify-between cursor-pointer min-h-[56px] active:scale-[0.99]"
+                        className="group bg-white dark:bg-[#0B1120] hover:bg-slate-50/80 dark:hover:bg-[#0E1726] rounded-xl border border-slate-200/90 dark:border-slate-800 hover:border-teal-300 dark:hover:border-teal-700 p-3.5 transition-colors duration-150 shadow-2xs hover:shadow-xs flex items-center justify-between cursor-pointer min-h-[56px]"
                       >
                         <div className="flex items-center gap-3 min-w-0 pr-2">
                           <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-950/40 border border-teal-200/60 dark:border-teal-800/60 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
@@ -1888,7 +1888,7 @@ export default function LmsPlayerPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-[#F8FAFC] dark:bg-[#070A11] text-slate-900 dark:text-slate-100 flex flex-col justify-between animate-fade-in">
+    <div className="min-h-[calc(100vh-4rem)] bg-[#F8FAFC] dark:bg-[#070A11] text-slate-900 dark:text-slate-100 flex flex-col justify-between">
       <div>
         {/* SCHEDULED LOCKED ACTIVITY VIEW */}
         {selectedLesson?.isLocked ? (
@@ -2312,7 +2312,7 @@ export default function LmsPlayerPage() {
               </div>
 
               {quizSubmitted && (
-                <div className="p-4 rounded-2xl border bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-200 flex items-center justify-between animate-fade-in shadow-2xs">
+                <div className="p-4 rounded-2xl border bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-200 flex items-center justify-between shadow-2xs">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                       <Check className="w-4 h-4 stroke-[3]" />
@@ -2528,7 +2528,7 @@ export default function LmsPlayerPage() {
       {/* Support Ticket Modal */}
       {supportTicketOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#0B1120] text-slate-900 dark:text-white w-full max-w-sm rounded-3xl shadow-2xl border border-slate-200 dark:border-sky-500/30 p-6 space-y-4 animate-scale-in">
+          <div className="bg-white dark:bg-[#0B1120] text-slate-900 dark:text-white w-full max-w-sm rounded-3xl shadow-2xl border border-slate-200 dark:border-sky-500/30 p-6 space-y-4 ">
             <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 dark:border-sky-500/20">
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Create Support Ticket</h3>
               <button onClick={() => setSupportTicketOpen(false)} className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer">

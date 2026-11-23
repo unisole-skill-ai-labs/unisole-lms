@@ -480,10 +480,10 @@ export default function AdminCoursesPage() {
   };
 
   return (
-    <div className="p-5 sm:p-7 lg:p-8 space-y-6 max-w-[1560px] mx-auto animate-fade-in font-sans">
+    <div className="p-5 sm:p-7 lg:p-8 space-y-6 max-w-[1560px] mx-auto font-sans">
       {/* Toast Alert */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 bg-slate-900 text-white text-xs font-semibold rounded-2xl shadow-xl border border-slate-700 animate-slide-up">
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 bg-slate-900 text-white text-xs font-semibold rounded-2xl shadow-xl border border-slate-700 ">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{toastMessage}</span>
         </div>
@@ -752,7 +752,7 @@ export default function AdminCoursesPage() {
                       {isMenuOpen && (
                         <div
                           ref={menuRef}
-                          className="absolute right-0 top-8 w-52 bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl py-1.5 z-40 animate-scale-in text-xs font-semibold"
+                          className="absolute right-0 top-8 w-52 bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl py-1.5 z-40 text-xs font-semibold"
                         >
                           {/* Preview as Student */}
                           <a
@@ -952,7 +952,7 @@ export default function AdminCoursesPage() {
       {/* CREATE COURSE MODAL */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#0B1120] rounded-2xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 animate-scale-in">
+          <div className="bg-white dark:bg-[#0B1120] rounded-2xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 ">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Plus className="w-4 h-4 text-sky-500" />
@@ -1039,7 +1039,7 @@ export default function AdminCoursesPage() {
       {/* IMPORT / CLONE TEMPLATE MODAL */}
       {showImportCloneModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#0B1120] rounded-2xl max-w-xl w-full p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 animate-scale-in max-h-[90vh] flex flex-col">
+          <div className="bg-white dark:bg-[#0B1120] rounded-2xl max-w-xl w-full p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
               <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -1304,7 +1304,7 @@ export default function AdminCoursesPage() {
       {/* CONFIRMATION MODAL (Destructive Actions: Unpublish, Delete) */}
       {actionConfirmModal.open && actionConfirmModal.course && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#0B1120] rounded-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 animate-scale-in">
+          <div className="bg-white dark:bg-[#0B1120] rounded-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 ">
             <div className="flex items-center gap-3">
               <div
                 className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${

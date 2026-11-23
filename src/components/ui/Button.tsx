@@ -25,7 +25,7 @@ export default function Button({
   ...props
 }: ButtonProps) {
   const baseStyles =
-    "inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100";
+    "inline-flex items-center justify-center font-semibold rounded-xl transition-colors duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none";
 
   const sizeStyles = {
     sm: "px-3 py-1.5 text-xs gap-1.5 min-h-[36px]",

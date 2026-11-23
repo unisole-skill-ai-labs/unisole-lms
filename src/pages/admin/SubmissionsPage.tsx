@@ -88,7 +88,7 @@ export default function SubmissionsPage({ initialMode }: SubmissionsPageProps = 
   const [selectedMenteeId, setSelectedMenteeId] = useState<string | null>(null);
 
   return (
-    <div className="p-5 sm:p-7 lg:p-8 space-y-6 max-w-[1560px] mx-auto animate-fade-in font-sans">
+    <div className="p-5 sm:p-7 lg:p-8 space-y-6 max-w-[1560px] mx-auto font-sans">
       {/* Top Header & Tab Switcher */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800/80">
         <div>

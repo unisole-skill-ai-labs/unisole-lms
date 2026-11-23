@@ -312,7 +312,7 @@ export default function DashboardPage() {
       onTouchEnd={handleTouchEnd}
       className="min-h-[calc(100vh-4rem)] bg-slate-50/70 dark:bg-[#0B0D13] py-4 sm:py-6 transition-colors pb-24 sm:pb-12"
     >
-      <div className="max-w-xl md:max-w-3xl mx-auto px-4 sm:px-6 space-y-4 sm:space-y-5 animate-fade-in">
+      <div className="max-w-xl md:max-w-3xl mx-auto px-4 sm:px-6 space-y-4 sm:space-y-5">
         {/* Mobile Pull-to-Refresh Feedback Indicator */}
         {isPullRefreshing && (
           <div className="flex items-center justify-center gap-2 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50/80 dark:bg-blue-950/40 rounded-xl animate-pulse">
@@ -367,7 +367,7 @@ export default function DashboardPage() {
             </button>
 
             {programDropdownOpen && (
-              <div className="absolute top-full left-0 right-0 mt-1.5 p-1.5 bg-white dark:bg-[#121622] rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 z-30 space-y-0.5 animate-fade-in">
+              <div className="absolute top-full left-0 right-0 mt-1.5 p-1.5 bg-white dark:bg-[#121622] rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 z-30 space-y-0.5 ">
                 <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
                   Select Program
                 </div>
@@ -467,7 +467,7 @@ export default function DashboardPage() {
                   navigate(targetUrl);
                 });
               }}
-              className="w-full min-h-[44px] py-3 px-5 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white text-sm font-bold shadow-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+              className="w-full min-h-[44px] py-3 px-5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
               <span>
                 {courseFlow.completedActivities > 0 ? "Resume" : "Start Week 1"}
@@ -618,7 +618,7 @@ export default function DashboardPage() {
                       <div
                         key={act.id}
                         onClick={() => navigate(targetLink)}
-                        className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-rose-50/40 dark:bg-rose-950/20 hover:bg-rose-50/80 dark:hover:bg-rose-950/40 border border-rose-200/70 dark:border-rose-900/40 transition-all cursor-pointer group active:scale-[0.99]"
+                        className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-rose-50/40 dark:bg-rose-950/20 hover:bg-rose-50/80 dark:hover:bg-rose-950/40 border border-rose-200/70 dark:border-rose-900/40 transition-colors cursor-pointer group"
                       >
                         <div className="flex items-center gap-3 min-w-0 pr-2">
                           <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
@@ -679,7 +679,7 @@ export default function DashboardPage() {
                       <div
                         key={act.id}
                         onClick={() => navigate(targetLink)}
-                        className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-zinc-50/70 dark:bg-zinc-900/50 hover:bg-zinc-100/80 dark:hover:bg-zinc-800/60 border border-zinc-200/60 dark:border-zinc-800/80 transition-all cursor-pointer group active:scale-[0.99]"
+                        className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-zinc-50/70 dark:bg-zinc-900/50 hover:bg-zinc-100/80 dark:hover:bg-zinc-800/60 border border-zinc-200/60 dark:border-zinc-800/80 transition-colors cursor-pointer group"
                       >
                         <div className="flex items-center gap-3 min-w-0 pr-2">
                           <div

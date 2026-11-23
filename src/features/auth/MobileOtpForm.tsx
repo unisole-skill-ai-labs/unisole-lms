@@ -236,7 +236,7 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
   };
 
   return (
-    <div className="p-6 sm:p-8 max-w-md w-full mx-auto shadow-2xl border border-zinc-200/80 dark:border-zinc-800 rounded-3xl bg-white dark:bg-zinc-900 animate-fade-in">
+    <div className="p-6 sm:p-8 max-w-md w-full mx-auto shadow-2xl border border-zinc-200/80 dark:border-zinc-800 rounded-3xl bg-white dark:bg-zinc-900 ">
       <div className="text-center mb-6">
         <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 mb-3 shadow-inner">
           <Phone className="w-6 h-6" />
@@ -304,7 +304,7 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
 
       {step === "OTP" && (
         /* STEP: Verification Code */
-        <form onSubmit={handleOtpSubmit} className="space-y-4 animate-fade-in">
+        <form onSubmit={handleOtpSubmit} className="space-y-4 ">
           <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/40 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-200 font-medium">
               <Phone className="w-4 h-4 text-indigo-500 shrink-0" />
@@ -381,7 +381,7 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
 
       {step === "PROFILE_SETUP" && (
         /* STEP 2: New User Profile Details */
-        <form onSubmit={handleProfileSubmit} className="space-y-3.5 animate-fade-in">
+        <form onSubmit={handleProfileSubmit} className="space-y-3.5 ">
           <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/40 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-200 font-medium">
               <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
@@ -435,7 +435,7 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
             </div>
 
             {(selectedCollege === "other" || selectedCollege === "Other University / College") && (
-              <div className="pt-2 animate-fade-in">
+              <div className="pt-2 ">
                 <Input
                   label="Specify College / University Name *"
                   type="text"
@@ -474,7 +474,7 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
             </div>
 
             {(selectedBranch === "other" || selectedBranch === "Other / Multidisciplinary") && (
-              <div className="pt-2 animate-fade-in">
+              <div className="pt-2 ">
                 <Input
                   label="Specify Branch / Stream Name *"
                   type="text"

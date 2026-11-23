@@ -1223,7 +1223,7 @@ export default function EditCoursePage() {
               </p>
             </div>
           ) : (
-            <div className="max-w-4xl mx-auto w-full bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-6 sm:p-8 shadow-2xs space-y-6 animate-fade-in">
+            <div className="max-w-4xl mx-auto w-full bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-6 sm:p-8 shadow-2xs space-y-6">
               {/* Lesson Details Header */}
               <div className="space-y-4 pb-6 border-b border-slate-100 dark:border-slate-800/60">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -2212,7 +2212,7 @@ export default function EditCoursePage() {
 
       {/* Course Mentors & Cohort Modal */}
       {showMentorsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs ">
           <div className="bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
             {/* Header */}
             <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
@@ -2799,7 +2799,7 @@ function ChapterSection({
   const renderAddMenu = (targetFolderId?: string) => (
     <div
       ref={addMenuRef}
-      className="p-3 bg-white dark:bg-[#070A11] border-b border-slate-200/90 dark:border-slate-800 rounded-xl my-1 shadow-sm space-y-2.5 animate-fade-in"
+      className="p-3 bg-white dark:bg-[#070A11] border-b border-slate-200/90 dark:border-slate-800 rounded-xl my-1 shadow-sm space-y-2.5 "
     >
       <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800/80">
         <span className="text-[10px] font-black tracking-wider uppercase text-sky-600 dark:text-sky-400">
@@ -3114,7 +3114,7 @@ function ChapterSection({
 
             {/* Schedule Popover */}
             {showSchedulePopover && (
-              <div className="absolute right-0 top-full mt-1.5 w-64 p-3 bg-white dark:bg-[#0B1120] rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl z-50 space-y-2.5 animate-fade-in">
+              <div className="absolute right-0 top-full mt-1.5 w-64 p-3 bg-white dark:bg-[#0B1120] rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl z-50 space-y-2.5 ">
                 <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Module Release Schedule
@@ -3509,7 +3509,7 @@ function ChapterSection({
                         </button>
 
                         {movingLessonId === item.lessonId && (
-                          <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 p-1.5 space-y-1 animate-fade-in">
+                          <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 p-1.5 space-y-1 ">
                             <p className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-400">
                               Move to chapter:
                             </p>
