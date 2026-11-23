@@ -5,7 +5,7 @@ import Button from "../components/ui/Button";
 
 export default function NotFoundPage() {
   return (
-    <div className="min-h-[calc(100vh-16rem)] flex items-center justify-center p-4">
+    <div className="min-h-[calc(100vh-16rem)] flex items-center justify-center p-4 animate-fade-in">
       <div className="text-center space-y-4 max-w-md bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 rounded-3xl p-8 shadow-xl">
         <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto shadow-inner">
           <HelpCircle className="w-8 h-8" />

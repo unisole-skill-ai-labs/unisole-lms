@@ -40,7 +40,7 @@ export default function NotificationsPage() {
   ];
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-slate-50/70 dark:bg-[#0B0D13] py-4 sm:py-8 transition-colors">
+    <div className="min-h-[calc(100vh-4rem)] bg-slate-50/70 dark:bg-[#0B0D13] py-4 sm:py-8 transition-colors animate-fade-in">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 space-y-4">
         {/* Top Header */}
         <div className="flex items-center gap-3">
