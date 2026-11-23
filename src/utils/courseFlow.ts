@@ -473,9 +473,13 @@ export function getCourseFlowStats(
   for (let idx = 0; idx < modules.length; idx++) {
     const mod = modules[idx];
     const flowItems = (mod.items || []).filter((i) => getActivityType(i) !== "folder");
+    const coreItems = flowItems.filter((i) => {
+      const act = getActivityType(i);
+      return act !== "live";
+    });
     const isModDone =
-      flowItems.length > 0 &&
-      flowItems.every((i) => completedLessonIds.includes(i.id));
+      (coreItems.length > 0 && coreItems.every((i) => completedLessonIds.includes(i.id))) ||
+      (flowItems.length > 0 && flowItems.every((i) => completedLessonIds.includes(i.id)));
     if (!isModDone && foundCurrentWeekIndex === -1) {
       foundCurrentWeekIndex = idx;
       break;

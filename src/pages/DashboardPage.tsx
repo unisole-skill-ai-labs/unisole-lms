@@ -143,16 +143,26 @@ export default function DashboardPage() {
     return getCourseFlowStats(modules, completedIdsArray, submissionsData || []);
   }, [modules, completedIdsArray, submissionsData]);
 
-  // Current Week and Next Lesson Details for Resume Card (B2)
-  const currentWeekNum = (courseFlow.currentWeekIndex || 0) + 1;
-  const currentWeekTitle = formatWeekTitle(
-    courseFlow.currentWeek?.title || "Module 1",
-    courseFlow.currentWeekIndex || 0
-  );
+  // Current Week and Next Lesson Details for Resume Card (B2) - Read directly from backend response
+  const serverCurrentWeek = (summaryData as any)?.currentWeek;
+  const serverCourseProgress = (summaryData as any)?.courseProgress;
+  const serverNextLesson = (summaryData as any)?.nextLesson;
+
+  const currentWeekNum = serverCurrentWeek?.weekNumber ?? ((courseFlow.currentWeekIndex || 0) + 1);
+  const totalWeeksCount = serverCourseProgress?.totalWeeks ?? (courseFlow.weekStats.length || modules.length || 12);
+  const currentWeekTitle = serverCurrentWeek?.title
+    ? formatWeekTitle(serverCurrentWeek.title, (serverCurrentWeek.weekIndex ?? currentWeekNum - 1))
+    : formatWeekTitle(
+        courseFlow.currentWeek?.title || "Module 1",
+        courseFlow.currentWeekIndex || 0
+      );
   const currentLessonTitle = cleanLessonTitle(
-    courseFlow.nextIncompleteItem?.title || "1.1 Concept Lecture"
+    serverNextLesson?.title || courseFlow.nextIncompleteItem?.title || "1.1 Concept Lecture"
   );
-  const totalWeeksCount = courseFlow.weekStats.length || modules.length || 12;
+  const currentProgressPercent = serverCourseProgress?.progressPercent ?? courseFlow.progressPercent;
+  const isCurrentWeekLocked = serverCurrentWeek?.isLocked;
+  const currentWeekStatus = serverCurrentWeek?.status;
+  const currentWeekUnlockAt = serverCurrentWeek?.unlockAt;
 
   // Next upcoming live class or deadline with minute-level countdown (B3)
   const upcomingLive = useMemo(() => {
@@ -432,7 +442,9 @@ export default function DashboardPage() {
                   {programTitle}
                 </span>
                 <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 shrink-0 font-mono">
-                  Week {currentWeekNum} of {totalWeeksCount} · {courseFlow.progressPercent}% complete
+                  {currentWeekStatus === "Up next" && currentWeekUnlockAt
+                    ? `Up next · Unlocks ${formatDateStandard(currentWeekUnlockAt)}`
+                    : `Week ${currentWeekNum} of ${totalWeeksCount} · ${currentProgressPercent}% complete`}
                 </span>
               </div>
               <h2 className="text-xs sm:text-sm font-semibold text-zinc-500 dark:text-zinc-400 truncate">
@@ -448,7 +460,7 @@ export default function DashboardPage() {
               <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-blue-600 rounded-full transition-all duration-300"
-                  style={{ width: `${courseFlow.progressPercent}%` }}
+                  style={{ width: `${currentProgressPercent}%` }}
                 />
               </div>
             </div>
@@ -460,8 +472,9 @@ export default function DashboardPage() {
               onTouchStart={() => prefetchByPath(`/learn/${currentProgramId}`)}
               onFocus={() => prefetchByPath(`/learn/${currentProgramId}`)}
               onClick={() => {
-                const targetUrl = courseFlow.nextIncompleteItem
-                  ? `/learn/${currentProgramId}?lesson=${courseFlow.nextIncompleteItem.id}`
+                const targetLessonId = serverNextLesson?.id || courseFlow.nextIncompleteItem?.id;
+                const targetUrl = targetLessonId
+                  ? `/learn/${currentProgramId}?lesson=${targetLessonId}`
                   : `/learn/${currentProgramId}`;
                 startTransition(() => {
                   navigate(targetUrl);
@@ -470,7 +483,9 @@ export default function DashboardPage() {
               className="w-full min-h-[44px] py-3 px-5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
               <span>
-                {courseFlow.completedActivities > 0 ? "Resume" : "Start Week 1"}
+                {(serverCourseProgress?.completedActivities ?? courseFlow.completedActivities) > 0
+                  ? "Resume"
+                  : `Start Week ${currentWeekNum}`}
               </span>
               <Play className="w-4 h-4 fill-current" />
             </button>

@@ -80,6 +80,7 @@ export const apiSlice = createApi({
     "Notes",
     "Cohort",
     "CalendarEvents",
+    "DashboardSummary",
   ],
   endpoints: (builder) => ({
     // ─── Auth Endpoints ──────────────────────────────────────────────────────────
@@ -187,7 +188,7 @@ export const apiSlice = createApi({
           ? `/api/lms/dashboard/summary?pathwayId=${encodeURIComponent(pId)}`
           : "/api/lms/dashboard/summary";
       },
-      providesTags: ["Progress", "Submissions", "Activities", "CalendarEvents"],
+      providesTags: ["DashboardSummary", "Progress", "Submissions", "Activities", "CalendarEvents"],
     }),
     getMyPathways: builder.query({
       query: () => "/api/lms/pathways",
@@ -226,7 +227,7 @@ export const apiSlice = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Progress", "Activities"],
+      invalidatesTags: ["DashboardSummary", "Progress", "Activities"],
     }),
     getStudentSubmissions: builder.query({
       query: (pathwayId) => (pathwayId ? `/api/lms/submissions/${pathwayId}` : "/api/lms/submissions"),
@@ -238,7 +239,7 @@ export const apiSlice = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Submissions", "Progress", "Activities"],
+      invalidatesTags: ["DashboardSummary", "Submissions", "Progress", "Activities"],
     }),
     getStudentActivities: builder.query({
       query: () => "/api/lms/activities",
