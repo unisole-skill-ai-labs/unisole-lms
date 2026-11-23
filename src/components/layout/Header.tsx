@@ -15,10 +15,8 @@ import {
   Layers,
   X,
   Menu,
-  Folder,
   CreditCard,
   Newspaper,
-  Settings,
   CheckCircle2,
   Bell,
 } from "lucide-react";
@@ -226,14 +224,14 @@ export default function Header() {
 
                       {/* Menu List */}
                       <div className="space-y-0.5">
-                        {/* 1. My ePortfolio */}
+                        {/* 1. Profile */}
                         <Link
                           to="/profile"
                           onClick={() => setProfileOpen(false)}
                           className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-colors"
                         >
-                          <Folder className="w-4 h-4 text-zinc-500 dark:text-zinc-400 shrink-0 stroke-[2]" />
-                          <span>My ePortfolio</span>
+                          <User className="w-4 h-4 text-zinc-500 dark:text-zinc-400 shrink-0 stroke-[2]" />
+                          <span>Profile</span>
                         </Link>
 
                         {/* 2. Fee Payment */}
@@ -257,16 +255,6 @@ export default function Header() {
                         >
                           <Newspaper className="w-4 h-4 text-zinc-500 dark:text-zinc-400 shrink-0 stroke-[2]" />
                           <span>Industry Articles</span>
-                        </Link>
-
-                        {/* 4. Settings */}
-                        <Link
-                          to="/profile"
-                          onClick={() => setProfileOpen(false)}
-                          className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-colors"
-                        >
-                          <Settings className="w-4 h-4 text-zinc-500 dark:text-zinc-400 shrink-0 stroke-[2]" />
-                          <span>Settings</span>
                         </Link>
 
                         {/* Admin Studio & CMS (if privileged role) */}
