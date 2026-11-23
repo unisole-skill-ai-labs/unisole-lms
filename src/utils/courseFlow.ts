@@ -797,16 +797,16 @@ export function getLiveJoinStatus(
 }
 
 /**
- * Greeting helper: real student first name, fallback to "there", never "LMS" (B1)
+ * Greeting helper: real student first name, returns null if missing or invalid
  */
-export function getStudentFirstName(user: any): string {
-  if (!user) return "there";
-  const raw = (user.name || user.firstName || "").trim();
-  if (!raw || raw.toLowerCase() === "lms" || raw.toLowerCase().includes("test user")) {
-    return "there";
+export function getStudentFirstName(user: any): string | null {
+  if (!user) return null;
+  const raw = (user.name || user.firstName || user.fullName || "").trim();
+  if (!raw || raw.toLowerCase() === "lms") {
+    return null;
   }
-  const first = raw.split(" ")[0];
-  if (!first || first.toLowerCase() === "lms") return "there";
+  const first = raw.split(" ")[0].trim();
+  if (!first || first.toLowerCase() === "lms") return null;
   return first;
 }
 

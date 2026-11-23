@@ -22,6 +22,7 @@ import {
 import {
   useGetMyPathwaysQuery,
   useGetDashboardSummaryQuery,
+  useGetMeQuery,
 } from "../store/apiSlice";
 import { cleanLessonTitle } from "../utils/formatContent";
 import {
@@ -273,8 +274,14 @@ export default function DashboardPage() {
     };
   }, [activitiesData]);
 
-  // Real first name greeting with safe fallback to "there" (B1)
-  const firstName = getStudentFirstName(user);
+  // Fetch user profile if name is not yet in redux auth state
+  const { data: profileUser, isLoading: isProfileLoading } = useGetMeQuery(undefined, {
+    skip: !isAuthenticated || Boolean(user?.name),
+  });
+
+  const effectiveUser = user?.name ? user : (profileUser || user);
+  const firstName = getStudentFirstName(effectiveUser);
+  const isUserLoading = isAuthenticated && !firstName && isProfileLoading;
 
   // Refresh handler
   const handleRefresh = () => {
@@ -331,11 +338,15 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* ─── B1. Greeting (Real first name, fallback to "there", never "LMS") ─── */}
+        {/* ─── Greeting (Real first name "Hi, {username}", fallback to "Hi there") ─── */}
         <div className="flex items-center justify-between pt-1">
-          <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-            Hi {firstName}
-          </h1>
+          {isUserLoading ? (
+            <div className="h-8 w-44 bg-zinc-200 dark:bg-zinc-800 rounded-lg animate-pulse" />
+          ) : (
+            <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+              {firstName ? `Hi, ${firstName}` : "Hi there"}
+            </h1>
+          )}
 
           {/* Desktop-only Refresh button (hidden on mobile, B5) */}
           <button
