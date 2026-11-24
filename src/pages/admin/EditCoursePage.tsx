@@ -50,6 +50,7 @@ import {
   Unlock,
   Edit3,
   Calendar,
+  Archive,
 } from "lucide-react";
 import {
   useGetAdminCourseByIdQuery,
@@ -204,6 +205,7 @@ export default function EditCoursePage() {
   const [newModuleUnlockAt, setNewModuleUnlockAt] = useState("");
   const [newModuleLockAt, setNewModuleLockAt] = useState("");
   const [showAddModule, setShowAddModule] = useState(false);
+  const [showArchivedModules, setShowArchivedModules] = useState(false);
   const [newLessonTitle, setNewLessonTitle] = useState("");
   const [addingLessonForModuleId, setAddingLessonForModuleId] = useState<string | null>(null);
 
@@ -685,7 +687,7 @@ export default function EditCoursePage() {
     await handleReorderChapters(newModuleIds);
   };
 
-  // Delete Chapter
+  // Delete Chapter with Archive offer on student activity
   const handleDeleteChapter = async (moduleId: string) => {
     const targetMod = courseModules.find((m: any) => (m.moduleId || m.id) === moduleId);
     const modTitle = targetMod?.title || "this chapter";
@@ -696,7 +698,33 @@ export default function EditCoursePage() {
       showToast(`Deleted chapter "${modTitle}".`);
     } catch (err: any) {
       console.error("Failed to remove chapter:", err);
-      showToast(err?.data?.message || err?.data?.error || "Failed to remove chapter.", "error");
+      const errMsg = err?.data?.message || err?.data?.error || "";
+      if (err?.status === 409 || errMsg.toLowerCase().includes("student activity")) {
+        const wantArchive = window.confirm(
+          `Cannot delete "${modTitle}" because it contains student activity (progress or submissions).\n\nWould you like to Archive this chapter instead?\n\nArchived chapters are hidden from students and from new progress, but preserve all student records.`
+        );
+        if (wantArchive) {
+          try {
+            await updateModuleApi({ id: moduleId, body: { status: "ARCHIVED" } }).unwrap();
+            refetchModules();
+            showToast(`Chapter "${modTitle}" has been archived.`);
+          } catch {
+            showToast("Failed to archive chapter.", "error");
+          }
+          return;
+        }
+      }
+      showToast(errMsg || "Failed to remove chapter.", "error");
+    }
+  };
+
+  const handleRestoreChapter = async (moduleId: string) => {
+    try {
+      await updateModuleApi({ id: moduleId, body: { status: "DRAFT" } }).unwrap();
+      refetchModules();
+      showToast("Chapter restored to Draft.");
+    } catch {
+      showToast("Failed to restore chapter.", "error");
     }
   };
 
@@ -1199,37 +1227,89 @@ export default function EditCoursePage() {
                 )}
               </div>
             ) : (
-              displayModules.map((cMod: any, idx: number) => {
-                return (
-                  <ChapterSection
-                    key={cMod.moduleId}
-                    moduleId={cMod.moduleId}
-                    moduleTitle={cMod.title}
-                    moduleUnlockAt={cMod.unlockAt}
-                    moduleLockAt={cMod.lockAt}
-                    position={idx + 1}
-                    isFirst={idx === 0}
-                    isLast={idx === displayModules.length - 1}
-                    allModules={displayModules}
-                    activeLessonId={activeLessonId}
-                    canManageCurriculum={canManageCurriculum}
-                    isDragging={draggedChapterIdx === idx}
-                    isDragOver={dragOverChapterIdx === idx}
-                    onDragStart={(e) => handleChapterDragStart(e, idx)}
-                    onDragOver={(e) => handleChapterDragOver(e, idx)}
-                    onDrop={(e) => handleChapterDrop(e, idx)}
-                    onSelectLesson={(lessonId) => setActiveLessonId(lessonId)}
-                    onDeleteChapter={() => handleDeleteChapter(cMod.moduleId)}
-                    onRenameModule={(newTitle) => handleRenameModule(cMod.moduleId, newTitle)}
-                    onUpdateModuleSchedule={(unlockAt, lockAt) =>
-                      handleSetModuleSchedule(cMod.moduleId, unlockAt, lockAt)
-                    }
-                    onAddLessonWithType={(typeKey, customTitle, targetFolderId) =>
-                      handleAddLessonWithType(cMod.moduleId, typeKey, customTitle, targetFolderId)
-                    }
-                  />
-                );
-              })
+              <>
+                {displayModules
+                  .filter((m: any) => m.status !== "ARCHIVED")
+                  .map((cMod: any, idx: number, arr: any[]) => {
+                    return (
+                      <ChapterSection
+                        key={cMod.moduleId}
+                        moduleId={cMod.moduleId}
+                        moduleTitle={cMod.title}
+                        moduleUnlockAt={cMod.unlockAt}
+                        moduleLockAt={cMod.lockAt}
+                        position={idx + 1}
+                        isFirst={idx === 0}
+                        isLast={idx === arr.length - 1}
+                        allModules={displayModules}
+                        activeLessonId={activeLessonId}
+                        canManageCurriculum={canManageCurriculum}
+                        isDragging={draggedChapterIdx === idx}
+                        isDragOver={dragOverChapterIdx === idx}
+                        onDragStart={(e) => handleChapterDragStart(e, idx)}
+                        onDragOver={(e) => handleChapterDragOver(e, idx)}
+                        onDrop={(e) => handleChapterDrop(e, idx)}
+                        onSelectLesson={(lessonId) => setActiveLessonId(lessonId)}
+                        onDeleteChapter={() => handleDeleteChapter(cMod.moduleId)}
+                        onRenameModule={(newTitle) => handleRenameModule(cMod.moduleId, newTitle)}
+                        onUpdateModuleSchedule={(unlockAt, lockAt) =>
+                          handleSetModuleSchedule(cMod.moduleId, unlockAt, lockAt)
+                        }
+                        onAddLessonWithType={(typeKey, customTitle, targetFolderId) =>
+                          handleAddLessonWithType(cMod.moduleId, typeKey, customTitle, targetFolderId)
+                        }
+                      />
+                    );
+                  })}
+
+                {/* Collapsed Section for Archived Chapters */}
+                {displayModules.some((m: any) => m.status === "ARCHIVED") && (
+                  <div className="pt-3 border-t border-slate-200/80 dark:border-slate-800/80 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowArchivedModules(!showArchivedModules)}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/15 border border-amber-500/20 cursor-pointer transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Archive className="w-3.5 h-3.5 text-amber-500" />
+                        <span>
+                          Archived Chapters ({displayModules.filter((m: any) => m.status === "ARCHIVED").length})
+                        </span>
+                      </span>
+                      {showArchivedModules ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                    </button>
+
+                    {showArchivedModules && (
+                      <div className="mt-2 space-y-2">
+                        {displayModules
+                          .filter((m: any) => m.status === "ARCHIVED")
+                          .map((aMod: any) => (
+                            <div
+                              key={aMod.moduleId || aMod.id}
+                              className="p-3 bg-white dark:bg-[#0B1120] rounded-xl border border-dashed border-amber-300 dark:border-amber-700/60 flex items-center justify-between"
+                            >
+                              <div className="min-w-0 flex-1 mr-2">
+                                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate block">
+                                  {aMod.title}
+                                </span>
+                                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
+                                  Archived (hidden from learners)
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRestoreChapter(aMod.moduleId || aMod.id)}
+                                className="px-2.5 py-1 text-xs font-bold text-sky-600 hover:text-sky-500 bg-sky-50 dark:bg-sky-950/40 hover:bg-sky-100 rounded-lg transition-colors cursor-pointer shrink-0"
+                              >
+                                Restore
+                              </button>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -1250,6 +1330,25 @@ export default function EditCoursePage() {
             </div>
           ) : (
             <div className="max-w-4xl mx-auto w-full bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-6 sm:p-8 shadow-2xs space-y-6">
+              {/* Archived Lesson Warning Banner */}
+              {lessonStatus === "ARCHIVED" && (
+                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2.5">
+                    <Archive className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span>
+                      <strong>This activity is archived.</strong> It is hidden from learners and new progress is blocked. All existing student progress and submissions remain intact.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLessonStatus("DRAFT")}
+                    className="px-3 py-1 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors cursor-pointer shrink-0"
+                  >
+                    Restore to Draft
+                  </button>
+                </div>
+              )}
+
               {/* Lesson Details Header */}
               <div className="space-y-4 pb-6 border-b border-slate-100 dark:border-slate-800/60">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1312,17 +1411,41 @@ export default function EditCoursePage() {
                     </label>
 
                     <button
-                      onClick={() =>
-                        setLessonStatus(lessonStatus === "PUBLISHED" ? "DRAFT" : "PUBLISHED")
-                      }
-                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-colors ${
+                      type="button"
+                      onClick={() => {
+                        if (lessonStatus === "ARCHIVED") {
+                          setLessonStatus("DRAFT");
+                        } else if (lessonStatus === "PUBLISHED") {
+                          setLessonStatus("DRAFT");
+                        } else {
+                          setLessonStatus("PUBLISHED");
+                        }
+                      }}
+                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-colors cursor-pointer ${
                         lessonStatus === "PUBLISHED"
                           ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                          : lessonStatus === "ARCHIVED"
+                          ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
                           : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                       }`}
                     >
-                      {lessonStatus === "PUBLISHED" ? "Published" : "Draft"}
+                      {lessonStatus === "PUBLISHED" ? "Published" : lessonStatus === "ARCHIVED" ? "Archived" : "Draft"}
                     </button>
+
+                    {lessonStatus !== "ARCHIVED" && canManageCurriculum && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm("Archive this activity? It will be hidden from learners, but all student progress will be preserved.")) {
+                            setLessonStatus("ARCHIVED");
+                          }
+                        }}
+                        className="text-[10px] font-bold px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer"
+                        title="Archive this activity"
+                      >
+                        Archive
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -2506,6 +2629,7 @@ function ChapterSection({
   const [customFolderTargetId, setCustomFolderTargetId] = useState<string | undefined>(undefined);
   const [movingLessonId, setMovingLessonId] = useState<string | null>(null);
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
+  const [showArchivedLessons, setShowArchivedLessons] = useState(false);
 
   // Module rename & scheduling state
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -2800,7 +2924,7 @@ function ChapterSection({
     }
   };
 
-  // Delete lesson from chapter
+  // Delete lesson from chapter with Archive offer on student activity
   const handleDeleteLesson = async (e: React.MouseEvent, lessonId: string) => {
     e.stopPropagation();
     const targetItem = effectiveLessons.find((l: any) => (l.lessonId || l.id) === lessonId);
@@ -2811,7 +2935,33 @@ function ChapterSection({
       refetchLessons();
     } catch (err: any) {
       console.error("Failed to delete lesson:", err);
-      alert(err?.data?.message || err?.data?.error || "Failed to delete activity.");
+      const errMsg = err?.data?.message || err?.data?.error || "";
+      if (err?.status === 409 || errMsg.toLowerCase().includes("student activity")) {
+        const wantArchive = window.confirm(
+          `Cannot delete "${itemTitle}" because it has student activity (progress or submissions).\n\nWould you like to Archive this activity instead?\n\nArchived activities are hidden from learners and from new submissions, but preserve all student progress.`
+        );
+        if (wantArchive) {
+          try {
+            await updateLessonApi({ id: lessonId, body: { status: "ARCHIVED" } }).unwrap();
+            refetchLessons();
+            alert(`Activity "${itemTitle}" has been archived.`);
+          } catch {
+            alert("Failed to archive activity.");
+          }
+          return;
+        }
+      }
+      alert(errMsg || "Failed to delete activity.");
+    }
+  };
+
+  const handleRestoreLesson = async (e: React.MouseEvent, lessonId: string) => {
+    e.stopPropagation();
+    try {
+      await updateLessonApi({ id: lessonId, body: { status: "DRAFT" } }).unwrap();
+      refetchLessons();
+    } catch {
+      alert("Failed to restore activity.");
     }
   };
 
@@ -3347,12 +3497,12 @@ function ChapterSection({
               )}
             </div>
           ) : (
-            rootLessons.map((item: any) => {
+            rootLessons.filter((item: any) => item.status !== "ARCHIVED").map((item: any) => {
               const isFolder = item.isFolder;
               const isSelected = activeLessonId === item.lessonId;
               const badge = getLessonBadge(item);
               const displayTitle = item.title && item.title.trim().length > 0 ? item.title : item.lessonId;
-              const childItems = isFolder ? folderChildrenMap[item.lessonId] || [] : [];
+              const childItems = isFolder ? (folderChildrenMap[item.lessonId] || []).filter((c: any) => c.status !== "ARCHIVED") : [];
               const folderExpanded = isFolder && isFolderOpen(item.lessonId);
               const isFolderDropTarget = dragOverFolderId === item.lessonId;
               const isItemDragOver = dragOverItemId === item.lessonId;
@@ -3654,6 +3804,59 @@ function ChapterSection({
                 </div>
               );
             })
+          )}
+
+          {/* Collapsed Section for Archived Activities in Chapter */}
+          {effectiveLessons.some((les: any) => les.status === "ARCHIVED") && (
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 mt-1">
+              <button
+                type="button"
+                onClick={() => setShowArchivedLessons(!showArchivedLessons)}
+                className="w-full flex items-center justify-between py-1 px-1.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 hover:text-amber-700 hover:bg-amber-500/10 rounded-lg transition-colors cursor-pointer"
+              >
+                <span className="flex items-center gap-1.5">
+                  <Archive className="w-3 h-3 text-amber-500 shrink-0" />
+                  <span>
+                    Archived Activities ({effectiveLessons.filter((les: any) => les.status === "ARCHIVED").length})
+                  </span>
+                </span>
+                {showArchivedLessons ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+              </button>
+
+              {showArchivedLessons && (
+                <div className="space-y-1.5 pt-1">
+                  {effectiveLessons
+                    .filter((les: any) => les.status === "ARCHIVED")
+                    .map((aLes: any) => (
+                      <div
+                        key={aLes.lessonId || aLes.id}
+                        onClick={() => onSelectLesson(aLes.lessonId || aLes.id)}
+                        className={`p-2 rounded-xl border border-dashed border-amber-300 dark:border-amber-800/60 flex items-center justify-between transition-colors cursor-pointer ${
+                          activeLessonId === (aLes.lessonId || aLes.id)
+                            ? "bg-amber-100/60 dark:bg-amber-950/40 border-amber-400"
+                            : "bg-amber-50/40 dark:bg-amber-950/20 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                        }`}
+                      >
+                        <div className="min-w-0 flex-1 mr-2">
+                          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate block">
+                            {aLes.title || aLes.lessonId}
+                          </span>
+                          <span className="text-[9px] font-mono uppercase text-amber-600 dark:text-amber-400">
+                            Archived
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => handleRestoreLesson(e, aLes.lessonId || aLes.id)}
+                          className="px-2 py-0.5 text-[10px] font-bold text-sky-600 dark:text-sky-400 hover:underline shrink-0"
+                        >
+                          Restore
+                        </button>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
           )}
 
           {/* Inline Custom Lesson Title Input */}

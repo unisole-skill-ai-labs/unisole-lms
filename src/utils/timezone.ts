@@ -42,14 +42,18 @@ export function fromIstDatetimeLocal(datetimeLocal?: string | null): string | nu
   if (!datetimeLocal || !datetimeLocal.trim()) return null;
   const trimmed = datetimeLocal.trim();
 
-  // If already full ISO string with timezone, parse directly
-  if (trimmed.includes("Z") || trimmed.includes("+") || (trimmed.includes("-") && trimmed.length > 19)) {
+  // If already contains timezone indicator (Z or +/- offset at the end)
+  if (trimmed.endsWith("Z") || /[+-]\d{2}(:\d{2})?$/.test(trimmed)) {
     const d = new Date(trimmed);
     return isNaN(d.getTime()) ? null : d.toISOString();
   }
 
+  // Normalize YYYY-MM-DDTHH:mm or YYYY-MM-DD HH:mm to include seconds
+  const normalized = trimmed.replace(" ", "T");
+  const withSeconds = normalized.length === 16 ? `${normalized}:00` : normalized;
+
   // Append explicit IST offset (+05:30) to preserve user-intended time
-  const istString = `${trimmed}:00+05:30`;
+  const istString = `${withSeconds}+05:30`;
   const date = new Date(istString);
   if (isNaN(date.getTime())) return null;
   return date.toISOString();
@@ -73,7 +77,8 @@ export function formatIstDisplay(isoString?: string | null): string {
     hour12: true,
   }).format(date);
 
-  return `${formatted} IST`;
+  const cleanFormatted = formatted.replace(/\u202f|\u00a0/g, " ");
+  return `${cleanFormatted} IST`;
 }
 
 /**
