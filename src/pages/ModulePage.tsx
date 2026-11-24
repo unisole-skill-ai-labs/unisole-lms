@@ -280,27 +280,36 @@ export default function ModulePage() {
   const progressPercent = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-zinc-50/50 dark:bg-[#070A11] text-zinc-900 dark:text-zinc-100 pb-20">
-      {/* Top Header & Breadcrumbs */}
-      <div className="bg-white dark:bg-[#0B1120] border-b border-zinc-200/80 dark:border-zinc-800/80 sticky top-[var(--nav-h,4rem)] z-20 backdrop-blur-md">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 space-y-3">
-          {/* Top Row: BackButton and Breadcrumbs */}
-          <div className="flex flex-wrap items-center gap-3">
+    <div className="min-h-[calc(100dvh-4rem)] bg-zinc-50/50 dark:bg-[#070A11] text-zinc-900 dark:text-zinc-100 pb-20 scroll-pt-20">
+      {/* 1. Compact Sticky Top Bar: at most 56px high on mobile */}
+      <div className="bg-white/95 dark:bg-[#0B1120]/95 border-b border-zinc-200/80 dark:border-zinc-800/80 sticky top-[var(--nav-h,4rem)] z-20 backdrop-blur-md h-14 flex items-center">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 w-full flex items-center justify-between gap-3">
+          {/* Left: BackButton and Breadcrumbs */}
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <BackButton
               to={`/learn/${pathwayId}`}
               label="Back to course"
+              compactOnMobile={true}
               className="text-xs"
             />
-            <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800 hidden sm:block" />
-            {/* Breadcrumbs Navigation */}
-            <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 min-w-0">
+            <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800 shrink-0 hidden sm:block" />
+
+            {/* Mobile Breadcrumb: Clean parent title */}
+            <div className="sm:hidden min-w-0 flex-1 flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400">
+              <span className="truncate font-semibold text-zinc-700 dark:text-zinc-300">
+                {courseTitle}
+              </span>
+            </div>
+
+            {/* Desktop Full Breadcrumbs Navigation */}
+            <nav aria-label="Breadcrumb" className="hidden sm:flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 min-w-0">
               <Link to="/enrolled" className="hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors shrink-0">
                 Courses
               </Link>
               <ChevronRight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
               <Link
                 to={`/learn/${pathwayId}`}
-                className="hover:text-blue-600 dark:hover:text-blue-400 font-medium truncate max-w-[160px] sm:max-w-xs transition-colors"
+                className="hover:text-blue-600 dark:hover:text-blue-400 font-medium truncate max-w-xs transition-colors"
               >
                 {courseTitle}
               </Link>
@@ -309,47 +318,47 @@ export default function ModulePage() {
             </nav>
           </div>
 
-          {/* Module Header & Progress */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-            <div className="space-y-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg sm:text-xl font-black tracking-tight text-zinc-900 dark:text-white truncate">
-                  {currentModule.title}
-                </h1>
-                {currentModule.isLocked && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 shrink-0">
-                    <Lock className="w-3 h-3" />
-                    <span>Locked</span>
-                  </span>
-                )}
+          {/* Right: Quick Progress Indicator (Compact on Mobile) */}
+          {!currentModule.isLocked && totalLessons > 0 && (
+            <div className="shrink-0 flex items-center gap-2 bg-zinc-50 dark:bg-zinc-900/60 px-2.5 py-1 rounded-xl border border-zinc-200/80 dark:border-zinc-800">
+              <span className="text-xs font-bold font-mono text-zinc-700 dark:text-zinc-300">
+                {completedCount}/{totalLessons}
+              </span>
+              <div className="w-12 sm:w-16 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-600 rounded-full transition-all duration-300"
+                  style={{ width: `${progressPercent}%` }}
+                />
               </div>
-              {currentModule.description && (
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 max-w-2xl">
-                  {currentModule.description}
-                </p>
-              )}
             </div>
-
-            {/* Progress Pill */}
-            {!currentModule.isLocked && totalLessons > 0 && (
-              <div className="flex items-center gap-3 shrink-0 bg-zinc-50 dark:bg-zinc-900/60 p-2 sm:px-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800">
-                <div className="w-20 sm:w-24 h-2 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-600 rounded-full transition-all duration-300"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-                <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 font-mono">
-                  {completedCount}/{totalLessons} done
-                </span>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
-      {/* Main Module Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 space-y-6">
+      {/* 2. Scrollable Module Hero Header (Scrolls away with content) */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-5 pb-2">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-lg sm:text-2xl font-black tracking-tight text-zinc-900 dark:text-white">
+              {currentModule.title}
+            </h1>
+            {currentModule.isLocked && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 shrink-0">
+                <Lock className="w-3 h-3" />
+                <span>Locked</span>
+              </span>
+            )}
+          </div>
+          {currentModule.description && (
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-2xl">
+              {currentModule.description}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* 3. Main Module Content */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-2 space-y-6">
         {/* Module Lock Notice */}
         {currentModule.isLocked ? (
           <div className="p-8 text-center bg-white dark:bg-[#0B1120] rounded-3xl border border-amber-300/60 dark:border-amber-900/40 shadow-xs space-y-3">
@@ -435,17 +444,20 @@ export default function ModulePage() {
                   <div
                     key={lesson.id}
                     data-testid="activity-card"
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border transition-all duration-150 ${
+                    onClick={() => {
+                      if (!isLocked) navigate(playerUrl);
+                    }}
+                    className={`group flex items-center justify-between gap-3 p-3 sm:p-4 rounded-2xl border transition-all duration-150 ${
                       isLocked
                         ? "bg-zinc-100/50 dark:bg-zinc-900/30 border-zinc-200/60 dark:border-zinc-800/40 opacity-70 cursor-not-allowed"
                         : isCompleted
-                        ? "bg-zinc-50/80 dark:bg-[#070D18]/60 border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-2xs"
-                        : "bg-white dark:bg-[#0B1120] border-zinc-200/80 dark:border-zinc-800 hover:border-blue-500/50 dark:hover:border-blue-500/50 shadow-2xs"
+                        ? "bg-zinc-50/80 dark:bg-[#070D18]/60 border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-2xs cursor-pointer"
+                        : "bg-white dark:bg-[#0B1120] border-zinc-200/80 dark:border-zinc-800 hover:border-blue-500/50 dark:hover:border-blue-500/50 shadow-2xs cursor-pointer active:scale-[0.99]"
                     }`}
                   >
                     {/* Left: Index + Status Icon + Title + Meta */}
-                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                      {/* Numeric Index / Checkmark */}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      {/* Status indicator */}
                       <div className="shrink-0 flex items-center justify-center">
                         {isCompleted ? (
                           <CheckCircle2 className="w-5 h-5 text-emerald-500 fill-emerald-500/10" />
@@ -461,7 +473,7 @@ export default function ModulePage() {
                         <div className="flex items-center gap-2">
                           <IconComponent className={`w-4 h-4 shrink-0 ${iconColor}`} />
                           <h3
-                            className={`text-sm font-bold truncate ${
+                            className={`text-sm sm:text-base font-bold truncate ${
                               isCompleted
                                 ? "text-zinc-600 dark:text-zinc-400"
                                 : "text-zinc-900 dark:text-zinc-100"
@@ -470,7 +482,7 @@ export default function ModulePage() {
                             {cleanLessonTitle(lesson.title)}
                           </h3>
                         </div>
-                        <div className="flex items-center gap-2 text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
+                        <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 font-medium">
                           <span className="capitalize">{lesson.type.replace("_", " ")}</span>
                           <span>•</span>
                           <span>{lesson.duration}</span>
@@ -489,19 +501,21 @@ export default function ModulePage() {
                     {/* Right: Action Button */}
                     <div className="shrink-0 flex items-center justify-end">
                       {isLocked ? (
-                        <button
-                          type="button"
-                          disabled
-                          className="w-full sm:w-auto px-4 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 font-bold text-xs cursor-not-allowed flex items-center justify-center gap-1.5"
+                        <div
+                          className="min-h-[44px] px-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 font-bold text-xs flex items-center justify-center gap-1.5 select-none"
                         >
                           <Lock className="w-3.5 h-3.5" />
-                          <span>Locked</span>
-                        </button>
+                          <span className="hidden xs:inline">Locked</span>
+                        </div>
                       ) : (
                         <button
                           type="button"
-                          onClick={() => navigate(playerUrl)}
-                          className="w-full sm:w-auto px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(playerUrl);
+                          }}
+                          aria-label={`${actionLabel} ${cleanLessonTitle(lesson.title)}`}
+                          className="min-h-[44px] px-3.5 sm:px-4 py-2 rounded-xl bg-blue-600 group-hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
                         >
                           <span>{actionLabel}</span>
                           <Play className="w-3 h-3 fill-current" />
