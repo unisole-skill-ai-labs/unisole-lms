@@ -26,6 +26,7 @@ import {
 } from "../../store/apiSlice";
 import { setCredentials } from "../../store/authSlice";
 import { extractErrorMessage } from "../../utils/error";
+import { getWebsiteUrl } from "../../utils/env";
 
 type AuthStep = "PHONE" | "OTP" | "PROFILE_SETUP";
 
@@ -555,7 +556,7 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
       {/* Back to unisole.org link */}
       <div className="pt-4 mt-4 border-t border-zinc-100 dark:border-zinc-800 text-center">
         <a
-          href={import.meta.env.VITE_WEBSITE_URL || "https://stg.unisole.org"}
+          href={getWebsiteUrl()}
           className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-white inline-flex items-center gap-1 transition-colors font-medium"
         >
           ← Back to unisole.org
