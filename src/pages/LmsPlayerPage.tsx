@@ -106,7 +106,16 @@ export default function LmsPlayerPage() {
     }
   }, [rawPathwayId, navigate]);
 
-  // Active canonical curriculum fallback
+  // Check if non-production environment (local dev or staging) allows fallback to hardcoded curriculum
+  const isStagingOrDev =
+    !import.meta.env.PROD ||
+    import.meta.env.MODE === "staging" ||
+    (typeof window !== "undefined" &&
+      (window.location.hostname.includes("stg") ||
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1"));
+
+  // Active canonical curriculum fallback (only referenced in staging/dev)
   const canonical = useMemo(() => getCurriculum(pathwayId), [pathwayId]);
 
   const {
@@ -119,8 +128,8 @@ export default function LmsPlayerPage() {
   const courses = pathwayData?.courses || [];
 
   // Dynamic Course Title & Duration
-  const courseTitle = pathway?.title || canonical.title;
-  const courseEyebrow = canonical.eyebrow;
+  const courseTitle = pathway?.title || (isStagingOrDev ? canonical.title : "Course Curriculum");
+  const courseEyebrow = isStagingOrDev ? canonical.eyebrow : "UNISOLE ACADEMIC CURRICULUM";
 
   // Build modules from backend DB or rich canonical curriculum
   // Build modules dynamically from backend DB API or fallback to canonical curriculum
@@ -384,11 +393,12 @@ export default function LmsPlayerPage() {
         };
       });
     }
-    if (canonical.modules && canonical.modules.length > 0) {
+    // Fallback to static curriculumData.ts is strictly permitted ONLY in staging/local development
+    if (isStagingOrDev && canonical.modules && canonical.modules.length > 0) {
       return canonical.modules;
     }
     return [];
-  }, [courses, canonical]);
+  }, [courses, canonical, isStagingOrDev]);
 
   // Milestones & Mentorship State
   const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
@@ -950,6 +960,34 @@ export default function LmsPlayerPage() {
             </div>
           ))}
         </div>
+      </div>
+    );
+  }
+
+  // Clean "Content Coming Soon" state when DB returns no modules (e.g. in production before instructor authoring)
+  if (!isPathwayLoading && modules.length === 0) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-6 text-center max-w-lg mx-auto space-y-5">
+        <div className="w-16 h-16 rounded-3xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500 dark:text-blue-400">
+          <BookOpen className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+            Content Coming Soon
+          </h1>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
+            Curriculum modules and learning resources for{" "}
+            <span className="font-semibold text-zinc-700 dark:text-zinc-300">{courseTitle}</span> are being authored by
+            course instructors. Please check back shortly.
+          </p>
+        </div>
+        <Link
+          to="/dashboard"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-colors shadow-sm cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Return to Dashboard</span>
+        </Link>
       </div>
     );
   }
