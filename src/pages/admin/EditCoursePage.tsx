@@ -43,7 +43,6 @@ import {
   FileArchive,
   Download,
   Layers,
-  Sparkles,
   GripVertical,
   MoveUpRight,
   CornerDownRight,
@@ -69,7 +68,6 @@ import {
   useGetAdminLessonByIdQuery,
   useUpdateAdminLessonMutation,
   useClearAdminCourseModulesMutation,
-  useSyncCanonicalCoursesMutation,
   useGetAdminStudentsQuery,
   useGetAdminMentorsQuery,
   useAssignMentorMutation,
@@ -113,7 +111,6 @@ export default function EditCoursePage() {
   const [moveLessonApi] = useMoveAdminModuleLessonMutation();
   const [updateLessonMutation] = useUpdateAdminLessonMutation();
   const [clearCourseModulesMutation] = useClearAdminCourseModulesMutation();
-  const [syncCanonicalCourses, { isLoading: isSyncing }] = useSyncCanonicalCoursesMutation();
 
   // Mentorship & Cohort Allocation State
   const { user } = useSelector((state: any) => state.auth);
@@ -1053,42 +1050,18 @@ export default function EditCoursePage() {
               )}
             </div>
 
-            {/* Secondary Utility Row: Seed & Clear All */}
-            {canManageCurriculum && (
-              <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60">
-                <div className="flex items-center gap-2">
-                  {(courseId === "cs-agentic" || courseId === "course1" || course?.slug === "cs-agentic" || course?.title?.toLowerCase().includes("agent")) && (
-                    <button
-                      type="button"
-                      disabled={isSyncing}
-                      onClick={async () => {
-                        try {
-                          await syncCanonicalCourses(undefined).unwrap();
-                          refetchModules();
-                        } catch (err) {
-                          console.error("Failed to seed curriculum:", err);
-                        }
-                      }}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200/60 dark:border-blue-800/60 rounded-lg transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
-                      title="Seed or restore 12-week AI Agent curriculum from canonical database"
-                    >
-                      <Sparkles className="w-3 h-3 stroke-[2.2]" />
-                      <span>{isSyncing ? "Seeding..." : "Seed 12-W"}</span>
-                    </button>
-                  )}
-                </div>
-
-                {displayModules.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleClearAllChapters}
-                    className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
-                    title="Remove all existing modules"
-                  >
-                    <Trash2 className="w-3 h-3 stroke-[2]" />
-                    <span>Clear All</span>
-                  </button>
-                )}
+            {/* Secondary Utility Row: Clear All */}
+            {canManageCurriculum && displayModules.length > 0 && (
+              <div className="flex items-center justify-end gap-2 pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60">
+                <button
+                  type="button"
+                  onClick={handleClearAllChapters}
+                  className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+                  title="Remove all existing modules"
+                >
+                  <Trash2 className="w-3 h-3 stroke-[2]" />
+                  <span>Clear All</span>
+                </button>
               </div>
             )}
           </div>
@@ -1152,23 +1125,6 @@ export default function EditCoursePage() {
                     >
                       + Add First Module
                     </button>
-                    {(courseId === "cs-agentic" || courseId === "course1" || course?.title?.toLowerCase().includes("agent")) && (
-                      <button
-                        type="button"
-                        disabled={isSyncing}
-                        onClick={async () => {
-                          try {
-                            await syncCanonicalCourses(undefined).unwrap();
-                            refetchModules();
-                          } catch (err: any) {
-                            alert(err?.data?.message || "Failed to seed curriculum. Please check server logs.");
-                          }
-                        }}
-                        className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold shadow-xs transition-colors cursor-pointer"
-                      >
-                        {isSyncing ? "Seeding Curriculum..." : "⚡ Seed 12-Week AI Agent Curriculum"}
-                      </button>
-                    )}
                   </div>
                 )}
               </div>

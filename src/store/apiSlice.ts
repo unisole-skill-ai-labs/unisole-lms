@@ -348,13 +348,6 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: ["AdminCourses"],
     }),
-    syncCanonicalCourses: builder.mutation({
-      query: () => ({
-        url: "/api/admin/courses/sync-canonical",
-        method: "POST",
-      }),
-      invalidatesTags: ["AdminCourses", "AdminModules", "AdminLessons"],
-    }),
     getAdminCourseModules: builder.query({
       query: (id) => `/api/admin/courses/${id}/modules`,
       providesTags: (_res, _err, id) => [{ type: "AdminModules", id: `${id}-modules` }],
@@ -657,7 +650,6 @@ export const {
   useDuplicateAdminCourseMutation,
   useImportAdminCourseMutation,
   useDeleteAdminCourseMutation,
-  useSyncCanonicalCoursesMutation,
   useGetAdminCourseModulesQuery,
   useAttachAdminCourseModuleMutation,
   useDetachAdminCourseModuleMutation,
