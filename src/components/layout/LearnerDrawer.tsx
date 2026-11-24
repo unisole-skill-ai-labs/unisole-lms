@@ -187,14 +187,17 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
     navigate("/login");
   };
 
-  const maskPhoneNumber = (phone?: string) => {
+  const formatFullPhoneNumber = (phone?: string) => {
     if (!phone) return "";
     const digits = phone.replace(/\D/g, "");
-    if (digits.length >= 10) {
-      const last3 = digits.slice(-3);
-      return `+91 ••••• ••${last3}`;
+    if (digits.length === 10) {
+      return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
     }
-    return phone;
+    if (digits.length === 12 && digits.startsWith("91")) {
+      const main = digits.slice(2);
+      return `+91 ${main.slice(0, 5)} ${main.slice(5)}`;
+    }
+    return phone.startsWith("+") ? phone : `+91 ${phone}`;
   };
 
   const isCurrentActive = (type: string, path?: string) => {
@@ -457,7 +460,7 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
                         {user.name || "Student"}
                       </span>
                       <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono truncate">
-                        {user.email || maskPhoneNumber(user.phone) || "Verified Learner"}
+                        {user.phone ? formatFullPhoneNumber(user.phone) : (user.email || "Verified Learner")}
                       </span>
                     </div>
                   </div>
