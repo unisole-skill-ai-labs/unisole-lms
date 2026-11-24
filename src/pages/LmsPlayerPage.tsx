@@ -137,18 +137,32 @@ export default function LmsPlayerPage() {
   // Build modules from backend DB or rich canonical curriculum
   // Build modules dynamically from backend DB API or fallback to canonical curriculum
   const modules: ModuleSection[] = useMemo(() => {
-    const allCourseModules = courses.flatMap((c: any) => c.modules || []);
-    // Strictly filter out any obsolete dummy module like "Intro to AI Agents"
+    const normalizedPathway = (pathwayId || "").toLowerCase();
+    const targetCourses = courses.filter((c: any) => {
+      const cId = (c.id || "").toLowerCase();
+      const cSlug = (c.slug || "").toLowerCase();
+      if (normalizedPathway === "cs-agentic" || normalizedPathway === "course1") {
+        return cId === "cs-agentic" || cSlug === "cs-agentic" || cId === "course1";
+      }
+      return cId === normalizedPathway || cSlug === normalizedPathway;
+    });
+    const effectiveCourses = targetCourses.length > 0 ? targetCourses : courses;
+    const allCourseModules = effectiveCourses.flatMap((c: any) => c.modules || []);
+    // Strictly filter out any obsolete dummy module like "Intro to AI Agents" and non-published modules
     const validCourseModules = allCourseModules.filter(
       (m: any) =>
         m &&
         m.title &&
+        m.status === "PUBLISHED" &&
+        m.isActive !== false &&
         !m.title.toLowerCase().includes("intro to ai")
     );
 
     if (validCourseModules.length > 0) {
       return validCourseModules.map((m: any, idx: number) => {
-        const backendLessons = (m.lessons || []).filter((l: any) => l && l.status === "PUBLISHED" && l.isActive !== false);
+        const backendLessons = (m.lessons || []).filter(
+          (l: any) => l && l.status === "PUBLISHED" && l.isActive !== false
+        );
         const liveCount = backendLessons.filter(
           (l: any) =>
             l.curriculumMode === "LIVE" ||
@@ -576,6 +590,15 @@ export default function LmsPlayerPage() {
     }
   };
 
+
+  const moduleBackLabel = useMemo(() => {
+    if (!selectedModule) return "Back to Course";
+    const modIdx = modules.findIndex((m) => m.id === selectedModule.id);
+    if (modIdx !== -1) return `Back to Week ${modIdx + 1}`;
+    const match = selectedModule.title?.match(/Week\s*(\d+)/i);
+    if (match) return `Back to Week ${match[1]}`;
+    return `Back to ${selectedModule.title || "Module"}`;
+  }, [selectedModule, modules]);
 
   const handleBackToModule = () => {
     if (selectedModule?.id) {
@@ -1055,10 +1078,11 @@ export default function LmsPlayerPage() {
             <div className="flex items-center justify-between gap-3 h-8">
               <button
                 onClick={() => navigate("/enrolled")}
-                aria-label="Back to Courses"
-                className="p-1.5 -ml-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+                aria-label="Back to my courses"
+                className="inline-flex items-center gap-1.5 p-1.5 -ml-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0 text-xs font-semibold min-h-[44px] min-w-[44px]"
               >
                 <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
+                <span className="hidden sm:inline">Back to my courses</span>
               </button>
               <div className="flex-1 min-w-0">
                 <h2
@@ -1868,10 +1892,11 @@ export default function LmsPlayerPage() {
             <div className="max-w-2xl mx-auto px-4 sm:px-6 text-center space-y-6">
               <button
                 onClick={handleBackToModule}
-                className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white cursor-pointer px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] transition-all"
+                aria-label={moduleBackLabel}
+                className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white cursor-pointer px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] transition-all min-h-[44px]"
               >
                 <ArrowLeft className="w-4 h-4" />
-                <span>Back to Module Curriculum</span>
+                <span>{moduleBackLabel}</span>
               </button>
 
               <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-amber-500/20 to-orange-500/10 border border-amber-500/30 text-amber-500 flex items-center justify-center mx-auto shadow-lg shadow-amber-500/10">
@@ -1934,10 +1959,11 @@ export default function LmsPlayerPage() {
               <div className="flex items-center justify-between">
                 <button
                   onClick={handleBackToModule}
-                  className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white cursor-pointer"
+                  aria-label={moduleBackLabel}
+                  className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white cursor-pointer min-h-[44px]"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  <span>Back to Curriculum Module</span>
+                  <span>{moduleBackLabel}</span>
                 </button>
                 <button
                   onClick={() => markLessonComplete(selectedLesson.id)}
@@ -2066,10 +2092,11 @@ export default function LmsPlayerPage() {
             <div className="max-w-4xl mx-auto px-4 sm:px-6 space-y-4">
               <button
                 onClick={handleBackToModule}
-                className="flex items-center gap-2 text-xs font-bold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-white cursor-pointer mb-2 transition-colors"
+                aria-label={moduleBackLabel}
+                className="flex items-center gap-2 text-xs font-bold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-white cursor-pointer mb-2 transition-colors min-h-[44px]"
               >
                 <ArrowLeft className="w-4 h-4" />
-                <span>Back to Curriculum Module</span>
+                <span>{moduleBackLabel}</span>
               </button>
               <CodingTestRunner
                 title={cleanLessonTitle(selectedLesson.title)}
@@ -2092,10 +2119,11 @@ export default function LmsPlayerPage() {
             <div className="max-w-4xl mx-auto px-4 sm:px-6 space-y-4">
               <button
                 onClick={handleBackToModule}
-                className="flex items-center gap-2 text-xs font-bold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-white cursor-pointer mb-2 transition-colors"
+                aria-label={moduleBackLabel}
+                className="flex items-center gap-2 text-xs font-bold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-white cursor-pointer mb-2 transition-colors min-h-[44px]"
               >
                 <ArrowLeft className="w-4 h-4" />
-                <span>Back to Curriculum Module</span>
+                <span>{moduleBackLabel}</span>
               </button>
               <SubjectiveVideoTestRunner
                 type={
@@ -2125,10 +2153,11 @@ export default function LmsPlayerPage() {
               <div className="flex items-center justify-between">
                 <button
                   onClick={handleBackToModule}
-                  className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white cursor-pointer"
+                  aria-label={moduleBackLabel}
+                  className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white cursor-pointer min-h-[44px]"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  <span>Back to Curriculum Module</span>
+                  <span>{moduleBackLabel}</span>
                 </button>
                 <button
                   onClick={() => markLessonComplete(selectedLesson.id)}
@@ -2221,8 +2250,8 @@ export default function LmsPlayerPage() {
                   <div className="flex items-center gap-2.5 min-w-0">
                     <button
                       onClick={handleBackToModule}
-                      aria-label="Back to Curriculum Module"
-                      className="p-1.5 rounded-lg text-white/90 hover:text-white hover:bg-white/20 transition-colors cursor-pointer"
+                      aria-label={moduleBackLabel}
+                      className="p-1.5 rounded-lg text-white/90 hover:text-white hover:bg-white/20 transition-colors cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
                     >
                       <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
                     </button>
@@ -2357,10 +2386,11 @@ export default function LmsPlayerPage() {
               <div className="flex items-center justify-between">
                 <button
                   onClick={handleBackToModule}
-                  className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white cursor-pointer"
+                  aria-label={moduleBackLabel}
+                  className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white cursor-pointer min-h-[44px]"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  <span>Back to Week Lessons</span>
+                  <span>{moduleBackLabel}</span>
                 </button>
               </div>
 

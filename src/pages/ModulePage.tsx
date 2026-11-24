@@ -24,8 +24,7 @@ import { cleanLessonTitle } from "../utils/formatContent";
 import { formatIstDisplay } from "../utils/timezone";
 import Spinner from "../components/ui/Spinner";
 import NotFoundPage from "./NotFoundPage";
-import { ArrowLeft } from "lucide-react";
-const BackButton = ({ to, label, className = "" }: any) => <Link to={to} className={"inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white transition-colors " + className}><ArrowLeft className="w-4 h-4" /><span>{label}</span></Link>;
+import BackButton from "../components/common/BackButton";
 
 export default function ModulePage() {
   const { pathwayId, moduleId } = useParams<{ pathwayId: string; moduleId: string }>();
