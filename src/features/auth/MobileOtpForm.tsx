@@ -12,6 +12,7 @@ import {
   ChevronDown,
   KeyRound,
   RotateCcw,
+  MessageSquare,
 } from "lucide-react";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
@@ -71,6 +72,7 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
   const [step, setStep] = useState<AuthStep>("PHONE");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
+  const [deliveryChannel, setDeliveryChannel] = useState<"WHATSAPP" | "SMS">("WHATSAPP");
   const [name, setName] = useState("");
   const [selectedCollege, setSelectedCollege] = useState("");
   const [customCollege, setCustomCollege] = useState("");
@@ -130,7 +132,8 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
         if (!checkRes.exists || !checkRes.user) {
           setStep("PROFILE_SETUP");
         } else {
-          await sendOtpMutation({ phone: cleanPhone }).unwrap();
+          setDeliveryChannel("WHATSAPP");
+          await sendOtpMutation({ phone: cleanPhone, channel: "WHATSAPP" }).unwrap();
           setStep("OTP");
         }
       }
@@ -194,7 +197,8 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
     } else {
       // Send OTP to verify new registration
       try {
-        await sendOtpMutation({ phone: cleanPhone }).unwrap();
+        setDeliveryChannel("WHATSAPP");
+        await sendOtpMutation({ phone: cleanPhone, channel: "WHATSAPP" }).unwrap();
         setStep("OTP");
       } catch (err) {
         setErrorMsg(extractErrorMessage(err, "Failed to send verification code. Please try again."));
@@ -314,6 +318,9 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
             <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-200 font-medium">
               <Phone className="w-4 h-4 text-indigo-500 shrink-0" />
               <span>Mobile: <strong>+91 {phone}</strong></span>
+              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
+                {deliveryChannel === "WHATSAPP" ? "WhatsApp" : "SMS"}
+              </span>
             </div>
             <button
               type="button"
@@ -348,7 +355,9 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
               />
             </div>
             <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">
-              Enter the verification code sent to your mobile.
+              {deliveryChannel === "WHATSAPP"
+                ? "Enter the verification code sent to your WhatsApp."
+                : "Enter the verification code sent via SMS to your mobile."}
             </p>
           </div>
 
@@ -363,23 +372,60 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
             Verify & Start Learning
           </Button>
 
-          <div className="flex items-center justify-center gap-2 pt-1">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-1 text-xs">
             <button
               type="button"
               onClick={async () => {
                 setErrorMsg("");
                 try {
-                  await sendOtpMutation({ phone: phone.replace(/\D/g, "") }).unwrap();
+                  await sendOtpMutation({ phone: phone.replace(/\D/g, ""), channel: deliveryChannel }).unwrap();
                 } catch (err) {
                   setErrorMsg(extractErrorMessage(err, "Failed to resend code"));
                 }
               }}
               disabled={isSendingOtp}
-              className="text-xs text-zinc-500 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1 font-medium transition-colors"
+              className="text-zinc-500 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1 font-medium transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3 h-3" />
               <span>Resend Code</span>
             </button>
+
+            {deliveryChannel === "WHATSAPP" ? (
+              <button
+                type="button"
+                onClick={async () => {
+                  setErrorMsg("");
+                  try {
+                    setDeliveryChannel("SMS");
+                    await sendOtpMutation({ phone: phone.replace(/\D/g, ""), channel: "SMS" }).unwrap();
+                  } catch (err) {
+                    setErrorMsg(extractErrorMessage(err, "Failed to send code via SMS"));
+                  }
+                }}
+                disabled={isSendingOtp}
+                className="text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-semibold transition-colors cursor-pointer"
+              >
+                <MessageSquare className="w-3 h-3" />
+                <span>Send via SMS instead</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={async () => {
+                  setErrorMsg("");
+                  try {
+                    setDeliveryChannel("WHATSAPP");
+                    await sendOtpMutation({ phone: phone.replace(/\D/g, ""), channel: "WHATSAPP" }).unwrap();
+                  } catch (err) {
+                    setErrorMsg(extractErrorMessage(err, "Failed to send code via WhatsApp"));
+                  }
+                }}
+                disabled={isSendingOtp}
+                className="text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 font-semibold transition-colors cursor-pointer"
+              >
+                <span>Send via WhatsApp instead</span>
+              </button>
+            )}
           </div>
         </form>
       )}
@@ -505,6 +551,16 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
           </Button>
         </form>
       )}
+
+      {/* Back to unisole.org link */}
+      <div className="pt-4 mt-4 border-t border-zinc-100 dark:border-zinc-800 text-center">
+        <a
+          href={import.meta.env.VITE_WEBSITE_URL || "https://stg.unisole.org"}
+          className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-white inline-flex items-center gap-1 transition-colors font-medium"
+        >
+          ← Back to unisole.org
+        </a>
+      </div>
     </div>
   );
 }
