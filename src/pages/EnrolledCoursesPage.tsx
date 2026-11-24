@@ -192,18 +192,7 @@ export default function EnrolledCoursesPage() {
 
   const totalEnrolled = displayCourses.length;
 
-  // A2: If student has exactly 1 course, seamlessly redirect to course overview page
-  // (unless ?all=true is explicitly in the query)
-  useEffect(() => {
-    if (!isLoading && totalEnrolled === 1 && !showAll) {
-      const course = displayCourses[0].pathway || displayCourses[0];
-      if (course?.id) {
-        navigate(`/learn/${course.id}`, { replace: true });
-      }
-    }
-  }, [isLoading, totalEnrolled, showAll, displayCourses, navigate]);
-
-  // Filter state for 2+ courses
+  // Filter state for courses
   const [filterState, setFilterState] = useState<"all" | "in_progress" | "completed">("all");
 
   return (
