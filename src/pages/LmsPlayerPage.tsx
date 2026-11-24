@@ -47,6 +47,8 @@ import {
   Circle,
   Clock,
   Radio,
+  Home,
+  Compass,
 } from "lucide-react";
 import {
   useGetPathwayContentQuery,
@@ -65,6 +67,7 @@ import {
   useGradeSubmissionMutation,
 } from "../store/apiSlice";
 import MilestonesModal from "../components/lms/MilestonesModal";
+import NotFoundPage from "./NotFoundPage";
 import CodingTestRunner from "../components/lms/CodingTestRunner";
 import SubjectiveVideoTestRunner from "../components/lms/SubjectiveVideoTestRunner";
 import Button from "../components/ui/Button";
@@ -857,6 +860,40 @@ export default function LmsPlayerPage() {
   // Error & Loading States (Skeleton Loaders as required by Part C)
   // -------------------------------------------------------------
   if (pathwayError && !pathwayData) {
+    const errorStatus = (pathwayError as any)?.status;
+    if (errorStatus === 404) {
+      return <NotFoundPage />;
+    }
+    if (errorStatus === 403) {
+      return (
+        <div className="min-h-[calc(100vh-16rem)] flex items-center justify-center p-4">
+          <div className="text-center space-y-4 max-w-md bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 rounded-3xl p-8 shadow-xl">
+            <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto shadow-inner">
+              <Lock className="w-8 h-8" />
+            </div>
+            <h1 className="text-2xl font-black text-zinc-900 dark:text-zinc-100 tracking-tight">
+              You're not enrolled in this course
+            </h1>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              You do not have an active enrollment for this curriculum track. Explore available programs or return to your dashboard.
+            </p>
+            <div className="pt-2 flex items-center justify-center gap-3">
+              <Link to="/dashboard">
+                <Button variant="primary" size="sm" icon={Home}>
+                  Back to Dashboard
+                </Button>
+              </Link>
+              <Link to="/enrolled">
+                <Button variant="outline" size="sm" icon={Compass}>
+                  My Learning
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-8 bg-white dark:bg-[#070A11]">
         <div className="text-center space-y-3 max-w-md">

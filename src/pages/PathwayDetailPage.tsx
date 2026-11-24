@@ -27,6 +27,7 @@ import Badge from "../components/ui/Badge";
 import Card from "../components/ui/Card";
 import Spinner from "../components/ui/Spinner";
 import Modal from "../components/ui/Modal";
+import NotFoundPage from "./NotFoundPage";
 
 export default function PathwayDetailPage() {
   const { slug } = useParams();
@@ -101,18 +102,7 @@ export default function PathwayDetailPage() {
   }
 
   if (!pathway) {
-    return (
-      <div className="max-w-md mx-auto px-4 py-20 text-center space-y-4">
-        <AlertCircle className="w-12 h-12 text-rose-500 mx-auto" />
-        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Pathway Not Found</h2>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">The learning pathway you requested does not exist or has been archived.</p>
-        <Link to="/">
-          <Button variant="primary" size="sm" icon={ArrowLeft}>
-            Back to Dashboard
-          </Button>
-        </Link>
-      </div>
-    );
+    return <NotFoundPage />;
   }
 
   return (

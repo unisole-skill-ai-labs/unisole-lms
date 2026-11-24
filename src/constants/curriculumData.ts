@@ -2444,6 +2444,11 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
 };
 
 export function getCurriculum(courseId?: string): CourseCurriculum {
+  if (courseId === "cs-genai") return GENAI_CURRICULUM;
+  if (courseId === "cs-common") return INCUBATOR_CURRICULUM;
+  if (courseId === "cs-agentic" || courseId === "course1") return AI_AGENT_ENGINEERING_CURRICULUM;
+  if (courseId && GENAI_CURRICULUM.id === courseId) return GENAI_CURRICULUM;
+  if (courseId && INCUBATOR_CURRICULUM.id === courseId) return INCUBATOR_CURRICULUM;
   return AI_AGENT_ENGINEERING_CURRICULUM;
 }
 
