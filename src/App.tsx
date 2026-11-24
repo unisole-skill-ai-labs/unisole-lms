@@ -88,6 +88,7 @@ export default function App() {
           <ProtectedRoute
             allowedRoles={["ADMIN", "SUPER_ADMIN", "MENTOR", "MEMBER", "COURSE_MANAGER", "PROGRAM_MANAGER"]}
             redirectTo="/dashboard"
+            loginPath="/admin/login"
           >
             <ChunkErrorBoundary>
               <Suspense fallback={<PageSkeletonFallback />}>

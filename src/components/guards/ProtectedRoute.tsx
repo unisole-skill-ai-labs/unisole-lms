@@ -6,18 +6,23 @@ export interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles?: string[];
   redirectTo?: string;
+  loginPath?: string;
 }
 
 export default function ProtectedRoute({
   children,
   allowedRoles,
   redirectTo,
+  loginPath,
 }: ProtectedRouteProps) {
   const { isAuthenticated, user, token } = useSelector((state: any) => state.auth);
   const location = useLocation();
 
   if (!isAuthenticated || !token) {
-    return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />;
+    const defaultLogin = location.pathname.startsWith("/admin") ? "/admin/login" : "/login";
+    const targetLogin = loginPath || defaultLogin;
+    const redirectParam = location.pathname + location.search;
+    return <Navigate to={`${targetLogin}?redirect=${encodeURIComponent(redirectParam)}`} replace />;
   }
 
   if (allowedRoles && allowedRoles.length > 0) {

@@ -1,13 +1,33 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useNavigate, useLocation, Link, Navigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import { Lock, User, ArrowRight, LayoutGrid, AlertCircle, ArrowLeft } from "lucide-react";
 import { useAdminLoginMutation } from "../../store/apiSlice";
 import { setCredentials } from "../../store/authSlice";
 
 export default function AdminLoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
+  const { isAuthenticated, user } = useSelector((state: any) => state.auth);
+
+  const searchParams = new URLSearchParams(location.search);
+  const redirectTarget = searchParams.get("redirect") || (location.state as any)?.from?.pathname || "/admin";
+  const safeTarget = redirectTarget.startsWith("/admin") ? redirectTarget : "/admin";
+
+  // Check if current user is already an authenticated staff member
+  const userRole = (user?.role || "").toUpperCase();
+  const metaRoles: string[] = Array.isArray(user?.metadata?.roles)
+    ? user.metadata.roles.map((r: string) => String(r).toUpperCase())
+    : [];
+  const allRoles = [userRole, ...metaRoles];
+  const isStaff = allRoles.some((r) =>
+    ["ADMIN", "SUPER_ADMIN", "MENTOR", "MEMBER", "COURSE_MANAGER", "PROGRAM_MANAGER"].includes(r)
+  );
+
+  if (isAuthenticated && isStaff) {
+    return <Navigate to={safeTarget} replace />;
+  }
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -31,7 +51,7 @@ export default function AdminLoginPage() {
       }).unwrap();
 
       dispatch(setCredentials(response));
-      navigate("/admin", { replace: true });
+      navigate(safeTarget, { replace: true });
     } catch (err: any) {
       setError(
         err?.data?.error ||
