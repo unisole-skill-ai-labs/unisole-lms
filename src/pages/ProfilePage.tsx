@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import {
@@ -7,16 +7,74 @@ import {
   Globe,
   X,
   CheckCircle2,
+  BookOpen,
+  Play,
+  GraduationCap,
 } from "lucide-react";
 import { updateUser, logout } from "../store/authSlice";
-import { useUpdateProfileMutation } from "../store/apiSlice";
+import {
+  useUpdateProfileMutation,
+  useGetMyPathwaysQuery,
+  useGetStudentProgressQuery,
+} from "../store/apiSlice";
 import Button from "../components/ui/Button";
+
+function EnrolledCourseRow({ item }: { item: any }) {
+  const pathway = item.pathway || item;
+  const pathwayId = pathway.id || pathway.slug || "cs-agentic";
+  const title = pathway.title || pathway.name || "Curriculum Track";
+  const { data: progressData } = useGetStudentProgressQuery(pathwayId, { skip: !pathwayId });
+  const completedCount = progressData?.completedLessonIds?.length || 0;
+  const progressPercent =
+    progressData?.overallProgress != null
+      ? Math.round(progressData.overallProgress)
+      : completedCount > 0
+      ? 10
+      : 0;
+
+  return (
+    <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-blue-500/30">
+      <div className="space-y-1.5 flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <GraduationCap className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
+            {title}
+          </h3>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+          <div className="w-28 bg-zinc-200 dark:bg-zinc-700 rounded-full h-1.5 overflow-hidden">
+            <div
+              className="bg-blue-600 dark:bg-blue-500 h-full rounded-full transition-all duration-300"
+              style={{ width: `${Math.min(100, progressPercent)}%` }}
+            />
+          </div>
+          <span className="font-mono text-[11px] font-semibold">{progressPercent}% completed</span>
+        </div>
+      </div>
+      <Link to={`/learn/${pathwayId}`} className="shrink-0">
+        <Button variant="primary" size="sm" icon={Play} className="w-full sm:w-auto font-bold text-xs">
+          Continue
+        </Button>
+      </Link>
+    </div>
+  );
+}
 
 export default function ProfilePage() {
   const { user } = useSelector((state: any) => state.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [updateProfileApi, { isLoading: isUpdating }] = useUpdateProfileMutation();
+  const { data: myPathways = [], isLoading: isPathwaysLoading } = useGetMyPathwaysQuery(undefined, {
+    skip: !user,
+  });
+
+  const enrolledPathways = useMemo(() => {
+    return (myPathways || []).filter((item: any) => {
+      const p = item.pathway || item;
+      return p && (p.id || p.slug || p.title);
+    });
+  }, [myPathways]);
 
   // Edit Modal State
   const [activeModal, setActiveModal] = useState<
@@ -49,11 +107,20 @@ export default function ProfilePage() {
   const emailDisplay = hasRealEmail ? rawEmail : "Enter your email address";
   const email = hasRealEmail ? rawEmail : (cleanPhone ? `${cleanPhone}@unisole.org` : "learner@unisole.org");
 
-  const phone = user.phone
-    ? user.phone.startsWith("+")
-      ? user.phone
-      : `+91 ${user.phone}`
-    : "Not Provided";
+  const formatFullPhone = (rawPhone?: string) => {
+    if (!rawPhone) return "Not Provided";
+    const digits = rawPhone.replace(/\D/g, "");
+    if (digits.length === 10) {
+      return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+    }
+    if (digits.length === 12 && digits.startsWith("91")) {
+      const main = digits.slice(2);
+      return `+91 ${main.slice(0, 5)} ${main.slice(5)}`;
+    }
+    return rawPhone.startsWith("+") ? rawPhone : `+91 ${rawPhone}`;
+  };
+
+  const phone = formatFullPhone(user.phone);
   const timezone = user.timezone || (user.metadata as any)?.timezone || "Asia/Kolkata";
   const linkedin = user.linkedin || (user.metadata as any)?.linkedin || "";
 
@@ -95,8 +162,8 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-white dark:bg-[#0B0D13] py-6 sm:py-10 transition-colors">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 space-y-6">
+    <div className="flex-1 flex flex-col bg-white dark:bg-[#0B0D13] py-6 sm:py-10 transition-colors">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 space-y-6 flex-1 w-full">
         {/* Header */}
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
@@ -255,18 +322,38 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="pt-16 pb-8 text-center space-y-1.5 text-xs text-zinc-400 dark:text-zinc-500">
-          <p>© 2026 Unisole Skill AI Labs Pvt. Ltd. All rights reserved</p>
-          <div className="flex items-center justify-center gap-2 text-[11px]">
-            <Link to="/privacy" className="hover:text-zinc-600 dark:hover:text-zinc-300">
-              Privacy
-            </Link>
-            <span>·</span>
-            <Link to="/terms" className="hover:text-zinc-600 dark:hover:text-zinc-300">
-              Terms
+        {/* Enrolled Courses Section */}
+        <hr className="border-zinc-200/80 dark:border-zinc-800/80 my-4" />
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span>Enrolled Courses</span>
+            </h2>
+            <Link to="/enrolled" className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline">
+              View All
             </Link>
           </div>
+
+          {isPathwaysLoading ? (
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 animate-pulse h-20" />
+              ))}
+            </div>
+          ) : enrolledPathways.length > 0 ? (
+            <div className="space-y-3">
+              {enrolledPathways.map((item: any, idx: number) => (
+                <EnrolledCourseRow key={item.pathway?.id || item.id || idx} item={item} />
+              ))}
+            </div>
+          ) : (
+            <div className="p-6 rounded-2xl bg-zinc-50 dark:bg-zinc-900/40 border border-dashed border-zinc-200 dark:border-zinc-800 text-center space-y-2">
+              <BookOpen className="w-6 h-6 text-zinc-400 mx-auto" />
+              <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">No enrolled courses yet</p>
+              <p className="text-xs text-zinc-500">Explore our career pathways to get enrolled in verified curriculum tracks.</p>
+            </div>
+          )}
         </div>
       </div>
 
