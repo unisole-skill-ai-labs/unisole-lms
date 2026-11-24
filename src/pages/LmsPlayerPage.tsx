@@ -106,8 +106,10 @@ export default function LmsPlayerPage() {
     }
   }, [rawPathwayId, navigate]);
 
-  // Check if non-production environment (local dev or staging) allows fallback to hardcoded curriculum
-  const isStagingOrDev =
+  // Curriculum fallback: allowed when VITE_ALLOW_CURRICULUM_FALLBACK is "true", in local dev, and on staging hosts.
+  // In production builds, it is NOT allowed when the flag is absent or "false".
+  const allowCurriculumFallback =
+    import.meta.env.VITE_ALLOW_CURRICULUM_FALLBACK === "true" ||
     !import.meta.env.PROD ||
     import.meta.env.MODE === "staging" ||
     (typeof window !== "undefined" &&
@@ -115,7 +117,7 @@ export default function LmsPlayerPage() {
         window.location.hostname === "localhost" ||
         window.location.hostname === "127.0.0.1"));
 
-  // Active canonical curriculum fallback (only referenced in staging/dev)
+  // Active canonical curriculum fallback (only referenced when fallback is permitted)
   const canonical = useMemo(() => getCurriculum(pathwayId), [pathwayId]);
 
   const {
@@ -128,8 +130,8 @@ export default function LmsPlayerPage() {
   const courses = pathwayData?.courses || [];
 
   // Dynamic Course Title & Duration
-  const courseTitle = pathway?.title || (isStagingOrDev ? canonical.title : "Course Curriculum");
-  const courseEyebrow = isStagingOrDev ? canonical.eyebrow : "UNISOLE ACADEMIC CURRICULUM";
+  const courseTitle = pathway?.title || (allowCurriculumFallback ? canonical.title : "Course Curriculum");
+  const courseEyebrow = allowCurriculumFallback ? canonical.eyebrow : "UNISOLE ACADEMIC CURRICULUM";
 
   // Build modules from backend DB or rich canonical curriculum
   // Build modules dynamically from backend DB API or fallback to canonical curriculum
@@ -393,12 +395,12 @@ export default function LmsPlayerPage() {
         };
       });
     }
-    // Fallback to static curriculumData.ts is strictly permitted ONLY in staging/local development
-    if (isStagingOrDev && canonical.modules && canonical.modules.length > 0) {
+    // Fallback to static curriculumData.ts is strictly permitted ONLY when allowCurriculumFallback is enabled
+    if (allowCurriculumFallback && canonical.modules && canonical.modules.length > 0) {
       return canonical.modules;
     }
     return [];
-  }, [courses, canonical, isStagingOrDev]);
+  }, [courses, canonical, allowCurriculumFallback]);
 
   // Milestones & Mentorship State
   const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
