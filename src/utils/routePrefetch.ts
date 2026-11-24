@@ -15,7 +15,6 @@ export const routeLoaders = {
   login: () => import("../pages/LoginPage"),
   register: () => import("../pages/RegisterPage"),
   profile: () => import("../pages/ProfilePage"),
-  paymentSuccess: () => import("../pages/PaymentSuccessPage"),
   calendar: () => import("../pages/CalendarPage"),
   articles: () => import("../pages/ArticlesPage"),
   notifications: () => import("../pages/NotificationsPage"),

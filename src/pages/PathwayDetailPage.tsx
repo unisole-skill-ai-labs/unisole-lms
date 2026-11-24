@@ -10,7 +10,6 @@ import {
   ShieldCheck,
   Building2,
   Sparkles,
-  CreditCard,
   Lock,
   GraduationCap,
   Clock,
@@ -18,15 +17,12 @@ import {
 import {
   useGetPublicPathwayBySlugQuery,
   useGetMyPathwaysQuery,
-  useCreatePaymentOrderMutation,
-  useVerifyPaymentMutation,
 } from "../store/apiSlice";
-import { extractErrorMessage } from "../utils/error";
+import { getWebsiteUrl } from "../utils/env";
 import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
 import Card from "../components/ui/Card";
 import Spinner from "../components/ui/Spinner";
-import Modal from "../components/ui/Modal";
 import NotFoundPage from "./NotFoundPage";
 
 export default function PathwayDetailPage() {
@@ -39,13 +35,6 @@ export default function PathwayDetailPage() {
     skip: !isAuthenticated,
   });
 
-  const [createPaymentOrder, { isLoading: isCreatingOrder }] = useCreatePaymentOrderMutation();
-  const [verifyPayment, { isLoading: isVerifyingPayment }] = useVerifyPaymentMutation();
-
-  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
-  const [checkoutError, setCheckoutError] = useState("");
-  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
-
   const isEnrolled = pathway && myPathways.some((p: any) => 
     p.pathway?.id === pathway.id || 
     p.pathway?.slug === pathway.slug || 
@@ -56,42 +45,6 @@ export default function PathwayDetailPage() {
   const categories = pathway?.categories || [];
   const colleges = pathway?.colleges || [];
   const courses = pathway?.courses || [];
-
-  const handleStartEnrollment = () => {
-    if (!isAuthenticated) {
-      navigate(`/login?redirect=/pathways/${slug}`);
-      return;
-    }
-    setShowCheckoutModal(true);
-    setCheckoutError("");
-    setCheckoutSuccess(false);
-  };
-
-  const handleCompletePayment = async () => {
-    if (!pathway) return;
-    setCheckoutError("");
-
-    try {
-      // 1. Create order on backend
-      const order = await createPaymentOrder({ pathwayId: pathway.id }).unwrap();
-
-      // 2. Verify payment (in dev/demo mode, simulates Razorpay signature)
-      const verificationPayload = {
-        providerOrderId: order.providerOrderId,
-        providerPaymentId: `pay_sim_${Date.now()}`,
-        providerSignature: `sig_verified_${order.providerOrderId}`,
-      };
-
-      await verifyPayment(verificationPayload).unwrap();
-      setCheckoutSuccess(true);
-
-      setTimeout(() => {
-        navigate(`/learn/${pathway.id}`);
-      }, 1200);
-    } catch (err) {
-      setCheckoutError(extractErrorMessage(err, "Payment processing failed. Please try again."));
-    }
-  };
 
   if (isLoading) {
     return (
@@ -275,91 +228,19 @@ export default function PathwayDetailPage() {
                 </Button>
               </Link>
             ) : (
-              <Button
-                variant="primary"
-                size="lg"
-                className="w-full shadow-lg shadow-indigo-500/20"
-                onClick={handleStartEnrollment}
-              >
-                Enroll Now
-              </Button>
-            )}
-
-            <p className="text-[11px] text-center text-zinc-400 flex items-center justify-center gap-1">
-              <Lock className="w-3 h-3" /> Secure 256-bit payment verification
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Checkout Modal */}
-      <Modal
-        isOpen={showCheckoutModal}
-        onClose={() => setShowCheckoutModal(false)}
-        title="Complete Pathway Enrollment"
-      >
-        <div className="space-y-5">
-          {checkoutSuccess ? (
-            <div className="text-center py-6 space-y-3">
-              <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
-                <CheckCircle2 className="w-6 h-6" />
-              </div>
-              <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Payment Verified!</h3>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                You are now enrolled in <strong>{pathway.title}</strong>. Redirecting to your learning workspace...
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800 space-y-2">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-zinc-500 dark:text-zinc-400">Selected Pathway</span>
-                  <span className="font-bold text-zinc-900 dark:text-zinc-100">{pathway.title}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-zinc-500 dark:text-zinc-400">Included Courses</span>
-                  <span className="font-semibold text-zinc-700 dark:text-zinc-300">{courses.length} courses</span>
-                </div>
-                <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
-                  <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Total Investment</span>
-                  <span className="text-base font-black text-zinc-900 dark:text-zinc-100">
-                    {priceRupees === 0 ? "Free" : `₹${priceRupees.toLocaleString("en-IN")}`}
-                  </span>
-                </div>
-              </div>
-
-              {checkoutError && (
-                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-400 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{checkoutError}</span>
-                </div>
-              )}
-
-              <div className="space-y-3">
+              <a href={`${getWebsiteUrl()}/programs`} className="block">
                 <Button
                   variant="primary"
                   size="lg"
-                  className="w-full"
-                  onClick={handleCompletePayment}
-                  loading={isCreatingOrder || isVerifyingPayment}
-                  icon={CreditCard}
+                  className="w-full shadow-lg shadow-indigo-500/20"
                 >
-                  Pay ₹{priceRupees.toLocaleString("en-IN")} & Activate Access
+                  Enroll via Unisole
                 </Button>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full text-zinc-400"
-                  onClick={() => setShowCheckoutModal(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </>
-          )}
+              </a>
+            )}
+          </div>
         </div>
-      </Modal>
+      </div>
     </div>
   );
 }

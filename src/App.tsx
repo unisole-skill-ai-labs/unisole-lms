@@ -17,7 +17,6 @@ const LmsPlayerPage = lazy(routeLoaders.player);
 const LoginPage = lazy(routeLoaders.login);
 const RegisterPage = lazy(routeLoaders.register);
 const ProfilePage = lazy(routeLoaders.profile);
-const PaymentSuccessPage = lazy(routeLoaders.paymentSuccess);
 const NotFoundPage = lazy(routeLoaders.notFound);
 const CalendarPage = lazy(routeLoaders.calendar);
 const ArticlesPage = lazy(routeLoaders.articles);
@@ -211,30 +210,6 @@ export default function App() {
           element={
             <ProtectedRoute>
               <ProfilePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="payment-success"
-          element={
-            <ProtectedRoute>
-              <PaymentSuccessPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="payment/success"
-          element={
-            <ProtectedRoute>
-              <PaymentSuccessPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="thank-you"
-          element={
-            <ProtectedRoute>
-              <PaymentSuccessPage />
             </ProtectedRoute>
           }
         />

@@ -15,7 +15,6 @@ import {
   Layers,
   X,
   Menu,
-  CreditCard,
   Newspaper,
   CheckCircle2,
   Bell,
@@ -36,7 +35,6 @@ export default function Header() {
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [feeModalOpen, setFeeModalOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { data: activitiesData } = useGetStudentActivitiesQuery(undefined, {
@@ -234,19 +232,6 @@ export default function Header() {
                           <span>Profile</span>
                         </Link>
 
-                        {/* 2. Fee Payment */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setProfileOpen(false);
-                            setFeeModalOpen(true);
-                          }}
-                          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-colors text-left cursor-pointer"
-                        >
-                          <CreditCard className="w-4 h-4 text-zinc-500 dark:text-zinc-400 shrink-0 stroke-[2]" />
-                          <span>Fee Payment</span>
-                        </button>
-
                         {/* 3. Industry Articles */}
                         <Link
                           to="/articles"
@@ -295,45 +280,6 @@ export default function Header() {
           </div>
         </div>
       </header>
-
-      {/* Fee Payment Status Modal */}
-      {feeModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs "
-          onClick={(e) => e.target === e.currentTarget && setFeeModalOpen(false)}
-        >
-          <div className="bg-white dark:bg-[#121622] w-full max-w-sm rounded-3xl shadow-2xl border border-zinc-200/80 dark:border-zinc-800 p-6 space-y-4 ">
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
-              <div className="flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Fee Payment</h3>
-              </div>
-              <button
-                onClick={() => setFeeModalOpen(false)}
-                className="p-1 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/30 flex items-start gap-3">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-              <div className="text-xs space-y-0.5">
-                <p className="font-bold text-emerald-900 dark:text-emerald-200">No Pending Dues</p>
-                <p className="text-emerald-700 dark:text-emerald-400 leading-relaxed">
-                  Your tuition and fees for your enrolled programs are completely up to date and verified.
-                </p>
-              </div>
-            </div>
-
-            <div className="text-right">
-              <Button variant="primary" size="sm" onClick={() => setFeeModalOpen(false)}>
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Mobile-First Navigation Drawer */}
       <LearnerDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />

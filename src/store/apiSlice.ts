@@ -69,7 +69,6 @@ export const apiSlice = createApi({
     "Enrollment",
     "Lesson",
     "User",
-    "Payment",
     "AdminCourses",
     "AdminModules",
     "AdminLessons",
@@ -284,28 +283,6 @@ export const apiSlice = createApi({
     getCohortData: builder.query({
       query: (pathwayId) => (pathwayId ? `/api/lms/cohort/${pathwayId}` : "/api/lms/cohort"),
       providesTags: ["Cohort"],
-    }),
-
-    // ─── Payments & Commerce Endpoints ───────────────────────────────────────────
-    createPaymentOrder: builder.mutation({
-      query: (body) => ({
-        url: "/api/lms/payments/create-order",
-        method: "POST",
-        body,
-      }),
-      invalidatesTags: ["Payment"],
-    }),
-    verifyPayment: builder.mutation({
-      query: (body) => ({
-        url: "/api/lms/payments/verify",
-        method: "POST",
-        body,
-      }),
-      invalidatesTags: [
-        { type: "Enrollment", id: "LIST" },
-        { type: "Pathway", id: "MY_LIST" },
-        "Payment",
-      ],
     }),
 
     // ─── Admin & Mentor CMS Studio Endpoints ─────────────────────────────────────
@@ -670,8 +647,6 @@ export const {
   useGetPathwayContentQuery,
   useGetLessonContentQuery,
   useGetMyEnrollmentsQuery,
-  useCreatePaymentOrderMutation,
-  useVerifyPaymentMutation,
 
   // Admin & Mentor hooks
   useGetAdminDashboardStatsQuery,
