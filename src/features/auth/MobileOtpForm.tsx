@@ -281,13 +281,15 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
               </div>
               <input
                 type="tel"
+                inputMode="tel"
+                autoComplete="tel"
                 placeholder="9876543210"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                 maxLength={10}
                 required
                 autoFocus
-                className="w-full pl-20 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-hidden focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono font-bold"
+                className="w-full pl-20 pr-4 py-2.5 min-h-[44px] bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-base sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-hidden focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono font-bold"
               />
             </div>
             <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">
@@ -330,7 +332,7 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
                 setOtp("");
                 setErrorMsg("");
               }}
-              className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline font-semibold cursor-pointer"
+              className="min-h-[44px] px-2 text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline font-semibold cursor-pointer flex items-center"
             >
               Change
             </button>
@@ -346,13 +348,16 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
               </div>
               <input
                 type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="one-time-code"
                 placeholder="Enter code (e.g. 1234)"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 maxLength={6}
                 required
                 autoFocus
-                className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-hidden focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono font-bold tracking-widest text-center"
+                className="w-full pl-10 pr-4 py-2.5 min-h-[44px] bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-base sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-hidden focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono font-bold tracking-widest text-center"
               />
             </div>
             <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">
@@ -385,9 +390,9 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
                 }
               }}
               disabled={isSendingOtp}
-              className="text-zinc-500 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1 font-medium transition-colors cursor-pointer"
+              className="min-h-[44px] px-3 text-zinc-500 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1 font-medium transition-colors cursor-pointer"
             >
-              <RotateCcw className="w-3 h-3" />
+              <RotateCcw className="w-3.5 h-3.5" />
               <span>Resend Code</span>
             </button>
 
@@ -404,9 +409,9 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
                   }
                 }}
                 disabled={isSendingOtp}
-                className="text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-semibold transition-colors cursor-pointer"
+                className="min-h-[44px] px-3 text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-semibold transition-colors cursor-pointer"
               >
-                <MessageSquare className="w-3 h-3" />
+                <MessageSquare className="w-3.5 h-3.5" />
                 <span>Send via SMS instead</span>
               </button>
             ) : (
@@ -422,7 +427,7 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
                   }
                 }}
                 disabled={isSendingOtp}
-                className="text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 font-semibold transition-colors cursor-pointer"
+                className="min-h-[44px] px-3 text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 font-semibold transition-colors cursor-pointer"
               >
                 <span>Send via WhatsApp instead</span>
               </button>
@@ -445,7 +450,7 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
                 setStep("PHONE");
                 setErrorMsg("");
               }}
-              className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline font-semibold cursor-pointer"
+              className="min-h-[44px] px-2 text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline font-semibold cursor-pointer flex items-center"
             >
               Change
             </button>
@@ -473,7 +478,7 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
                 value={selectedCollege}
                 onChange={(e) => setSelectedCollege(e.target.value)}
                 required
-                className="w-full pl-10 pr-9 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer"
+                className="w-full pl-10 pr-9 py-2.5 min-h-[44px] bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-base sm:text-sm text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer"
               >
                 <option value="">-- Select Your College / University --</option>
                 {collegeOptions.map((c: any) => (
@@ -512,7 +517,7 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
                 value={selectedBranch}
                 onChange={(e) => setSelectedBranch(e.target.value)}
                 required
-                className="w-full pl-10 pr-9 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer"
+                className="w-full pl-10 pr-9 py-2.5 min-h-[44px] bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-base sm:text-sm text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer"
               >
                 <option value="">-- Select Your Academic Branch --</option>
                 {branchOptions.map((b: any) => (

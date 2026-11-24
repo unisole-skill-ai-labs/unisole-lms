@@ -1967,7 +1967,7 @@ export default function LmsPlayerPage() {
                 </button>
                 <button
                   onClick={() => markLessonComplete(selectedLesson.id)}
-                  className="text-[10px] font-bold px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+                  className="text-xs font-bold px-3 py-2 min-h-[44px] rounded-xl bg-teal-600 hover:bg-teal-500 text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
                 >
                   <Check className="w-3.5 h-3.5 stroke-[3]" />
                   <span>{completedLessonIds.includes(selectedLesson.id) ? "Completed" : "Mark as Reviewed"}</span>
@@ -2161,7 +2161,7 @@ export default function LmsPlayerPage() {
                 </button>
                 <button
                   onClick={() => markLessonComplete(selectedLesson.id)}
-                  className="text-[10px] font-bold px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+                  className="text-xs font-bold px-3 py-2 min-h-[44px] rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
                 >
                   <Check className="w-3.5 h-3.5 stroke-[3]" />
                   <span>{completedLessonIds.includes(selectedLesson.id) ? "Session Completed" : "Mark as Attended"}</span>
@@ -2262,9 +2262,9 @@ export default function LmsPlayerPage() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => markLessonComplete(selectedLesson.id)}
-                      className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer flex items-center gap-1 shadow-sm"
+                      className="text-xs font-bold px-3 py-2 min-h-[44px] rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
                     >
-                      <Check className="w-3 h-3 stroke-[3]" />
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
                       <span>{completedLessonIds.includes(selectedLesson.id) ? "Completed" : "Mark Complete"}</span>
                     </button>
                     <div className="text-[10px] font-black tracking-wider bg-sky-500/20 text-sky-400 border border-sky-500/40 px-2 py-1 rounded">
@@ -2296,14 +2296,14 @@ export default function LmsPlayerPage() {
               <div className="flex items-center justify-between">
                 <button
                   onClick={handleBackToModule}
-                  className="flex items-center gap-2 text-xs font-bold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-white cursor-pointer transition-colors"
+                  className="flex items-center gap-2 text-xs font-bold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-white cursor-pointer transition-colors min-h-[44px] py-2"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   <span>Back to Curriculum Module</span>
                 </button>
                 <button
                   onClick={() => markLessonComplete(selectedLesson.id)}
-                  className="text-[10px] font-bold px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+                  className="text-xs font-bold px-3 py-2 min-h-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
                 >
                   <Check className="w-3.5 h-3.5 stroke-[3]" />
                   <span>{completedLessonIds.includes(selectedLesson.id) ? "Completed" : "Mark as Read"}</span>
@@ -2512,7 +2512,7 @@ export default function LmsPlayerPage() {
               <div className="flex items-center justify-between">
                 <button
                   onClick={handleBackToModule}
-                  className="flex items-center gap-2 text-xs font-bold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-white cursor-pointer transition-colors"
+                  className="flex items-center gap-2 text-xs font-bold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-white cursor-pointer transition-colors min-h-[44px] py-2"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   <span>Back to Curriculum Module</span>
@@ -2583,22 +2583,22 @@ export default function LmsPlayerPage() {
       </div>
 
       {/* Bottom Sticky Lesson Navigation */}
-      <div className="sticky bottom-0 z-20 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-200/80 dark:border-sky-500/20 py-3.5">
+      <div className="sticky bottom-0 z-20 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-200/80 dark:border-sky-500/20 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
         <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 flex items-center justify-between">
           <button
             onClick={handlePreviousLesson}
             disabled={!hasPrevious}
             aria-label="Previous lesson"
-            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+            className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center transition-all cursor-pointer ${
               hasPrevious
                 ? "bg-sky-50 dark:bg-sky-500/15 text-sky-600 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-500/25 border border-sky-200 dark:border-sky-500/30 shadow-2xs"
                 : "bg-slate-100 dark:bg-slate-900 text-slate-300 dark:text-slate-600 border border-slate-200 dark:border-slate-800 cursor-not-allowed"
             }`}
           >
-            <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+            <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
           </button>
 
-          <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+          <span className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300">
             Lesson {currentLessonIndex + 1} of {allLessonItems.length}
           </span>
 
@@ -2606,13 +2606,13 @@ export default function LmsPlayerPage() {
             onClick={handleNextLesson}
             disabled={!hasNext}
             aria-label="Next lesson"
-            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+            className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center transition-all cursor-pointer ${
               hasNext
                 ? "bg-sky-50 dark:bg-sky-500/15 text-sky-600 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-500/25 border border-sky-200 dark:border-sky-500/30 shadow-2xs"
                 : "bg-slate-100 dark:bg-slate-900 text-slate-300 dark:text-slate-600 border border-slate-200 dark:border-slate-800 cursor-not-allowed"
             }`}
           >
-            <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+            <ArrowRight className="w-5 h-5 stroke-[2.5]" />
           </button>
         </div>
       </div>
