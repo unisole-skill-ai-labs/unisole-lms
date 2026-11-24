@@ -350,7 +350,17 @@ export const apiSlice = createApi({
     }),
     getAdminCourseModules: builder.query({
       query: (id) => `/api/admin/courses/${id}/modules`,
-      providesTags: (_res, _err, id) => [{ type: "AdminModules", id: `${id}-modules` }],
+      providesTags: (result, _err, id) =>
+        result && Array.isArray(result)
+          ? [
+              ...result.map((m: any) => ({ type: "AdminModules" as const, id: m.moduleId || m.id })),
+              { type: "AdminModules" as const, id: `${id}-modules` },
+              { type: "AdminModules" as const, id: "LIST" },
+            ]
+          : [
+              { type: "AdminModules" as const, id: `${id}-modules` },
+              { type: "AdminModules" as const, id: "LIST" },
+            ],
     }),
     attachAdminCourseModule: builder.mutation({
       query: ({ courseId, moduleId, position }) => ({
@@ -360,18 +370,56 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: (_res, _err, { courseId }) => [
         "AdminCourses",
+        "AdminModules",
         { type: "AdminModules", id: `${courseId}-modules` },
+        { type: "AdminModules", id: "LIST" },
+        "Pathway",
+        "DashboardSummary",
       ],
+      async onQueryStarted({ courseId, moduleId, position }, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          apiSlice.util.updateQueryData("getAdminCourseModules", courseId, (draft) => {
+            if (Array.isArray(draft) && !draft.some((m: any) => (m.moduleId || m.id) === moduleId)) {
+              draft.push({ moduleId, position, title: "New Module", status: "DRAFT" });
+            }
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
     detachAdminCourseModule: builder.mutation({
       query: ({ courseId, moduleId }) => ({
         url: `/api/admin/courses/${courseId}/modules/${moduleId}`,
         method: "DELETE",
       }),
-      invalidatesTags: (_res, _err, { courseId }) => [
+      invalidatesTags: (_res, _err, { courseId, moduleId }) => [
         "AdminCourses",
+        "AdminModules",
+        { type: "AdminModules", id: moduleId },
         { type: "AdminModules", id: `${courseId}-modules` },
+        { type: "AdminModules", id: "LIST" },
+        "Pathway",
+        "DashboardSummary",
       ],
+      async onQueryStarted({ courseId, moduleId }, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          apiSlice.util.updateQueryData("getAdminCourseModules", courseId, (draft) => {
+            if (Array.isArray(draft)) {
+              const idx = draft.findIndex((m: any) => (m.moduleId || m.id) === moduleId);
+              if (idx !== -1) draft.splice(idx, 1);
+            }
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
     clearAdminCourseModules: builder.mutation({
       query: (courseId) => ({
@@ -383,6 +431,9 @@ export const apiSlice = createApi({
         "AdminModules",
         "AdminLessons",
         { type: "AdminModules", id: `${courseId}-modules` },
+        { type: "AdminModules", id: "LIST" },
+        "Pathway",
+        "DashboardSummary",
       ],
     }),
     reorderAdminCourseModules: builder.mutation({
@@ -393,14 +444,40 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: (_res, _err, { courseId }) => [
         "AdminCourses",
+        "AdminModules",
         { type: "AdminModules", id: `${courseId}-modules` },
+        "Pathway",
+        "DashboardSummary",
       ],
+      async onQueryStarted({ courseId, moduleIds }, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          apiSlice.util.updateQueryData("getAdminCourseModules", courseId, (draft) => {
+            if (Array.isArray(draft)) {
+              const map = new Map(draft.map((m: any) => [m.moduleId || m.id, m]));
+              const reordered: any[] = [];
+              moduleIds.forEach((id: string, idx: number) => {
+                const item = map.get(id);
+                if (item) {
+                  item.position = idx + 1;
+                  reordered.push(item);
+                }
+              });
+              draft.splice(0, draft.length, ...reordered);
+            }
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
 
     // Modules
     getAdminModules: builder.query({
       query: () => "/api/admin/modules",
-      providesTags: ["AdminModules"],
+      providesTags: ["AdminModules", { type: "AdminModules", id: "LIST" }],
     }),
     createAdminModule: builder.mutation({
       query: (body) => ({
@@ -408,7 +485,7 @@ export const apiSlice = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["AdminModules"],
+      invalidatesTags: ["AdminModules", { type: "AdminModules", id: "LIST" }, "Pathway"],
     }),
     updateAdminModule: builder.mutation({
       query: ({ id, body }) => ({
@@ -416,11 +493,27 @@ export const apiSlice = createApi({
         method: "PUT",
         body,
       }),
-      invalidatesTags: ["AdminModules"],
+      invalidatesTags: (_res, _err, { id }) => [
+        "AdminModules",
+        { type: "AdminModules", id },
+        { type: "AdminModules", id: "LIST" },
+        "Pathway",
+        "DashboardSummary",
+      ],
     }),
     getAdminModuleLessons: builder.query({
       query: (id) => `/api/admin/modules/${id}/lessons`,
-      providesTags: (_res, _err, id) => [{ type: "AdminLessons", id: `${id}-lessons` }],
+      providesTags: (result, _err, id) =>
+        result && Array.isArray(result)
+          ? [
+              ...result.map((l: any) => ({ type: "AdminLessons" as const, id: l.lessonId || l.id })),
+              { type: "AdminLessons" as const, id: `${id}-lessons` },
+              { type: "AdminLessons" as const, id: "LIST" },
+            ]
+          : [
+              { type: "AdminLessons" as const, id: `${id}-lessons` },
+              { type: "AdminLessons" as const, id: "LIST" },
+            ],
     }),
     attachAdminModuleLesson: builder.mutation({
       query: ({ moduleId, lessonId, position }) => ({
@@ -428,20 +521,61 @@ export const apiSlice = createApi({
         method: "POST",
         body: { lessonId, position },
       }),
-      invalidatesTags: (_res, _err, { moduleId }) => [
+      invalidatesTags: (_res, _err, { moduleId, lessonId }) => [
         "AdminModules",
+        "AdminLessons",
         { type: "AdminLessons", id: `${moduleId}-lessons` },
+        { type: "AdminLessons", id: lessonId },
+        { type: "AdminLessons", id: "LIST" },
+        "Pathway",
+        "Lesson",
+        "DashboardSummary",
       ],
+      async onQueryStarted({ moduleId, lessonId, position }, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          apiSlice.util.updateQueryData("getAdminModuleLessons", moduleId, (draft) => {
+            if (Array.isArray(draft) && !draft.some((l: any) => (l.lessonId || l.id) === lessonId)) {
+              draft.push({ lessonId, position, title: "New Lesson", status: "DRAFT" });
+            }
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
     detachAdminModuleLesson: builder.mutation({
       query: ({ moduleId, lessonId }) => ({
         url: `/api/admin/modules/${moduleId}/lessons/${lessonId}`,
         method: "DELETE",
       }),
-      invalidatesTags: (_res, _err, { moduleId }) => [
+      invalidatesTags: (_res, _err, { moduleId, lessonId }) => [
         "AdminModules",
+        "AdminLessons",
         { type: "AdminLessons", id: `${moduleId}-lessons` },
+        { type: "AdminLessons", id: lessonId },
+        { type: "AdminLessons", id: "LIST" },
+        "Pathway",
+        "Lesson",
+        "DashboardSummary",
       ],
+      async onQueryStarted({ moduleId, lessonId }, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          apiSlice.util.updateQueryData("getAdminModuleLessons", moduleId, (draft) => {
+            if (Array.isArray(draft)) {
+              const idx = draft.findIndex((l: any) => (l.lessonId || l.id) === lessonId);
+              if (idx !== -1) draft.splice(idx, 1);
+            }
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
     reorderAdminModuleLessons: builder.mutation({
       query: ({ moduleId, lessonIds }) => ({
@@ -451,8 +585,34 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: (_res, _err, { moduleId }) => [
         "AdminModules",
+        "AdminLessons",
         { type: "AdminLessons", id: `${moduleId}-lessons` },
+        "Pathway",
+        "DashboardSummary",
       ],
+      async onQueryStarted({ moduleId, lessonIds }, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          apiSlice.util.updateQueryData("getAdminModuleLessons", moduleId, (draft) => {
+            if (Array.isArray(draft)) {
+              const map = new Map(draft.map((l: any) => [l.lessonId || l.id, l]));
+              const reordered: any[] = [];
+              lessonIds.forEach((id: string, idx: number) => {
+                const item = map.get(id);
+                if (item) {
+                  item.position = idx + 1;
+                  reordered.push(item);
+                }
+              });
+              draft.splice(0, draft.length, ...reordered);
+            }
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
     moveAdminModuleLesson: builder.mutation({
       query: ({ sourceModuleId, targetModuleId, lessonId, targetPosition }) => ({
@@ -460,17 +620,22 @@ export const apiSlice = createApi({
         method: "POST",
         body: { targetModuleId, lessonId, targetPosition },
       }),
-      invalidatesTags: (_res, _err, { sourceModuleId, targetModuleId }) => [
+      invalidatesTags: (_res, _err, { sourceModuleId, targetModuleId, lessonId }) => [
         "AdminModules",
+        "AdminLessons",
         { type: "AdminLessons", id: `${sourceModuleId}-lessons` },
         { type: "AdminLessons", id: `${targetModuleId}-lessons` },
+        { type: "AdminLessons", id: lessonId },
+        "Pathway",
+        "Lesson",
+        "DashboardSummary",
       ],
     }),
 
     // Lessons
     getAdminLessons: builder.query({
       query: () => "/api/admin/lessons",
-      providesTags: ["AdminLessons"],
+      providesTags: ["AdminLessons", { type: "AdminLessons", id: "LIST" }],
     }),
     getAdminLessonById: builder.query({
       query: (id) => `/api/admin/lessons/${id}`,
@@ -482,7 +647,7 @@ export const apiSlice = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["AdminLessons"],
+      invalidatesTags: ["AdminLessons", { type: "AdminLessons", id: "LIST" }, "Pathway"],
     }),
     updateAdminLesson: builder.mutation({
       query: ({ id, body }) => ({
@@ -490,7 +655,13 @@ export const apiSlice = createApi({
         method: "PUT",
         body,
       }),
-      invalidatesTags: (_res, _err, { id }) => ["AdminLessons", { type: "AdminLessons", id }],
+      invalidatesTags: (_res, _err, { id }) => [
+        "AdminLessons",
+        { type: "AdminLessons", id },
+        { type: "Lesson", id },
+        "Pathway",
+        "DashboardSummary",
+      ],
     }),
 
     // Students & Roster

@@ -77,6 +77,12 @@ import { useAutosave } from "../../utils/useAutosave";
 import { LessonType, ContentStatus, QuizQuestion } from "../../types";
 import RichEditor from "../../components/ui/RichEditor";
 import { renderMarkdownToHtml } from "../../utils/formatContent";
+import {
+  toIstDatetimeLocal,
+  fromIstDatetimeLocal,
+  formatIstDisplay,
+  validateScheduleDates,
+} from "../../utils/timezone";
 
 export default function EditCoursePage() {
   const { courseId = "" } = useParams();
@@ -180,6 +186,17 @@ export default function EditCoursePage() {
     }
   };
 
+  // Toast feedback
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const showToast = (text: string, type: "success" | "error" = "success") => {
+    setToastMessage({ text, type });
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // Submission Guard States
+  const [isAddingModule, setIsAddingModule] = useState(false);
+  const [isAddingLesson, setIsAddingLesson] = useState(false);
+
   // Selected State
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
@@ -278,8 +295,8 @@ export default function EditCoursePage() {
           : parseInt(dataToUse.duration || "45", 10) || 45
       );
       setVideoUrl(dataToUse.videoUrl || "");
-      setLessonUnlockAt(dataToUse.unlockAt ? new Date(dataToUse.unlockAt).toISOString().slice(0, 16) : "");
-      setLessonLockAt(dataToUse.lockAt ? new Date(dataToUse.lockAt).toISOString().slice(0, 16) : "");
+      setLessonUnlockAt(toIstDatetimeLocal(dataToUse.unlockAt));
+      setLessonLockAt(toIstDatetimeLocal(dataToUse.lockAt));
 
       // Try to parse structured content from activeLessonData
       if (activeLessonData?.content && activeLessonData.content.startsWith("{")) {
@@ -457,8 +474,8 @@ export default function EditCoursePage() {
         status: currentData.status,
         durationMinutes: currentData.durationMinutes,
         videoUrl: currentData.videoUrl,
-        unlockAt: currentData.unlockAt ? new Date(currentData.unlockAt).toISOString() : null,
-        lockAt: currentData.lockAt ? new Date(currentData.lockAt).toISOString() : null,
+        unlockAt: fromIstDatetimeLocal(currentData.unlockAt),
+        lockAt: fromIstDatetimeLocal(currentData.lockAt),
         content: payloadContent,
         description: currentData.contentMarkdown
           ? currentData.contentMarkdown.replace(/<[^>]*>/g, "").slice(0, 200)
@@ -474,6 +491,18 @@ export default function EditCoursePage() {
     itemKey: activeLessonId,
     delayMs: 1200,
   });
+
+  // Warn before navigating away with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (saveStatus === "saving") {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [saveStatus]);
 
   // Test case management for Coding Test
   const addTestCase = () => {
@@ -502,16 +531,27 @@ export default function EditCoursePage() {
   // Create & attach a new Module
   const handleAddModule = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isAddingModule) return;
     const titleToUse = newModuleTitle.trim() || `Module ${(courseModules?.length || 0) + 1}`;
 
+    const dateErr = validateScheduleDates(
+      fromIstDatetimeLocal(newModuleUnlockAt),
+      fromIstDatetimeLocal(newModuleLockAt)
+    );
+    if (dateErr) {
+      showToast(dateErr, "error");
+      return;
+    }
+
+    setIsAddingModule(true);
     try {
       const slug = `${course?.slug || "course"}-mod-${Date.now()}`;
       const createdMod = await createModule({
         title: titleToUse,
         slug,
         status: "DRAFT",
-        unlockAt: newModuleUnlockAt ? new Date(newModuleUnlockAt).toISOString() : null,
-        lockAt: newModuleLockAt ? new Date(newModuleLockAt).toISOString() : null,
+        unlockAt: fromIstDatetimeLocal(newModuleUnlockAt),
+        lockAt: fromIstDatetimeLocal(newModuleLockAt),
       }).unwrap();
 
       const nextPosition = (courseModules?.length || 0) + 1;
@@ -526,8 +566,12 @@ export default function EditCoursePage() {
       setNewModuleLockAt("");
       setShowAddModule(false);
       refetchModules();
-    } catch (err) {
+      showToast(`Module "${titleToUse}" created successfully.`);
+    } catch (err: any) {
       console.error("Failed to add module:", err);
+      showToast(err?.data?.message || err?.data?.error || "Failed to add module.", "error");
+    } finally {
+      setIsAddingModule(false);
     }
   };
 
@@ -536,8 +580,10 @@ export default function EditCoursePage() {
     try {
       await updateModuleApi({ id: moduleId, body: { title: title.trim() } }).unwrap();
       refetchModules();
+      showToast("Module renamed.");
     } catch (err) {
       console.error("Failed to rename module:", err);
+      showToast("Failed to rename module.", "error");
     }
   };
 
@@ -546,13 +592,15 @@ export default function EditCoursePage() {
       await updateModuleApi({
         id: moduleId,
         body: {
-          unlockAt: unlockAt ? new Date(unlockAt).toISOString() : null,
-          lockAt: lockAt ? new Date(lockAt).toISOString() : null,
+          unlockAt: fromIstDatetimeLocal(unlockAt),
+          lockAt: fromIstDatetimeLocal(lockAt),
         },
       }).unwrap();
       refetchModules();
+      showToast("Module schedule saved.");
     } catch (err) {
       console.error("Failed to update module schedule:", err);
+      showToast("Failed to update module schedule.", "error");
     }
   };
 
@@ -569,8 +617,10 @@ export default function EditCoursePage() {
       await clearCourseModulesMutation(courseId).unwrap();
       setActiveLessonId(null);
       refetchModules();
+      showToast("All modules removed from course.");
     } catch (err) {
       console.error("Failed to clear modules:", err);
+      showToast("Failed to clear modules.", "error");
     }
   };
 
@@ -585,7 +635,7 @@ export default function EditCoursePage() {
     newOrder[index] = newOrder[targetIndex];
     newOrder[targetIndex] = temp;
 
-    const moduleIds = newOrder.map((m: any) => m.moduleId);
+    const moduleIds = newOrder.map((m: any) => m.moduleId || m.id);
     try {
       await reorderModulesApi({ courseId, moduleIds }).unwrap();
       refetchModules();
@@ -631,18 +681,22 @@ export default function EditCoursePage() {
     newModules.splice(dropIdx, 0, movedChapter);
     setDraggedChapterIdx(null);
 
-    const newModuleIds = newModules.map((m: any) => m.moduleId);
+    const newModuleIds = newModules.map((m: any) => m.moduleId || m.id);
     await handleReorderChapters(newModuleIds);
   };
 
   // Delete Chapter
   const handleDeleteChapter = async (moduleId: string) => {
-    if (!window.confirm("Are you sure you want to remove this chapter and its lessons from this course?")) return;
+    const targetMod = courseModules.find((m: any) => (m.moduleId || m.id) === moduleId);
+    const modTitle = targetMod?.title || "this chapter";
+    if (!window.confirm(`Are you sure you want to delete chapter "${modTitle}"?`)) return;
     try {
       await detachModule({ courseId, moduleId }).unwrap();
       refetchModules();
-    } catch (err) {
+      showToast(`Deleted chapter "${modTitle}".`);
+    } catch (err: any) {
       console.error("Failed to remove chapter:", err);
+      showToast(err?.data?.message || err?.data?.error || "Failed to remove chapter.", "error");
     }
   };
 
@@ -662,6 +716,8 @@ export default function EditCoursePage() {
     customTitle?: string,
     targetFolderId?: string
   ) => {
+    if (isAddingLesson) return;
+    setIsAddingLesson(true);
     try {
       const slug = `${course?.slug || "course"}-les-${Date.now()}`;
       let title = customTitle || "New Lesson";
@@ -849,8 +905,12 @@ export default function EditCoursePage() {
       setAddingLessonForModuleId(null);
       setActiveLessonId(created.id);
       refetchModules();
-    } catch (err) {
+      showToast(`Created activity "${title}".`);
+    } catch (err: any) {
       console.error("Failed to create lesson:", err);
+      showToast(err?.data?.message || err?.data?.error || "Failed to create activity.", "error");
+    } finally {
+      setIsAddingLesson(false);
     }
   };
 
@@ -1078,9 +1138,16 @@ export default function EditCoursePage() {
                 className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] focus:outline-none focus:ring-2 focus:ring-sky-500/40 text-slate-900 dark:text-slate-100"
               />
               <div className="space-y-1">
-                <label className="block text-[10px] font-semibold text-slate-400">
-                  Optional Unlock Date & Time:
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-[10px] font-semibold text-slate-400">
+                    Optional Unlock Date & Time (IST):
+                  </label>
+                  {newModuleUnlockAt && (
+                    <span className="text-[10px] text-sky-500 font-medium">
+                      {formatIstDisplay(fromIstDatetimeLocal(newModuleUnlockAt))}
+                    </span>
+                  )}
+                </div>
                 <input
                   type="datetime-local"
                   value={newModuleUnlockAt}
@@ -1091,21 +1158,24 @@ export default function EditCoursePage() {
               <div className="flex items-center justify-end gap-1.5 pt-1">
                 <button
                   type="button"
+                  disabled={isAddingModule}
                   onClick={() => {
                     setShowAddModule(false);
                     setNewModuleTitle("");
                     setNewModuleUnlockAt("");
                     setNewModuleLockAt("");
                   }}
-                  className="px-2.5 py-1 text-xs font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer"
+                  className="px-2.5 py-1 text-xs font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-3 py-1 text-xs font-bold text-slate-950 bg-sky-400 hover:bg-sky-300 rounded-lg shadow-xs cursor-pointer"
+                  disabled={isAddingModule}
+                  className="px-3 py-1 text-xs font-bold text-slate-950 bg-sky-400 hover:bg-sky-300 rounded-lg shadow-xs cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
                 >
-                  Create Module
+                  {isAddingModule && <Loader2 className="w-3 h-3 animate-spin" />}
+                  <span>{isAddingModule ? "Creating..." : "Create Module"}</span>
                 </button>
               </div>
             </form>
@@ -1309,15 +1379,19 @@ export default function EditCoursePage() {
                           <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 flex-wrap">
                             <span>Availability & Time Lock Schedule</span>
                             {lessonUnlockAt ? (
-                              new Date(lessonUnlockAt).getTime() > Date.now() ? (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                                  Scheduled: Locked until {new Date(lessonUnlockAt).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                  Live & Unlocked (since {new Date(lessonUnlockAt).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })})
-                                </span>
-                              )
+                              (() => {
+                                const unlockIso = fromIstDatetimeLocal(lessonUnlockAt);
+                                const isLocked = unlockIso && new Date(unlockIso).getTime() > Date.now();
+                                return isLocked ? (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                    Scheduled: Locked until {formatIstDisplay(unlockIso)}
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                    Live & Unlocked (since {formatIstDisplay(unlockIso)})
+                                  </span>
+                                );
+                              })()
                             ) : (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                                 Always Unlocked
@@ -1325,7 +1399,7 @@ export default function EditCoursePage() {
                             )}
                           </h4>
                           <p className="text-[11px] text-slate-400">
-                            Set an unlock date/time. Learners see this activity locked until the scheduled time passes, then it automatically unlocks.
+                            Set an unlock date/time in Indian Standard Time (IST). Learners see this activity locked until the scheduled time passes, then it automatically unlocks.
                           </p>
                         </div>
                       </div>
@@ -1345,9 +1419,16 @@ export default function EditCoursePage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                       <div>
-                        <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
-                          Unlock Date & Time (Opens for students)
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                            Unlock Date & Time (IST)
+                          </label>
+                          {lessonUnlockAt && (
+                            <span className="text-[10px] text-sky-500 font-medium">
+                              {formatIstDisplay(fromIstDatetimeLocal(lessonUnlockAt))}
+                            </span>
+                          )}
+                        </div>
                         <input
                           type="datetime-local"
                           disabled={!canManageCurriculum}
@@ -1357,9 +1438,16 @@ export default function EditCoursePage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
-                          Auto-Lock Date & Time (Optional deadline)
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                            Auto-Lock Date & Time (IST, Optional)
+                          </label>
+                          {lessonLockAt && (
+                            <span className="text-[10px] text-sky-500 font-medium">
+                              {formatIstDisplay(fromIstDatetimeLocal(lessonLockAt))}
+                            </span>
+                          )}
+                        </div>
                         <input
                           type="datetime-local"
                           disabled={!canManageCurriculum}
@@ -1368,6 +1456,21 @@ export default function EditCoursePage() {
                           className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
                         />
                       </div>
+                      {(() => {
+                        const dateError = validateScheduleDates(
+                          fromIstDatetimeLocal(lessonUnlockAt),
+                          fromIstDatetimeLocal(lessonLockAt)
+                        );
+                        if (dateError) {
+                          return (
+                            <div className="sm:col-span-2 text-[11px] font-semibold text-rose-500 flex items-center gap-1.5 pt-0.5">
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                              <span>{dateError}</span>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -2305,6 +2408,24 @@ export default function EditCoursePage() {
           </div>
         </div>
       )}
+
+      {/* Floating Save & Action Toast Notification */}
+      {toastMessage && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl shadow-2xl border text-xs font-semibold backdrop-blur-md transition-all animate-in fade-in duration-200 ${
+            toastMessage.type === "error"
+              ? "bg-rose-500/90 text-white border-rose-600 shadow-rose-500/20"
+              : "bg-slate-900/95 dark:bg-slate-100/95 text-white dark:text-slate-900 border-slate-700/50 dark:border-slate-300/50 shadow-slate-900/30"
+          }`}
+        >
+          {toastMessage.type === "error" ? (
+            <AlertCircle className="w-4 h-4 text-white shrink-0" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 dark:text-emerald-600 shrink-0" />
+          )}
+          <span>{toastMessage.text}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -2391,10 +2512,10 @@ function ChapterSection({
   const [tempTitle, setTempTitle] = useState(moduleTitle || "");
   const [showSchedulePopover, setShowSchedulePopover] = useState(false);
   const [modUnlockInput, setModUnlockInput] = useState(
-    moduleUnlockAt ? new Date(moduleUnlockAt).toISOString().slice(0, 16) : ""
+    toIstDatetimeLocal(moduleUnlockAt)
   );
   const [modLockInput, setModLockInput] = useState(
-    moduleLockAt ? new Date(moduleLockAt).toISOString().slice(0, 16) : ""
+    toIstDatetimeLocal(moduleLockAt)
   );
 
   useEffect(() => {
@@ -2411,8 +2532,8 @@ function ChapterSection({
   }, [moduleTitle, position]);
 
   useEffect(() => {
-    setModUnlockInput(moduleUnlockAt ? new Date(moduleUnlockAt).toISOString().slice(0, 16) : "");
-    setModLockInput(moduleLockAt ? new Date(moduleLockAt).toISOString().slice(0, 16) : "");
+    setModUnlockInput(toIstDatetimeLocal(moduleUnlockAt));
+    setModLockInput(toIstDatetimeLocal(moduleLockAt));
   }, [moduleUnlockAt, moduleLockAt]);
 
   // Drag state for lessons & folders
@@ -2682,12 +2803,15 @@ function ChapterSection({
   // Delete lesson from chapter
   const handleDeleteLesson = async (e: React.MouseEvent, lessonId: string) => {
     e.stopPropagation();
-    if (!window.confirm("Are you sure you want to remove this item from this chapter?")) return;
+    const targetItem = effectiveLessons.find((l: any) => (l.lessonId || l.id) === lessonId);
+    const itemTitle = targetItem?.title || "this activity";
+    if (!window.confirm(`Are you sure you want to delete "${itemTitle}"?`)) return;
     try {
       await detachLessonApi({ moduleId, lessonId }).unwrap();
       refetchLessons();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to delete lesson:", err);
+      alert(err?.data?.message || err?.data?.error || "Failed to delete activity.");
     }
   };
 
@@ -3049,7 +3173,7 @@ function ChapterSection({
                 onClick={() => setShowSchedulePopover(!showSchedulePopover)}
                 title={
                   moduleUnlockAt
-                    ? `Locked until ${new Date(moduleUnlockAt).toLocaleString()}`
+                    ? `Locked until ${formatIstDisplay(moduleUnlockAt)}`
                     : "Set module release schedule"
                 }
                 className={`p-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer border ${
@@ -3073,7 +3197,7 @@ function ChapterSection({
               <div className="absolute right-0 top-full mt-1.5 w-64 p-3 bg-white dark:bg-[#0B1120] rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl z-50 space-y-2.5 ">
                 <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Module Release Schedule
+                    Module Schedule (IST)
                   </span>
                   <button
                     type="button"
@@ -3084,9 +3208,16 @@ function ChapterSection({
                   </button>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
-                    Unlock Date & Time:
-                  </label>
+                  <div className="flex items-center justify-between mb-0.5">
+                    <label className="block text-[10px] font-semibold text-slate-500">
+                      Unlock Date & Time (IST):
+                    </label>
+                    {modUnlockInput && (
+                      <span className="text-[9px] text-sky-500 font-medium">
+                        {formatIstDisplay(fromIstDatetimeLocal(modUnlockInput))}
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="datetime-local"
                     value={modUnlockInput}
@@ -3095,9 +3226,16 @@ function ChapterSection({
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
-                    Auto-Lock Date & Time (Optional):
-                  </label>
+                  <div className="flex items-center justify-between mb-0.5">
+                    <label className="block text-[10px] font-semibold text-slate-500">
+                      Auto-Lock Date (Optional):
+                    </label>
+                    {modLockInput && (
+                      <span className="text-[9px] text-sky-500 font-medium">
+                        {formatIstDisplay(fromIstDatetimeLocal(modLockInput))}
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="datetime-local"
                     value={modLockInput}
@@ -3105,6 +3243,21 @@ function ChapterSection({
                     className="w-full px-2 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#070A11] text-slate-900 dark:text-slate-100"
                   />
                 </div>
+                {(() => {
+                  const dateError = validateScheduleDates(
+                    fromIstDatetimeLocal(modUnlockInput),
+                    fromIstDatetimeLocal(modLockInput)
+                  );
+                  if (dateError) {
+                    return (
+                      <div className="text-[10px] font-semibold text-rose-500 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{dateError}</span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
                 <div className="flex items-center justify-between pt-1">
                   <button
                     type="button"
@@ -3121,9 +3274,14 @@ function ChapterSection({
                   <button
                     type="button"
                     onClick={() => {
+                      const dateError = validateScheduleDates(
+                        fromIstDatetimeLocal(modUnlockInput),
+                        fromIstDatetimeLocal(modLockInput)
+                      );
+                      if (dateError) return;
                       onUpdateModuleSchedule?.(
-                        modUnlockInput ? new Date(modUnlockInput).toISOString() : null,
-                        modLockInput ? new Date(modLockInput).toISOString() : null
+                        fromIstDatetimeLocal(modUnlockInput),
+                        fromIstDatetimeLocal(modLockInput)
                       );
                       setShowSchedulePopover(false);
                     }}
@@ -3345,7 +3503,7 @@ function ChapterSection({
                                     </span>
                                     {cLes.unlockAt && (
                                       <span
-                                        title={`Unlocks at ${new Date(cLes.unlockAt).toLocaleString()}`}
+                                        title={`Unlocks at ${formatIstDisplay(cLes.unlockAt)}`}
                                         className={`inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[8px] font-bold shrink-0 whitespace-nowrap ${
                                           new Date(cLes.unlockAt).getTime() > Date.now()
                                             ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
@@ -3353,7 +3511,7 @@ function ChapterSection({
                                         }`}
                                       >
                                         <Lock className="w-2 h-2" />
-                                        <span>{new Date(cLes.unlockAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+                                        <span>{formatIstDisplay(cLes.unlockAt)}</span>
                                       </span>
                                     )}
                                     <span
@@ -3429,7 +3587,7 @@ function ChapterSection({
                       </span>
                       {item.unlockAt && (
                         <span
-                          title={`Unlocks at ${new Date(item.unlockAt).toLocaleString()}`}
+                          title={`Unlocks at ${formatIstDisplay(item.unlockAt)}`}
                           className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold shrink-0 whitespace-nowrap ${
                             new Date(item.unlockAt).getTime() > Date.now()
                               ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
@@ -3437,7 +3595,7 @@ function ChapterSection({
                           }`}
                         >
                           <Lock className="w-2.5 h-2.5" />
-                          <span>{new Date(item.unlockAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+                          <span>{formatIstDisplay(item.unlockAt)}</span>
                         </span>
                       )}
                       <span
