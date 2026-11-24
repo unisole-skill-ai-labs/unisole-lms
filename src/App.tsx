@@ -14,6 +14,7 @@ const PathwayDetailPage = lazy(routeLoaders.pathwayDetail);
 const EnrolledCoursesPage = lazy(routeLoaders.enrolled);
 const ActivitiesPage = lazy(routeLoaders.activities);
 const LmsPlayerPage = lazy(routeLoaders.player);
+const ModulePage = lazy(routeLoaders.module);
 const LoginPage = lazy(routeLoaders.login);
 const RegisterPage = lazy(routeLoaders.register);
 const ProfilePage = lazy(routeLoaders.profile);
@@ -125,6 +126,14 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="catalog" element={<Navigate to="/" replace />} />
         <Route
           path="articles"
@@ -171,6 +180,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <LmsPlayerPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="learn/:pathwayId/module/:moduleId"
+          element={
+            <ProtectedRoute>
+              <ModulePage />
             </ProtectedRoute>
           }
         />

@@ -56,7 +56,6 @@ export interface CourseCurriculum {
   modules: ModuleSection[];
 }
 
-const RICK_ROLL_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RDdQw4w9WgXcQ&start_radio=1";
 
 export const AI_AGENT_ENGINEERING_CURRICULUM: CourseCurriculum = {
   id: "course1",
@@ -81,7 +80,7 @@ export const AI_AGENT_ENGINEERING_CURRICULUM: CourseCurriculum = {
           duration: "24 Mins",
           type: "video",
           category: "LECTURE",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Key Concepts: Agent loop, LLM vs Agent, ReAct (Think → Act → Observe), workflow vs agent, agent architectures, when not to use an agent.",
         },
         {
@@ -162,7 +161,7 @@ export const AI_AGENT_ENGINEERING_CURRICULUM: CourseCurriculum = {
           duration: "22 Mins",
           type: "video",
           category: "LECTURE",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Key Concepts: Messages, system/user/tool roles, context window, tokenization, prompt architecture, static vs. dynamic context.",
         },
         {
@@ -231,7 +230,7 @@ export const AI_AGENT_ENGINEERING_CURRICULUM: CourseCurriculum = {
           duration: "26 Mins",
           type: "video",
           category: "LECTURE",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Key Concepts: Prompt engineering, tool descriptions, prompt injection, defensive prompting, context compression, long conversations.",
         },
         {
@@ -300,7 +299,7 @@ export const AI_AGENT_ENGINEERING_CURRICULUM: CourseCurriculum = {
           duration: "25 Mins",
           type: "video",
           category: "LECTURE",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Key Concepts: Short-term vs. long-term memory, episodic vs. semantic memory, memory extraction, retrieval, lifecycle, and conflicts.",
         },
         {
@@ -357,7 +356,7 @@ export const AI_AGENT_ENGINEERING_CURRICULUM: CourseCurriculum = {
           duration: "28 Mins",
           type: "video",
           category: "LECTURE",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Key Concepts: Chunking, embeddings, vector databases, hybrid search, reranking, metadata filtering, retrieval failure modes.",
         },
         {
@@ -414,7 +413,7 @@ export const AI_AGENT_ENGINEERING_CURRICULUM: CourseCurriculum = {
           duration: "24 Mins",
           type: "video",
           category: "LECTURE",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Key Concepts: Tool schemas, function calling, tool selection and reliability, error handling, permissions, and security.",
         },
         {
@@ -471,7 +470,7 @@ export const AI_AGENT_ENGINEERING_CURRICULUM: CourseCurriculum = {
           duration: "26 Mins",
           type: "video",
           category: "LECTURE",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Key Concepts: MCP concepts, servers and clients, resources, authentication, permissions, and tool discovery.",
         },
         {
@@ -528,7 +527,7 @@ export const AI_AGENT_ENGINEERING_CURRICULUM: CourseCurriculum = {
           duration: "30 Mins",
           type: "video",
           category: "LECTURE",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Key Concepts: Coding agent architecture, repository understanding, code generation, sandboxing, testing, and the agentic coding loop.",
         },
         {
@@ -585,7 +584,7 @@ export const AI_AGENT_ENGINEERING_CURRICULUM: CourseCurriculum = {
           duration: "27 Mins",
           type: "video",
           category: "LECTURE",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Key Concepts: Synchronous vs. asynchronous agents, event-driven architecture, human-in-the-loop, browser automation basics.",
         },
         {
@@ -642,7 +641,7 @@ export const AI_AGENT_ENGINEERING_CURRICULUM: CourseCurriculum = {
           duration: "25 Mins",
           type: "video",
           category: "LECTURE",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Key Concepts: Why demos aren't evaluation, benchmarks, trajectory evaluation, LLM-as-judge, reliability, latency, cost, safety.",
         },
         {
@@ -699,7 +698,7 @@ export const AI_AGENT_ENGINEERING_CURRICULUM: CourseCurriculum = {
           duration: "24 Mins",
           type: "video",
           category: "LECTURE",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Key Concepts: When to improve the prompt, context, tools, or the model itself; version comparison; continuous evolution loop.",
         },
         {
@@ -756,7 +755,7 @@ export const AI_AGENT_ENGINEERING_CURRICULUM: CourseCurriculum = {
           duration: "32 Mins",
           type: "video",
           category: "LECTURE",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Key Concepts: Manager-worker and peer-to-peer patterns, shared vs. independent context, delegation, coordination, failure handling.",
         },
         {
@@ -829,7 +828,7 @@ export const GENERIC_MODULE_CURRICULUM: CourseCurriculum = {
           duration: "20 Mins",
           type: "video",
           category: "LECTURE",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Core architectural foundations, design trade-offs, and operational principles.",
         },
         {
@@ -886,7 +885,7 @@ export const GENERIC_MODULE_CURRICULUM: CourseCurriculum = {
           duration: "25 Mins",
           type: "video",
           category: "LECTURE",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Patterns for managing state consistency, side effects, and reusability.",
         },
         {
@@ -943,7 +942,7 @@ export const GENERIC_MODULE_CURRICULUM: CourseCurriculum = {
           duration: "22 Mins",
           type: "video",
           category: "LECTURE",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Containerization, CI/CD pipelines, observability, and scaling.",
         },
         {
@@ -1015,7 +1014,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "1.1 Handling Large & Messy Datasets",
           duration: "14 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Techniques for ingesting dirty real-world datasets, handling missing values, and high-cardinality encodings.",
         },
         {
@@ -1023,7 +1022,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "1.2 EDA Strategy & Data Quality Diagnostics",
           duration: "18 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Systematic exploratory data analysis, skewness correction, and distribution profiling.",
         },
         {
@@ -1031,7 +1030,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "1.3 Git Branching & Team AI Workflows",
           duration: "12 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Trunk-based development, PR review etiquette, and reproducible Linux CLI environments.",
         },
         {
@@ -1087,7 +1086,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "2.1 REST API Design for ML/LLM Serving",
           duration: "16 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Designing synchronous vs asynchronous prediction contracts, SSE streaming, and payload validations.",
         },
         {
@@ -1095,7 +1094,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "2.2 FastAPI vs Flask Architecture & Concurrency",
           duration: "15 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "ASGI event loops, Uvicorn worker clustering, and async/await throughput benchmarks.",
         },
         {
@@ -1103,7 +1102,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "2.3 Pydantic Request Validation & Error Handling",
           duration: "13 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Strict typing, schema serialization, custom validators, and standard HTTP error codes.",
         },
         {
@@ -1152,7 +1151,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "3.1 PostgreSQL Fundamentals for AI Data",
           duration: "17 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Designing relational schemas, JSONB columns, foreign keys, and migration strategies.",
         },
         {
@@ -1160,7 +1159,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "3.2 Redis In-Memory Caching for LLM Responses",
           duration: "14 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Sub-millisecond prompt caching, TTL policies, and token cost reduction patterns.",
         },
         {
@@ -1168,7 +1167,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "3.3 Docker Containerization & System Rate Limiting",
           duration: "20 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Multi-stage Docker builds, docker-compose orchestration, and sliding-window rate limiters.",
         },
         {
@@ -1222,7 +1221,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "4.1 Tokenization, Stemming & Lemmatization",
           duration: "15 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Linguistic challenges, subword tokenizers (BPE, WordPiece), and morphology normalization.",
         },
         {
@@ -1230,7 +1229,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "4.2 Bag of Words (BoW) & TF-IDF Vectorization",
           duration: "18 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Sparse lexical vector spaces, term frequency mechanics, and document frequency weighting.",
         },
         {
@@ -1238,7 +1237,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "4.3 Limitations of Lexical Matching",
           duration: "12 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Polysemy, synonymy, out-of-vocabulary tokens, and the need for dense semantic embeddings.",
         },
         {
@@ -1292,7 +1291,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "5.1 Word2Vec (CBOW vs Skip-Gram) & Vector Math",
           duration: "19 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Distributional hypothesis, dense continuous vectors, negative sampling, and analogy math.",
         },
         {
@@ -1300,7 +1299,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "5.2 Vanilla RNNs & Vanishing Gradients",
           duration: "16 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Recurrence relations, backpropagation through time (BPTT), and memory bottleneck.",
         },
         {
@@ -1308,7 +1307,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "5.3 LSTM & GRU Gated Architectures",
           duration: "21 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Cell state highway, forget/input/output gates, bidirectional RNNs (BiRNN).",
         },
         {
@@ -1362,7 +1361,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "6.1 Encoder-Decoder Seq2Seq Mechanics",
           duration: "17 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Sequence transduction, teacher forcing, beam search vs greedy decoding.",
         },
         {
@@ -1370,7 +1369,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "6.2 The Fixed-Context-Vector Bottleneck",
           duration: "14 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Diagnosing degradation on sentences longer than 20 tokens.",
         },
         {
@@ -1378,7 +1377,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "6.3 Bahdanau Additive vs Luong Multiplicative Attention",
           duration: "22 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Dynamic alignment scoring, softmax normalization, and context vector synthesis.",
         },
         {
@@ -1432,7 +1431,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "7.1 Scaled Dot-Product & Multi-Head Self-Attention",
           duration: "22 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Q, K, V projections, scaling factor sqrt(d_k), and multi-head representation subspaces.",
         },
         {
@@ -1440,7 +1439,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "7.2 Positional Encodings & LayerNorm Architecture",
           duration: "18 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Sinusoidal vs learned encodings, residual connections, Pre-LN vs Post-LN.",
         },
         {
@@ -1448,7 +1447,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "7.3 Pretrained Transformers & BERT Fine-Tuning",
           duration: "20 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Masked language modeling (MLM), [CLS] token classification, and transfer learning.",
         },
         {
@@ -1497,7 +1496,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "8.1 Dense Embedding Spaces & Similarity Metrics",
           duration: "16 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Cosine similarity, inner product, L2 distance, and bi-encoder embeddings.",
         },
         {
@@ -1505,7 +1504,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "8.2 Vector Database Internals: FAISS & Chroma",
           duration: "19 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Inverted file indexing (IVF), HNSW graphs, and Product Quantization (PQ).",
         },
         {
@@ -1513,7 +1512,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "8.3 Hybrid Retrieval: BM25 + Dense Reranking",
           duration: "17 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Reciprocal Rank Fusion (RRF), cross-encoder rerankers, and recall optimization.",
         },
         {
@@ -1567,7 +1566,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "9.1 RAG Architecture & Chunking Strategies",
           duration: "20 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Recursive character chunking, semantic chunking, metadata enrichment, and parent-child retrieval.",
         },
         {
@@ -1575,7 +1574,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "9.2 Eval-Driven & Chain-of-Thought Prompting",
           duration: "18 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Few-shot templates, structured JSON outputs, system prompt guardrails, and CoT reasoning.",
         },
         {
@@ -1583,7 +1582,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "9.3 RAG Evaluation: Faithfulness, Relevance & Cost",
           duration: "19 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "RAGAS framework, hallucination benchmarking, token cost tracking, and latency telemetry.",
         },
         {
@@ -1637,7 +1636,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "10.1 LangGraph Stateful Graph Orchestration",
           duration: "21 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "State machines, conditional edges, human-in-the-loop checkpoints, and cycle handling.",
         },
         {
@@ -1645,7 +1644,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "10.2 LLM Observability, Tracing & Cost Tracking",
           duration: "16 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "OpenTelemetry, Langfuse/Arize instrumentation, span tagging, and latency breakdown.",
         },
         {
@@ -1653,7 +1652,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "10.3 Guardrails & CI/CD Eval-Regression Checks",
           duration: "17 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Input/output guardrails (NeMo / Guardrails AI), prompt injection filters, and CI/CD quality gates.",
         },
         {
@@ -1707,7 +1706,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "11.1 Autonomous Reasoning Loops & Tool-Calling",
           duration: "23 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "ReAct loop (Reason, Act, Observe), JSON tool binding, and dynamic error recovery.",
         },
         {
@@ -1715,7 +1714,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "11.2 Stateful Agent Memory & Planning Agents",
           duration: "19 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Short-term buffer memory, long-term vector memory, plan-and-solve multi-step decomposition.",
         },
         {
@@ -1723,7 +1722,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "11.3 Cloud Deployment & Autoscaling on AWS/Azure",
           duration: "20 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Reverse proxies, SSL termination, horizontal pod autoscaling on queue depth, and streaming APIs.",
         },
         {
@@ -1777,7 +1776,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "12.1 Capstone Architecture & Problem Framing",
           duration: "18 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Domain selection (Legal, Medical, Enterprise Bot), data ingestion contracts, and architectural defense.",
         },
         {
@@ -1785,7 +1784,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "12.2 Telemetry Logging & V1 to V2 Improvement Cycles",
           duration: "20 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Documenting quantifiable benchmarks: accuracy, cost per query, latency, and guardrail safety gains.",
         },
         {
@@ -1793,7 +1792,7 @@ export const GENAI_CURRICULUM: CourseCurriculum = {
           title: "12.3 Research Defense Methodology & Panel Presentation",
           duration: "15 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Preparing technical reports, answering adversarial evaluation questions, and production handoff.",
         },
         {
@@ -1850,7 +1849,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Saturday: Introduction to Design Thinking & Empathy Mapping",
           duration: "25 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Understanding human-centered design, identifying real user friction, and structuring empathy interviews.",
         },
         {
@@ -1858,7 +1857,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Sunday: Mapping Candidate Pain Points & Peer Critique",
           duration: "25 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Mapping 3 candidate pain points from lived experience or target community.",
         },
         {
@@ -1900,7 +1899,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Saturday: Discovery Interview Design & The Mom Test",
           duration: "24 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Writing unbiased questions, avoiding hypothetical leading questions, structuring 15-minute discovery calls.",
         },
         {
@@ -1908,7 +1907,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Sunday: Synthesizing Customer Insights into Problem Briefs",
           duration: "20 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Extracting patterns, quotes, and willingness-to-pay signals from customer transcripts.",
         },
         {
@@ -1950,7 +1949,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Saturday: Competitive Analysis Frameworks & Positioning Maps",
           duration: "22 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Direct vs indirect competitors, feature matrices, and 2x2 positioning maps.",
         },
         {
@@ -1958,7 +1957,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Sunday: Bottom-Up TAM / SAM / SOM Market Sizing",
           duration: "26 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Calculating Total Addressable Market, Serviceable Addressable Market, and Serviceable Obtainable Market.",
         },
         {
@@ -2000,7 +1999,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Saturday: Peer Review & Mentor Feedback Workshop",
           duration: "20 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Stress-testing customer discovery evidence, market sizing realism, and competitor defensibility.",
         },
         {
@@ -2008,7 +2007,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Sunday: Locking in the Validated Problem Statement",
           duration: "18 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Finalizing the problem statement before investing engineering resources into the prototype.",
         },
         {
@@ -2050,7 +2049,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Saturday: Framework for Spotting 10x AI Opportunities",
           duration: "22 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Transformative 10x friction reduction vs incremental form-filling automation.",
         },
         {
@@ -2058,7 +2057,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Sunday: Applying the 10x AI Value Matrix",
           duration: "20 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Mapping LLMs, vision, and agentic workflows to your validated customer problem.",
         },
         {
@@ -2100,7 +2099,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Saturday: Low-Code & AI-Assisted Prototyping Tools",
           duration: "25 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Streamlit, v0, Bolt, Lovable, Retool, and fast LLM wrapper prototyping.",
         },
         {
@@ -2108,7 +2107,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Sunday: Building the First Clickable MVP Build",
           duration: "28 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Assembling the interactive core flow for early user test sessions.",
         },
         {
@@ -2150,7 +2149,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Saturday: Integrating the Core AI-Driven Feature",
           duration: "24 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Connecting OpenAI/Anthropic APIs or open-source weights to the user frontend.",
         },
         {
@@ -2158,7 +2157,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Sunday: Sprint Debugging & Mentor Office Hours",
           duration: "20 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Handling streaming, latency masking, and error states.",
         },
         {
@@ -2200,7 +2199,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Saturday: Structuring Feedback & User Observation Sessions",
           duration: "22 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Observing silent user walkthroughs without coaching or making excuses.",
         },
         {
@@ -2208,7 +2207,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Sunday: Logging Feedback & Iterating on the Prototype",
           duration: "24 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Extracting usability hurdles and ranking feature modifications.",
         },
         {
@@ -2250,7 +2249,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Saturday: Business Model Canvas (BMC) for AI Products",
           duration: "25 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Value props, customer segments, channels, key partners, and cost structures.",
         },
         {
@@ -2258,7 +2257,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Sunday: Unit Economics & AI Token COGS Modeling",
           duration: "26 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Pricing tiers, gross margin modeling, LTV to CAC ratios, and token inference costs.",
         },
         {
@@ -2300,7 +2299,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Saturday: GTM Frameworks & The Wedge Strategy",
           duration: "22 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Channel distribution, outbound vs inbound, developer evangelism, community flywheels.",
         },
         {
@@ -2308,7 +2307,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Sunday: Early-Adopter Acquisition Playbook",
           duration: "20 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Securing your first 10 paying customers with high-touch concierge onboarding.",
         },
         {
@@ -2350,7 +2349,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Saturday: Storytelling & Anatomy of a 10-Slide Deck",
           duration: "26 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Problem, Solution, Market, Product, Business Model, Traction, Go-to-Market, Competition, Team, The Ask.",
         },
         {
@@ -2358,7 +2357,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Sunday: Pitch Deck Draft, Peer Review & Iteration",
           duration: "24 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Removing vanity metrics, clarifying defensibility, and polishing executive slide design.",
         },
         {
@@ -2400,7 +2399,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Saturday: Pitch Rehearsal & Live Feedback with Mentors",
           duration: "25 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Mastering Q&A, handling adversarial business model challenges, and pacing a 5-minute pitch.",
         },
         {
@@ -2408,7 +2407,7 @@ export const INCUBATOR_CURRICULUM: CourseCurriculum = {
           title: "Sunday: Final Pitch — Live Capstone Defense",
           duration: "30 Mins",
           type: "video",
-          videoUrl: RICK_ROLL_URL,
+          videoUrl: "",
           description: "Presenting and defending your complete venture before an investor-style evaluation panel.",
         },
         {
@@ -2453,7 +2452,7 @@ export function getCurriculum(courseId?: string): CourseCurriculum {
 }
 
 export function getEmbedVideoUrl(url?: string): string {
-  if (!url) return "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=0&rel=0&modestbranding=1";
+  if (!url || !url.trim()) return "";
   const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
   if (match && match[1]) {
     return `https://www.youtube.com/embed/${match[1]}?autoplay=0&rel=0&modestbranding=1`;

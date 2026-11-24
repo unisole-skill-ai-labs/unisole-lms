@@ -18,7 +18,10 @@ import {
   BookOpen,
   Radio,
   AlertCircle,
+  Lock,
 } from "lucide-react";
+import { formatIstDisplay } from "../utils/timezone";
+import { getCurriculum } from "../constants/curriculumData";
 import {
   useGetMyPathwaysQuery,
   useGetDashboardSummaryQuery,
@@ -144,10 +147,26 @@ export default function DashboardPage() {
   const refetchActivities = refetchSummary;
   const refetchCalendar = refetchSummary;
 
+  const allowCurriculumFallback =
+    typeof window !== "undefined" &&
+    (import.meta.env.VITE_ALLOW_CURRICULUM_FALLBACK === "true" ||
+      import.meta.env.DEV ||
+      window.location.hostname.includes("stg"));
+
+  const canonical = useMemo(
+    () => getCurriculum(currentProgramId),
+    [currentProgramId]
+  );
+
   // Shared Course Flow computation (Single source of truth)
   const modules = useMemo(() => {
-    return pathwayContent?.courses?.[0]?.modules || [];
-  }, [pathwayContent]);
+    const rawModules = pathwayContent?.courses?.flatMap((c: any) => c.modules || []) || [];
+    if (rawModules.length > 0) return rawModules;
+    if (allowCurriculumFallback && canonical.modules && canonical.modules.length > 0) {
+      return canonical.modules;
+    }
+    return [];
+  }, [pathwayContent, allowCurriculumFallback, canonical]);
 
   const completedIdsArray: string[] = useMemo(() => {
     return Array.from(new Set((progressData?.completedLessonIds || []) as string[]));
@@ -157,26 +176,33 @@ export default function DashboardPage() {
     return getCourseFlowStats(modules, completedIdsArray, submissionsData || []);
   }, [modules, completedIdsArray, submissionsData]);
 
-  // Current Week and Next Lesson Details for Resume Card (B2) - Read directly from backend response
-  const serverCurrentWeek = (summaryData as any)?.currentWeek;
-  const serverCourseProgress = (summaryData as any)?.courseProgress;
-  const serverNextLesson = (summaryData as any)?.nextLesson;
+  // Target the first incomplete module across the course
+  const firstIncompleteWeek = useMemo(() => {
+    return courseFlow.weekStats.find((ws) => !ws.isCompleted);
+  }, [courseFlow.weekStats]);
 
-  const currentWeekNum = serverCurrentWeek?.weekNumber ?? ((courseFlow.currentWeekIndex || 0) + 1);
-  const totalWeeksCount = serverCourseProgress?.totalWeeks ?? (courseFlow.weekStats.length || modules.length || 12);
-  const currentWeekTitle = serverCurrentWeek?.title
-    ? formatWeekTitle(serverCurrentWeek.title, (serverCurrentWeek.weekIndex ?? currentWeekNum - 1))
-    : formatWeekTitle(
-        courseFlow.currentWeek?.title || "Module 1",
-        courseFlow.currentWeekIndex || 0
-      );
-  const currentLessonTitle = cleanLessonTitle(
-    serverNextLesson?.title || courseFlow.nextIncompleteItem?.title || "1.1 Concept Lecture"
-  );
-  const currentProgressPercent = serverCourseProgress?.progressPercent ?? courseFlow.progressPercent;
-  const isCurrentWeekLocked = serverCurrentWeek?.isLocked;
-  const currentWeekStatus = serverCurrentWeek?.status;
-  const currentWeekUnlockAt = serverCurrentWeek?.unlockAt;
+  const targetWeek = firstIncompleteWeek || courseFlow.weekStats[0];
+  const isTargetWeekLocked = targetWeek ? targetWeek.isLocked : false;
+  const targetWeekNum = targetWeek ? targetWeek.weekNumber : 1;
+  const targetWeekTitle = targetWeek ? targetWeek.formattedTitle : "Module 1";
+  const targetWeekProgressPercent = targetWeek ? targetWeek.progressPercent : 0;
+  const totalWeeksCount = courseFlow.weekStats.length || modules.length || 12;
+
+  // Candidate for "Resume last lesson"
+  const resumeCandidate = courseFlow.nextIncompleteItem;
+  const resumeWeek = courseFlow.nextIncompleteWeek;
+
+  const canResumeLesson = useMemo(() => {
+    if (!resumeCandidate || !resumeWeek) return false;
+    if (courseFlow.completedActivities === 0 && targetWeekProgressPercent === 0) return false;
+    const belongsToCourse = modules.some((m: any) =>
+      (m.lessons || m.items || []).some((l: any) => l.id === resumeCandidate.id)
+    );
+    if (!belongsToCourse) return false;
+    if (resumeCandidate.isLocked || resumeWeek.isLocked) return false;
+    if ((resumeCandidate as any).status === "ARCHIVED" || (resumeCandidate as any).isActive === false) return false;
+    return true;
+  }, [resumeCandidate, resumeWeek, courseFlow.completedActivities, targetWeekProgressPercent, modules]);
 
   // Next upcoming live class or deadline with minute-level countdown (B3)
   const upcomingLive = useMemo(() => {
@@ -466,17 +492,24 @@ export default function DashboardPage() {
                   {programTitle}
                 </span>
                 <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 shrink-0 font-mono">
-                  {currentWeekStatus === "Up next" && currentWeekUnlockAt
-                    ? `Up next · Unlocks ${formatDateStandard(currentWeekUnlockAt)}`
-                    : `Week ${currentWeekNum} of ${totalWeeksCount} · ${currentProgressPercent}% complete`}
+                  {isTargetWeekLocked && targetWeek?.module?.unlockAt
+                    ? `Locked · Unlocks on ${formatIstDisplay(targetWeek.module.unlockAt)}`
+                    : `Week ${targetWeekNum} of ${totalWeeksCount} · ${targetWeekProgressPercent}% complete`}
                 </span>
               </div>
               <h2 className="text-xs sm:text-sm font-semibold text-zinc-500 dark:text-zinc-400 truncate">
-                {currentWeekTitle}
+                {targetWeekTitle}
               </h2>
-              <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 truncate">
-                {currentLessonTitle}
-              </h3>
+              {isTargetWeekLocked ? (
+                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400">
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Unlocks on {formatIstDisplay(targetWeek?.module?.unlockAt)}</span>
+                </div>
+              ) : (
+                <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                  {cleanLessonTitle(resumeCandidate?.title || targetWeek?.metaSummary || "Module Activities")}
+                </h3>
+              )}
             </div>
 
             {/* Thin Progress Bar (B2) */}
@@ -484,35 +517,62 @@ export default function DashboardPage() {
               <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-blue-600 rounded-full transition-all duration-300"
-                  style={{ width: `${currentProgressPercent}%` }}
+                  style={{ width: `${targetWeekProgressPercent}%` }}
                 />
               </div>
             </div>
 
-            {/* Full-width Action Button (min 44px tall, deep-links to exact lesson, B2) */}
-            <button
-              type="button"
-              onMouseEnter={() => prefetchByPath(`/learn/${currentProgramId}`)}
-              onTouchStart={() => prefetchByPath(`/learn/${currentProgramId}`)}
-              onFocus={() => prefetchByPath(`/learn/${currentProgramId}`)}
-              onClick={() => {
-                const targetLessonId = serverNextLesson?.id || courseFlow.nextIncompleteItem?.id;
-                const targetUrl = targetLessonId
-                  ? `/learn/${currentProgramId}?lesson=${targetLessonId}`
-                  : `/learn/${currentProgramId}`;
-                startTransition(() => {
-                  navigate(targetUrl);
-                });
-              }}
-              className="w-full min-h-[44px] py-3 px-5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
-            >
-              <span>
-                {(serverCourseProgress?.completedActivities ?? courseFlow.completedActivities) > 0
-                  ? "Resume"
-                  : `Start Week ${currentWeekNum}`}
-              </span>
-              <Play className="w-4 h-4 fill-current" />
-            </button>
+            {/* Primary Action Button: Target first incomplete, unlocked week module */}
+            <div className="space-y-2">
+              {isTargetWeekLocked ? (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full min-h-[44px] py-3 px-5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 text-sm font-bold flex items-center justify-center gap-2 cursor-not-allowed border border-zinc-200 dark:border-zinc-700"
+                >
+                  <Lock className="w-4 h-4" />
+                  <span>Week {targetWeekNum}: Unlocks on {formatIstDisplay(targetWeek?.module?.unlockAt)}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onMouseEnter={() => prefetchByPath(`/learn/${currentProgramId}/module/${targetWeek?.module?.id || ""}`)}
+                  onTouchStart={() => prefetchByPath(`/learn/${currentProgramId}/module/${targetWeek?.module?.id || ""}`)}
+                  onFocus={() => prefetchByPath(`/learn/${currentProgramId}/module/${targetWeek?.module?.id || ""}`)}
+                  onClick={() => {
+                    startTransition(() => {
+                      navigate(`/learn/${currentProgramId}/module/${targetWeek?.module?.id || ""}`);
+                    });
+                  }}
+                  className="w-full min-h-[44px] py-3 px-5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <span>
+                    {targetWeekProgressPercent > 0
+                      ? `Continue Week ${targetWeekNum}`
+                      : `Start Week ${targetWeekNum}`}
+                  </span>
+                  <Play className="w-4 h-4 fill-current" />
+                </button>
+              )}
+
+              {/* Explicit Resume last lesson button */}
+              {canResumeLesson && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    startTransition(() => {
+                      navigate(
+                        `/learn/${currentProgramId}?module=${resumeWeek?.id || ""}&lesson=${resumeCandidate.id}`
+                      );
+                    });
+                  }}
+                  className="w-full min-h-[40px] py-2.5 px-4 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <span>Resume last lesson: {cleanLessonTitle(resumeCandidate.title)}</span>
+                  <Play className="w-3.5 h-3.5 fill-current text-blue-600 dark:text-blue-400" />
+                </button>
+              )}
+            </div>
           </div>
         )}
 

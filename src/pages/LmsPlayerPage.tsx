@@ -84,6 +84,7 @@ import {
   getSubmissionForLesson,
 } from "../utils/submissionsStorage";
 import { renderMarkdownToHtml, cleanLessonTitle } from "../utils/formatContent";
+import { formatIstDisplay } from "../utils/timezone";
 import {
   getCourseFlowStats,
   getItemStatus,
@@ -250,38 +251,31 @@ export default function LmsPlayerPage() {
 
             const isExplicitTest = !isFolder && !isLive && (curMode === "TEST" || parsedContent?.category === "TEST");
             const isExplicitPractice = !isFolder && !isLive && (curMode === "PRACTICE" || parsedContent?.category === "PRACTICE");
-            const isLecture =
-              !isFolder &&
-              !isLive &&
-              (curMode === "LECTURE" ||
-              parsedContent?.category === "LECTURE" ||
-              (!isExplicitTest && !isExplicitPractice && (cType === "READING" || cType === "VIDEO" || (!cType && !testType && !pracType))));
+
+            const realVideoUrl = (l.videoUrl?.trim() || parsedContent?.videoUrl?.trim() || "");
+            const hasRealVideo = !!(realVideoUrl && !realVideoUrl.includes("dQw4w9WgXcQ"));
 
             const isCoding =
               !isFolder &&
               !isLive &&
-              !isLecture &&
               isExplicitTest &&
               (testType === "CODING_TEST" || cType === "CODING_TEST" || l.id?.includes("_code"));
 
             const isVideoTest =
               !isFolder &&
               !isLive &&
-              !isLecture &&
               isExplicitTest &&
               (testType === "VIDEO_TEST" || cType === "VIDEO_TEST" || l.id?.includes("_viva"));
 
             const isSubjective =
               !isFolder &&
               !isLive &&
-              !isLecture &&
               isExplicitTest &&
               (testType === "SUBJECTIVE_TEST" || cType === "SUBJECTIVE_TEST" || l.id?.includes("_sub"));
 
             const isQuiz =
               !isFolder &&
               !isLive &&
-              !isLecture &&
               !isCoding &&
               !isVideoTest &&
               !isSubjective &&
@@ -291,11 +285,22 @@ export default function LmsPlayerPage() {
             const isAssignment =
               !isFolder &&
               !isLive &&
-              !isLecture &&
               !isCoding &&
               !isVideoTest &&
               !isSubjective &&
-              !isQuiz;
+              !isQuiz &&
+              (cType === "ASSIGNMENT" || l.id?.includes("_assign"));
+
+            const isLecture =
+              !isFolder &&
+              !isLive &&
+              !isCoding &&
+              !isVideoTest &&
+              !isSubjective &&
+              !isQuiz &&
+              !isAssignment &&
+              hasRealVideo &&
+              (curMode === "LECTURE" || parsedContent?.category === "LECTURE" || cType === "VIDEO");
 
             // Questions
             const parsedQuestions: QuizQuestion[] | undefined =
@@ -322,11 +327,6 @@ export default function LmsPlayerPage() {
               parsedContent?.assignment?.maxPoints ||
               100;
 
-            const fallbackMod = canonical.modules[idx];
-            const fallbackItem = fallbackMod?.items?.find(
-              (fi) => fi.type === (isLive ? "live" : isQuiz ? "quiz" : isAssignment ? "assignment" : isCoding ? "coding_test" : "video")
-            );
-
             const resolvedType = isFolder
               ? ("folder" as const)
               : isLive
@@ -341,7 +341,9 @@ export default function LmsPlayerPage() {
               ? ("subjective_test" as const)
               : isQuiz
               ? ("quiz" as const)
-              : ("assignment" as const);
+              : isAssignment
+              ? ("assignment" as const)
+              : ("reading" as const);
 
             const resolvedCategory = isFolder
               ? ("FOLDER" as const)
@@ -351,7 +353,9 @@ export default function LmsPlayerPage() {
               ? ("LECTURE" as const)
               : isExplicitTest || isCoding || isVideoTest || isSubjective
               ? ("TEST" as const)
-              : ("PRACTICE" as const);
+              : isQuiz
+              ? ("PRACTICE" as const)
+              : ("READING" as const);
 
             const isLessonLocked = !!(
               l.isLocked ||
@@ -371,16 +375,16 @@ export default function LmsPlayerPage() {
               isLocked: isLessonLocked,
               isScheduleLocked: !!(l.unlockAt && new Date(l.unlockAt).getTime() > Date.now()),
               folderId: l.folderId || parsedContent?.folderId || undefined,
-              videoUrl: l.videoUrl || parsedContent?.videoUrl || "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RDdQw4w9WgXcQ&start_radio=1",
-              description: l.description || parsedContent?.contentMarkdown,
-              questions: parsedQuestions || fallbackItem?.questions,
-              instructions: parsedInstructions || fallbackItem?.instructions,
+              videoUrl: realVideoUrl,
+              description: l.description || parsedContent?.contentMarkdown || l.content,
+              questions: parsedQuestions,
+              instructions: parsedInstructions,
               attachments: parsedContent?.attachments || l.attachments || [],
               maxScore,
-              liveDate: l.liveDate || parsedContent?.liveDate || fallbackItem?.liveDate,
-              liveTime: l.liveTime || parsedContent?.liveTime || fallbackItem?.liveTime,
-              liveMeetingUrl: l.liveMeetingUrl || parsedContent?.liveMeetingUrl || fallbackItem?.liveMeetingUrl,
-              mentorName: l.mentorName || parsedContent?.mentorName || fallbackItem?.mentorName,
+              liveDate: l.liveDate || parsedContent?.liveDate,
+              liveTime: l.liveTime || parsedContent?.liveTime,
+              liveMeetingUrl: l.liveMeetingUrl || parsedContent?.liveMeetingUrl,
+              mentorName: l.mentorName || parsedContent?.mentorName,
               config: {
                 starterCode: codingConfig?.starterCode,
                 language: codingConfig?.language || "python",
@@ -410,6 +414,13 @@ export default function LmsPlayerPage() {
   // View state: "overview" (SS1) | "chapter" (SS2) | "player" (SS3)
   const [searchParams] = useSearchParams();
   const queryLessonId = searchParams.get("lesson");
+  const queryModuleId = searchParams.get("module");
+
+  const hasMatchingLesson = useMemo(() => {
+    if (!queryLessonId || modules.length === 0) return true;
+    return modules.some((m) => m.items?.some((i) => i.id === queryLessonId));
+  }, [modules, queryLessonId]);
+
   const [currentView, setCurrentView] = useState<"overview" | "chapter" | "player">(
     () => (queryLessonId ? "player" : "overview")
   );
@@ -431,10 +442,11 @@ export default function LmsPlayerPage() {
             return;
           }
         }
-      }
-      if (!selectedModule || !modules.some((m) => m.id === selectedModule.id)) {
-        setSelectedModule(modules[0]);
-        setSelectedLesson(modules[0].items[0]);
+      } else {
+        if (!selectedModule || !modules.some((m) => m.id === selectedModule.id)) {
+          setSelectedModule(modules[0]);
+          setSelectedLesson(modules[0].items[0]);
+        }
       }
     }
   }, [modules, selectedModule, queryLessonId]);
@@ -565,6 +577,14 @@ export default function LmsPlayerPage() {
   };
 
 
+  const handleBackToModule = () => {
+    if (selectedModule?.id) {
+      navigate(`/learn/${pathwayId}/module/${selectedModule.id}`);
+    } else {
+      navigate(`/learn/${pathwayId}`);
+    }
+  };
+
   // Tabs on Player: "notes" | "help"
   const [playerTab, setPlayerTab] = useState<"notes" | "help">("help");
 
@@ -574,19 +594,29 @@ export default function LmsPlayerPage() {
   const [quizScore, setQuizScore] = useState<number | null>(null);
 
   // Lesson Type Resolution Flags
+  const hasRealVideo = !!(
+    selectedLesson?.videoUrl?.trim() &&
+    !selectedLesson.videoUrl.includes("dQw4w9WgXcQ") &&
+    getEmbedVideoUrl(selectedLesson.videoUrl)
+  );
   const isFolder = selectedLesson?.type === "folder" || (selectedLesson as any)?.category === "FOLDER";
   const isLive = !isFolder && (selectedLesson?.type === "live" || (selectedLesson as any)?.category === "LIVE");
-  const isVideo = !isFolder && !isLive && (selectedLesson?.type === "video" || (selectedLesson as any)?.category === "LECTURE");
-  const isQuiz = !isFolder && !isLive && (selectedLesson?.type === "quiz" || ((selectedLesson as any)?.questions?.length > 0 && selectedLesson?.type !== "assignment"));
+  const isVideo = !isFolder && !isLive && hasRealVideo && (selectedLesson?.type === "video" || (selectedLesson as any)?.category === "LECTURE");
+  const isQuiz = !isFolder && !isLive && !isVideo && (selectedLesson?.type === "quiz" || ((selectedLesson as any)?.questions?.length > 0 && selectedLesson?.type !== "assignment"));
   const isCodingTest =
     !isFolder &&
     !isLive &&
+    !isVideo &&
+    !isQuiz &&
     ((selectedLesson as any)?.type === "coding_test" ||
     (selectedLesson as any)?.type === "code" ||
     ((selectedLesson as any)?.category === "TEST" && (selectedLesson as any)?.type === "code"));
   const isSubjectiveOrVideoTest =
     !isFolder &&
     !isLive &&
+    !isVideo &&
+    !isQuiz &&
+    !isCodingTest &&
     ((selectedLesson as any)?.type === "subjective_test" ||
     (selectedLesson as any)?.type === "video_test" ||
     ((selectedLesson as any)?.category === "TEST" && ((selectedLesson as any)?.type === "video_test" || (selectedLesson as any)?.type === "subjective_test")));
@@ -596,7 +626,16 @@ export default function LmsPlayerPage() {
     !isVideo &&
     !isQuiz &&
     !isCodingTest &&
-    !isSubjectiveOrVideoTest;
+    !isSubjectiveOrVideoTest &&
+    ((selectedLesson as any)?.type === "assignment" || (selectedLesson as any)?.type === "lab");
+  const isReading =
+    !isFolder &&
+    !isLive &&
+    !isVideo &&
+    !isQuiz &&
+    !isCodingTest &&
+    !isSubjectiveOrVideoTest &&
+    !isAssignment;
 
   // Reset quiz state when switching lessons
   useEffect(() => {
@@ -994,6 +1033,11 @@ export default function LmsPlayerPage() {
     );
   }
 
+  // Invalid or foreign lesson id -> 404
+  if (!isPathwayLoading && queryLessonId && !hasMatchingLesson) {
+    return <NotFoundPage />;
+  }
+
   // -------------------------------------------------------------
   // VIEW 1: Course Overview (Connected Mobile-First Learning Flow)
   // -------------------------------------------------------------
@@ -1010,8 +1054,8 @@ export default function LmsPlayerPage() {
             {/* Top Navigation Row */}
             <div className="flex items-center justify-between gap-3 h-8">
               <button
-                onClick={() => navigate("/")}
-                aria-label="Back to Dashboard"
+                onClick={() => navigate("/enrolled")}
+                aria-label="Back to Courses"
                 className="p-1.5 -ml-1.5 rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
               >
                 <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
@@ -1092,64 +1136,53 @@ export default function LmsPlayerPage() {
               <div className="space-y-3.5">
                 {courseFlow.weekStats.map((ws) => {
                   const isCurrentWeek = ws.module.id === courseFlow.currentWeek?.id;
-                  const isOpen = openWeekId === ws.module.id;
+                  const isLocked = ws.isLocked;
 
                   return (
                     <div
                       key={ws.module.id}
-                      ref={(el) => {
-                        weekCardRefs.current[ws.module.id] = el;
-                        if (isCurrentWeek) currentWeekRef.current = el;
+                      data-testid="module-card"
+                      onClick={() => {
+                        if (!isLocked) {
+                          navigate(`/learn/${pathwayId}/module/${ws.module.id}`);
+                        }
                       }}
-                      style={{ scrollMarginTop: "calc(var(--nav-h, 4rem) + 128px)" }}
-                      className={`rounded-2xl border transition-all duration-150 overflow-hidden shadow-2xs ${
-                        isCurrentWeek
-                          ? "border-sky-500 dark:border-sky-500 ring-2 ring-sky-500/20 bg-white dark:bg-[#0B1120]"
+                      className={`rounded-2xl border p-4 sm:p-5 transition-all duration-150 overflow-hidden shadow-2xs ${
+                        isLocked
+                          ? "bg-slate-100/60 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 opacity-70 cursor-not-allowed"
+                          : isCurrentWeek
+                          ? "border-sky-500 dark:border-sky-500 ring-2 ring-sky-500/20 bg-white dark:bg-[#0B1120] hover:border-sky-400 cursor-pointer"
                           : ws.isCompleted
-                          ? "border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-[#070D18]/70 opacity-90"
-                          : "border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] hover:border-slate-300 dark:hover:border-slate-700"
+                          ? "border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-[#070D18]/70 hover:border-slate-300 dark:hover:border-slate-700 cursor-pointer"
+                          : "border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] hover:border-sky-400 dark:hover:border-sky-500/60 cursor-pointer"
                       }`}
                     >
-                      {/* Week Card Header (tappable button to toggle accordion) */}
-                      <button
-                        type="button"
-                        id={`week-header-${ws.module.id}`}
-                        aria-expanded={isOpen}
-                        aria-controls={`week-content-${ws.module.id}`}
-                        onClick={() => handleToggleWeek(ws.module.id)}
-                        className="w-full text-left p-4 sm:p-4.5 cursor-pointer flex items-center justify-between gap-3 group focus:outline-hidden focus-visible:ring-2 focus-visible:ring-sky-500 rounded-2xl transition-colors"
-                      >
-                        <div className="min-w-0 flex-1">
-                          {/* Title and Status Badge */}
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="min-w-0 flex-1 space-y-2">
+                          {/* Title and Badges */}
                           <div className="flex items-center gap-2 flex-wrap">
                             <h3
-                              className={`text-sm sm:text-base font-bold truncate transition-colors ${
+                              className={`text-sm sm:text-base font-bold truncate ${
                                 isCurrentWeek
                                   ? "text-sky-600 dark:text-sky-400 font-extrabold"
-                                  : "text-slate-900 dark:text-slate-100 group-hover:text-sky-500"
+                                  : "text-slate-900 dark:text-slate-100"
                               }`}
                             >
                               {ws.formattedTitle}
                             </h3>
 
-                            {/* Status Per Week (A2) */}
                             {ws.isCompleted ? (
-                              <CheckCircle2
-                                className="w-4 h-4 text-emerald-500 shrink-0"
-                                aria-label="Completed"
-                              />
-                            ) : ws.isLocked ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                                <span>Completed</span>
+                              </span>
+                            ) : isLocked ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                                 <Lock className="w-2.5 h-2.5" />
                                 <span>
                                   Locked
                                   {ws.module.unlockAt
-                                    ? ` · Unlocks ${new Date(
-                                        ws.module.unlockAt
-                                      ).toLocaleDateString(undefined, {
-                                        month: "short",
-                                        day: "numeric",
-                                      })}`
+                                    ? ` · Unlocks on ${formatIstDisplay(ws.module.unlockAt)}`
                                     : ""}
                                 </span>
                               </span>
@@ -1164,224 +1197,75 @@ export default function LmsPlayerPage() {
                             ) : null}
                           </div>
 
-                          {/* Mini Progress Bar and Done Count (A2) */}
-                          <div className="flex items-center gap-2 mt-1.5">
-                            <div className="w-16 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-sky-500 rounded-full transition-all"
-                                style={{ width: `${ws.progressPercent}%` }}
-                              />
+                          {/* Progress bar and count */}
+                          {!isLocked && ws.totalActivities > 0 && (
+                            <div className="flex items-center gap-3">
+                              <div className="w-24 sm:w-32 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-sky-500 rounded-full transition-all"
+                                  style={{ width: `${ws.progressPercent}%` }}
+                                />
+                              </div>
+                              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 font-mono">
+                                {ws.completedActivities}/{ws.totalActivities} activities done ({ws.progressPercent}%)
+                              </span>
                             </div>
-                            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                              {ws.completedActivities}/{ws.totalActivities} done
-                            </span>
-                          </div>
+                          )}
 
-                          {/* Consistent Meta Line (A2: "1 video · 2 quizzes · 1 lab · 1 live") */}
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
+                          {/* Meta Line */}
+                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                             <span>{ws.metaSummary}</span>
                             {ws.liveSession && (
                               <>
-                                <span className="text-slate-300 dark:text-slate-600">
-                                  {" "}
-                                  •{" "}
-                                </span>
+                                <span className="text-slate-300 dark:text-slate-600"> • </span>
                                 <span className="text-indigo-600 dark:text-indigo-400 font-medium">
                                   Live: {ws.liveSession.liveBadgeText}
                                 </span>
                               </>
                             )}
-                            {ws.estimatedTime && (
-                              <>
-                                <span className="text-slate-300 dark:text-slate-600">
-                                  {" "}
-                                  •{" "}
-                                </span>
-                                <span>{ws.estimatedTime}</span>
-                              </>
-                            )}
                           </p>
                         </div>
 
-                        {/* Expand / Collapse Indicator */}
-                        <div className="flex items-center gap-1.5 shrink-0 text-slate-400 group-hover:text-sky-500 transition-colors">
-                          <span className="text-xs font-semibold hidden sm:inline">
-                            {isOpen ? "Collapse" : "Details"}
-                          </span>
-                          <ChevronDown
-                            className={`w-4 h-4 transition-transform duration-250 ease-out ${
-                              isOpen ? "rotate-180 text-sky-500" : ""
-                            }`}
-                          />
-                        </div>
-                      </button>
-
-                      {/* Inline Expanded Items & Week Navigation (A3) with Grid Height Animation */}
-                      <div
-                        id={`week-content-${ws.module.id}`}
-                        role="region"
-                        aria-labelledby={`week-header-${ws.module.id}`}
-                        className={`grid transition-[grid-template-rows] duration-250 ease-out ${
-                          isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-                        }`}
-                      >
-                        <div className="overflow-hidden">
-                          <div className="border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 p-3 sm:p-4 space-y-2">
-                          <div className="space-y-1.5">
-                            {ws.flowLessons.map((item, idx) => {
-                              const itemStatus = getItemStatus(
-                                item,
-                                completedLessonIds,
-                                submissionsData || []
-                              );
-                              const actType = getActivityType(item);
-                              const isItemDone = itemStatus.isCompleted;
-                              const isItemInProgress = itemStatus.isInProgress;
-
-                              return (
-                                <div
-                                  key={item.id}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (item.isLocked || ws.isLocked) return;
-                                    setSelectedModule(ws.module);
-                                    setSelectedLesson(item);
-                                    setCurrentView("player");
-                                  }}
-                                  className={`group/item flex items-center justify-between gap-3 p-2.5 rounded-xl border text-xs transition-all ${
-                                    item.isLocked || ws.isLocked
-                                      ? "opacity-60 bg-slate-100 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 cursor-not-allowed"
-                                      : "bg-white dark:bg-[#0B1120] border-slate-200/80 dark:border-slate-800 hover:border-sky-400 dark:hover:border-sky-500 cursor-pointer shadow-2xs"
-                                  }`}
-                                >
-                                  {/* Left: Step, Status, Icon, Title */}
-                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                    {/* Status Icon */}
-                                    <div className="shrink-0">
-                                      {isItemDone ? (
-                                        <CheckCircle2
-                                          className="w-4 h-4 text-emerald-500"
-                                          aria-label="Completed"
-                                        />
-                                      ) : isItemInProgress ? (
-                                        <Clock
-                                          className="w-4 h-4 text-amber-500"
-                                          aria-label="In Progress"
-                                        />
-                                      ) : (
-                                        <Circle
-                                          className="w-4 h-4 text-slate-300 dark:text-slate-600"
-                                          aria-label="Not Started"
-                                        />
-                                      )}
-                                    </div>
-
-                                    {/* Type Icon */}
-                                    <div className="shrink-0 text-slate-500 group-hover/item:text-sky-500">
-                                      {actType === "video" ? (
-                                        <PlayCircle className="w-3.5 h-3.5 text-sky-500" />
-                                      ) : actType === "quiz" ? (
-                                        <FileQuestion className="w-3.5 h-3.5 text-amber-500" />
-                                      ) : actType === "lab" ? (
-                                        <Code2 className="w-3.5 h-3.5 text-emerald-500" />
-                                      ) : actType === "live" ? (
-                                        <VideoIcon className="w-3.5 h-3.5 text-indigo-500" />
-                                      ) : (
-                                        <BookOpen className="w-3.5 h-3.5 text-slate-400" />
-                                      )}
-                                    </div>
-
-                                    {/* Title */}
-                                    <span
-                                      className={`truncate font-medium ${
-                                        isItemDone
-                                          ? "text-slate-600 dark:text-slate-400 line-through decoration-slate-300 dark:decoration-slate-600"
-                                          : "text-slate-800 dark:text-slate-200 group-hover/item:text-sky-600 dark:group-hover/item:text-sky-400 font-semibold"
-                                      }`}
-                                    >
-                                      {cleanLessonTitle(item.title)}
-                                    </span>
-                                  </div>
-
-                                  {/* Right: Meta & Lock status */}
-                                  <div className="flex items-center gap-1.5 shrink-0 text-[11px] text-slate-400">
-                                    <span>
-                                      {getItemMeta(item, itemStatus)}
-                                    </span>
-                                    <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover/item:text-sky-500 group-hover/item:translate-x-0.5 transition-transform" />
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-
-                          {/* Open Week Link Button (A3) */}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedModule(ws.module);
-                              setCurrentView("chapter");
-                            }}
-                            className="w-full py-2 px-3 rounded-xl bg-sky-50 dark:bg-sky-950/40 hover:bg-sky-100 dark:hover:bg-sky-900/60 text-sky-700 dark:text-sky-300 font-bold text-xs flex items-center justify-center gap-1.5 border border-sky-200/60 dark:border-sky-800/60 transition-colors cursor-pointer mt-1"
-                          >
-                            <span>Open {ws.formattedTitle}</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </button>
+                        {/* Right: Lock icon or Chevron */}
+                        <div className="shrink-0 flex items-center">
+                          {isLocked ? (
+                            <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400">
+                              <Lock className="w-4 h-4" />
+                            </div>
+                          ) : (
+                            <div className="p-2 rounded-xl text-slate-400 group-hover:text-sky-500 transition-colors">
+                              <ChevronRight className="w-5 h-5 transition-transform" />
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
+                  );
                 })}
               </div>
             )}
           </div>
 
-        {/* Sticky Bottom Floating Bar (A4) */}
-        <div className="fixed sm:sticky bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 py-3 px-4 shadow-lg">
-          <div className="max-w-3xl lg:max-w-4xl mx-auto flex items-center justify-between gap-3">
-            {/* Direct Deep-Linking Sticky Action */}
-            {courseFlow.isCourseCompleted ? (
-              <div className="w-full flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Course Completed!</span>
-                </div>
-                {pathway?.certificateUrl && (
-                  <a
-                    href={pathway.certificateUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
-                  >
-                    <Award className="w-4 h-4" />
-                    <span>View Certificate</span>
-                  </a>
-                )}
+        {/* Certificate Bar (if course completed) */}
+        {courseFlow.isCourseCompleted && pathway?.certificateUrl && (
+          <div className="fixed sm:sticky bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 py-3 px-4 shadow-lg">
+            <div className="max-w-3xl lg:max-w-4xl mx-auto flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Course Completed!</span>
               </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  if (courseFlow.nextIncompleteItem && courseFlow.nextIncompleteWeek) {
-                    setSelectedModule(courseFlow.nextIncompleteWeek);
-                    setSelectedLesson(courseFlow.nextIncompleteItem);
-                    setCurrentView("player");
-                  } else if (modules[0]?.items?.[0]) {
-                    setSelectedModule(modules[0]);
-                    setSelectedLesson(modules[0].items[0]);
-                    setCurrentView("player");
-                  }
-                }}
-                className="w-full min-h-[44px] bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 active:from-sky-600 active:to-blue-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow-md shadow-sky-500/20 transition-all cursor-pointer flex items-center justify-center gap-2"
+              <a
+                href={pathway.certificateUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
               >
-                <span>{courseFlow.nextIncompleteLabel}</span>
-                <ChevronRight className="w-4 h-4 stroke-[2.2]" />
-              </button>
-            )}
+                <Award className="w-4 h-4" />
+                <span>View Certificate</span>
+              </a>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Milestones Modal & Author Studio Drawer */}
         <MilestonesModal
@@ -1405,6 +1289,10 @@ export default function LmsPlayerPage() {
   // VIEW 2: Chapter Details / Week Breakdown (Mobile-First Unisole Sky Theme)
   // -------------------------------------------------------------
   if (currentView === "chapter") {
+    if (selectedModule?.id) {
+      navigate(`/learn/${pathwayId}/module/${selectedModule.id}`, { replace: true });
+      return null;
+    }
     const currentModuleIndex = modules.findIndex((m) => m.id === selectedModule?.id);
     const prevModule = currentModuleIndex > 0 ? modules[currentModuleIndex - 1] : null;
     const nextModule =
@@ -1979,7 +1867,7 @@ export default function LmsPlayerPage() {
           <div className="bg-white dark:bg-[#0B1120] border-b border-slate-200/80 dark:border-sky-500/20 py-16">
             <div className="max-w-2xl mx-auto px-4 sm:px-6 text-center space-y-6">
               <button
-                onClick={() => setCurrentView("chapter")}
+                onClick={handleBackToModule}
                 className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white cursor-pointer px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] transition-all"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -2029,7 +1917,7 @@ export default function LmsPlayerPage() {
 
               <div className="pt-2">
                 <button
-                  onClick={() => setCurrentView("chapter")}
+                  onClick={handleBackToModule}
                   className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs shadow-md shadow-sky-500/20 cursor-pointer"
                 >
                   Explore Other Activities
@@ -2045,7 +1933,7 @@ export default function LmsPlayerPage() {
             <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 space-y-6">
               <div className="flex items-center justify-between">
                 <button
-                  onClick={() => setCurrentView("chapter")}
+                  onClick={handleBackToModule}
                   className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -2177,7 +2065,7 @@ export default function LmsPlayerPage() {
           <div className="bg-slate-50/70 dark:bg-[#0B1120] border-b border-slate-200/80 dark:border-sky-500/20 py-8">
             <div className="max-w-4xl mx-auto px-4 sm:px-6 space-y-4">
               <button
-                onClick={() => setCurrentView("chapter")}
+                onClick={handleBackToModule}
                 className="flex items-center gap-2 text-xs font-bold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-white cursor-pointer mb-2 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -2203,7 +2091,7 @@ export default function LmsPlayerPage() {
           <div className="bg-slate-50/70 dark:bg-[#0B1120] border-b border-slate-200/80 dark:border-sky-500/20 py-8">
             <div className="max-w-4xl mx-auto px-4 sm:px-6 space-y-4">
               <button
-                onClick={() => setCurrentView("chapter")}
+                onClick={handleBackToModule}
                 className="flex items-center gap-2 text-xs font-bold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-white cursor-pointer mb-2 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -2236,7 +2124,7 @@ export default function LmsPlayerPage() {
             <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 space-y-6">
               <div className="flex items-center justify-between">
                 <button
-                  onClick={() => setCurrentView("chapter")}
+                  onClick={handleBackToModule}
                   className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -2324,7 +2212,7 @@ export default function LmsPlayerPage() {
         )}
 
         {/* VIDEO PLAYER VIEW */}
-        {isVideo && (
+        {isVideo && hasRealVideo && (
           <div className="bg-slate-900 dark:bg-black w-full">
             <div className="max-w-4xl mx-auto sm:px-4 sm:pt-4">
               <div className="relative bg-slate-950 dark:bg-[#0B1120] border border-slate-800 dark:border-sky-500/20 w-full aspect-video sm:max-h-[480px] lg:max-h-[520px] sm:rounded-2xl overflow-hidden shadow-2xl flex flex-col">
@@ -2332,8 +2220,8 @@ export default function LmsPlayerPage() {
                 <div className="p-3 sm:p-4 flex items-center justify-between text-white bg-black/60 backdrop-blur-xs z-10 shrink-0">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <button
-                      onClick={() => setCurrentView("chapter")}
-                      aria-label="Back to Chapter Videos"
+                      onClick={handleBackToModule}
+                      aria-label="Back to Curriculum Module"
                       className="p-1.5 rounded-lg text-white/90 hover:text-white hover:bg-white/20 transition-colors cursor-pointer"
                     >
                       <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
@@ -2356,7 +2244,7 @@ export default function LmsPlayerPage() {
                   </div>
                 </div>
 
-                {/* Embedded YouTube Player (A4: lazy loading & mobile data preservation) */}
+                {/* Embedded YouTube Player (lazy loading & mobile data preservation) */}
                 <div className="flex-1 w-full h-full relative">
                   <iframe
                     src={getEmbedVideoUrl(selectedLesson?.videoUrl)}
@@ -2372,13 +2260,103 @@ export default function LmsPlayerPage() {
           </div>
         )}
 
+        {/* READING / TEXT / STUDY MATERIAL VIEW */}
+        {isReading && (
+          <div className="bg-white dark:bg-[#0B1120] border-b border-slate-200/80 dark:border-sky-500/20 py-8">
+            <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 space-y-6">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={handleBackToModule}
+                  className="flex items-center gap-2 text-xs font-bold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-white cursor-pointer transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Back to Curriculum Module</span>
+                </button>
+                <button
+                  onClick={() => markLessonComplete(selectedLesson.id)}
+                  className="text-[10px] font-bold px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+                >
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                  <span>{completedLessonIds.includes(selectedLesson.id) ? "Completed" : "Mark as Read"}</span>
+                </button>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 uppercase tracking-wider">
+                    Reading & Study Material
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    {selectedLesson.duration || "15 Mins"}
+                  </span>
+                </div>
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                  {cleanLessonTitle(selectedLesson.title)}
+                </h1>
+              </div>
+
+              {selectedLesson.description || selectedLesson.instructions ? (
+                <div className="p-6 rounded-2xl bg-slate-50/60 dark:bg-[#070A11] border border-slate-200/80 dark:border-slate-800/80 prose prose-slate dark:prose-invert max-w-none text-sm leading-relaxed">
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: renderMarkdownToHtml(selectedLesson.description || selectedLesson.instructions || ""),
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="p-8 rounded-2xl bg-slate-50/60 dark:bg-[#070A11] border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-2">
+                  <BookOpen className="w-8 h-8 text-slate-400 mx-auto" />
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    No video for this lesson
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Review the notes, syllabus, and supplementary materials for this activity.
+                  </p>
+                </div>
+              )}
+
+              {selectedLesson.attachments && selectedLesson.attachments.length > 0 && (
+                <div className="space-y-3 pt-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    Downloadable Resources ({selectedLesson.attachments.length})
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {selectedLesson.attachments.map((att: any) => (
+                      <a
+                        key={att.id || att.url}
+                        href={att.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#070A11] hover:border-sky-400 hover:shadow-xs transition-all group"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 pr-2">
+                          <div className="w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                            <FileText className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-sky-600">
+                              {att.name || "Attachment"}
+                            </p>
+                            <p className="text-[10px] text-slate-400 truncate">{att.size || "Download"}</p>
+                          </div>
+                        </div>
+                        <Download className="w-4 h-4 text-slate-400 group-hover:text-sky-600 shrink-0" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* INTERACTIVE QUIZ VIEW */}
         {isQuiz && (
           <div className="bg-white dark:bg-[#0B1120] border-b border-slate-200/80 dark:border-sky-500/20 py-8">
             <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 space-y-6">
               <div className="flex items-center justify-between">
                 <button
-                  onClick={() => setCurrentView("chapter")}
+                  onClick={handleBackToModule}
                   className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -2503,7 +2481,7 @@ export default function LmsPlayerPage() {
             <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-6 space-y-6">
               <div className="flex items-center justify-between">
                 <button
-                  onClick={() => setCurrentView("chapter")}
+                  onClick={handleBackToModule}
                   className="flex items-center gap-2 text-xs font-bold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-white cursor-pointer transition-colors"
                 >
                   <ArrowLeft className="w-4 h-4" />

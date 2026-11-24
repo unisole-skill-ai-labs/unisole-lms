@@ -12,6 +12,7 @@ export const routeLoaders = {
   enrolled: () => import("../pages/EnrolledCoursesPage"),
   activities: () => import("../pages/ActivitiesPage"),
   player: () => import("../pages/LmsPlayerPage"),
+  module: () => import("../pages/ModulePage"),
   login: () => import("../pages/LoginPage"),
   register: () => import("../pages/RegisterPage"),
   profile: () => import("../pages/ProfilePage"),
@@ -53,6 +54,8 @@ export function prefetchByPath(path: string): void {
       routeLoaders.pathwayDetail();
     } else if (cleanPath === "/enrolled" || cleanPath.startsWith("/courses")) {
       routeLoaders.enrolled();
+    } else if (cleanPath.includes("/module/")) {
+      routeLoaders.module();
     } else if (cleanPath.startsWith("/learn/") || cleanPath.startsWith("/player/")) {
       routeLoaders.player();
     } else if (cleanPath === "/activities") {

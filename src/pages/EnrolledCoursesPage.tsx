@@ -62,13 +62,11 @@ function CourseCard({ item, submissionsData }: CourseCardProps) {
     ? formatWeekTitle(courseFlow.currentWeek.title, courseFlow.currentWeekIndex || 0)
     : `Week ${currentWeekNum}`;
 
-  // Next destination link
-  const nextHref = nextItem
-    ? `/learn/${pathwayId}?module=${courseFlow.currentWeek?.id || ""}&lesson=${nextItem.id}`
-    : `/learn/${pathwayId}`;
+  // Next destination link - Always opens Course Overview
+  const nextHref = `/learn/${pathwayId}`;
 
   // Button label
-  const buttonLabel = courseFlow.nextIncompleteLabel || "Continue Course";
+  const buttonLabel = progressPercent > 0 ? "Continue Course" : "Start Course";
 
   const isAnalytics = (pathway.title || "").toLowerCase().includes("analytic") || (pathway.title || "").toLowerCase().includes("data");
   const isWeb = (pathway.title || "").toLowerCase().includes("web") || (pathway.title || "").toLowerCase().includes("full stack");
