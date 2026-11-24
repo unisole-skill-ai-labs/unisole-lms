@@ -176,18 +176,31 @@ export default function EnrolledCoursesPage() {
     skip: !isAuthenticated,
   });
 
-  // Filter strictly to enrolled pathways
+  // Filter strictly to enrolled pathways, normalize aliases, and deduplicate by canonical ID
   const displayCourses = useMemo(() => {
-    return myPathways.filter((item: any) => {
+    const seen = new Set<string>();
+    const list: any[] = [];
+    for (const item of myPathways) {
       const p = item.pathway || item;
-      return (
-        p?.slug === "cs-agentic" ||
-        p?.slug === "course1" ||
-        p?.id === "cs-agentic" ||
-        (p?.title && p.title.toLowerCase().includes("ai agent")) ||
-        p?.id
-      );
-    });
+      if (!p) continue;
+      const rawId = p.id || p.slug || "";
+      const canonId = (rawId === "course1" || p.slug === "course1") ? "cs-agentic" : rawId;
+      if (canonId && seen.has(canonId)) {
+        continue;
+      }
+      if (canonId) seen.add(canonId);
+      list.push({
+        ...item,
+        pathway: item.pathway
+          ? {
+              ...item.pathway,
+              id: canonId,
+              slug: item.pathway.slug === "course1" ? "cs-agentic" : item.pathway.slug,
+            }
+          : item.pathway,
+      });
+    }
+    return list;
   }, [myPathways]);
 
   const totalEnrolled = displayCourses.length;

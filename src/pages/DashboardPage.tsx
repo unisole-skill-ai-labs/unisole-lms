@@ -81,9 +81,22 @@ export default function DashboardPage() {
   } = useGetMyPathwaysQuery(undefined, { skip: !isAuthenticated });
 
   const enrolledCourses = useMemo(() => {
-    return myPathways
-      .map((item: any) => item.pathway || item)
-      .filter((p: any) => p && (p.title || p.name));
+    const seen = new Set<string>();
+    const list: any[] = [];
+    for (const item of myPathways) {
+      const p = item.pathway || item;
+      if (!p || (!p.title && !p.name)) continue;
+      const rawId = p.id || p.slug || "";
+      const canonId = (rawId === "course1" || p.slug === "course1") ? "cs-agentic" : rawId;
+      if (canonId && seen.has(canonId)) continue;
+      if (canonId) seen.add(canonId);
+      list.push({
+        ...p,
+        id: canonId,
+        slug: p.slug === "course1" ? "cs-agentic" : p.slug,
+      });
+    }
+    return list;
   }, [myPathways]);
 
   // Selected active program (defaults to first enrolled program or "cs-agentic")

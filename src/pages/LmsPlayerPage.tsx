@@ -96,8 +96,15 @@ import {
 } from "../utils/courseFlow";
 
 export default function LmsPlayerPage() {
-  const { pathwayId } = useParams();
+  const { pathwayId: rawPathwayId } = useParams();
+  const pathwayId = rawPathwayId === "course1" ? "cs-agentic" : rawPathwayId;
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (rawPathwayId === "course1") {
+      navigate(`/learn/cs-agentic${window.location.search}`, { replace: true });
+    }
+  }, [rawPathwayId, navigate]);
 
   // Active canonical curriculum fallback
   const canonical = useMemo(() => getCurriculum(pathwayId), [pathwayId]);

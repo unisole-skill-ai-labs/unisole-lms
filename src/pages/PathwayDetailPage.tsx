@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
@@ -26,8 +26,15 @@ import Spinner from "../components/ui/Spinner";
 import NotFoundPage from "./NotFoundPage";
 
 export default function PathwayDetailPage() {
-  const { slug } = useParams();
+  const { slug: rawSlug } = useParams();
+  const slug = rawSlug === "course1" ? "cs-agentic" : rawSlug;
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (rawSlug === "course1") {
+      navigate("/pathways/cs-agentic", { replace: true });
+    }
+  }, [rawSlug, navigate]);
   const { isAuthenticated } = useSelector((state: any) => state.auth);
 
   const { data: pathway, isLoading } = useGetPublicPathwayBySlugQuery(slug);

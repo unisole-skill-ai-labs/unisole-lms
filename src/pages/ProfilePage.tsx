@@ -70,10 +70,18 @@ export default function ProfilePage() {
   });
 
   const enrolledPathways = useMemo(() => {
-    return (myPathways || []).filter((item: any) => {
+    const seen = new Set<string>();
+    const list: any[] = [];
+    for (const item of myPathways || []) {
       const p = item.pathway || item;
-      return p && (p.id || p.slug || p.title);
-    });
+      if (!p || (!p.id && !p.slug && !p.title)) continue;
+      const rawId = p.id || p.slug || "";
+      const canonId = (rawId === "course1" || p.slug === "course1") ? "cs-agentic" : rawId;
+      if (canonId && seen.has(canonId)) continue;
+      if (canonId) seen.add(canonId);
+      list.push(item);
+    }
+    return list;
   }, [myPathways]);
 
   // Edit Modal State
