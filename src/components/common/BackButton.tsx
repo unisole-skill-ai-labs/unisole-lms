@@ -8,6 +8,7 @@ export interface BackButtonProps {
   label?: string;
   className?: string;
   variant?: "default" | "dark" | "pill";
+  compactOnMobile?: boolean;
 }
 
 export default function BackButton({
@@ -16,6 +17,7 @@ export default function BackButton({
   label = "Back to course",
   className = "",
   variant = "default",
+  compactOnMobile = false,
 }: BackButtonProps) {
   const navigate = useNavigate();
 
@@ -50,7 +52,16 @@ export default function BackButton({
       className={`${baseStyles} ${variants[variant]} ${className}`}
     >
       <ArrowLeft className="w-4 h-4 stroke-[2.2] shrink-0" />
-      {label && <span className="truncate">{label}</span>}
+      {label && (
+        compactOnMobile ? (
+          <>
+            <span className="sm:hidden font-bold">Back</span>
+            <span className="hidden sm:inline truncate">{label}</span>
+          </>
+        ) : (
+          <span className="truncate">{label}</span>
+        )
+      )}
     </button>
   );
 }

@@ -104,7 +104,7 @@ export default function Header() {
                 aria-label="Open learner navigation drawer"
                 aria-controls="learner-navigation-drawer"
                 aria-expanded={drawerOpen}
-                className="p-2 -ml-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center -ml-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
               >
                 <Menu className="w-5 h-5 stroke-[2]" />
               </button>
@@ -119,7 +119,7 @@ export default function Header() {
                   <span className="font-extrabold text-base sm:text-lg text-zinc-900 dark:text-zinc-100 tracking-tight leading-none">
                     Unisole <span className="text-blue-600 dark:text-blue-400">LMS</span>
                   </span>
-                  <span className="text-[9px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mt-0.5 hidden xs:block">
+                  <span className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mt-0.5 hidden xs:block">
                     Skill AI Labs
                   </span>
                 </div>
@@ -151,19 +151,19 @@ export default function Header() {
             </div>
 
             {/* Right Controls: Notifications Bell, Theme Toggle, Auth */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               {/* Notifications Bell Icon */}
               {isAuthenticated && (
                 <Link
                   to="/notifications"
                   {...getPrefetchHandlers("/notifications")}
                   aria-label="Notifications"
-                  className="relative p-2 rounded-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  className="relative min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                   title="Notifications"
                 >
                   <Bell className="w-4 h-4" />
                   {unreadCount > 0 && (
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-zinc-950" />
+                    <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-zinc-950" />
                   )}
                 </Link>
               )}
@@ -172,7 +172,7 @@ export default function Header() {
               <button
                 onClick={toggleTheme}
                 aria-label="Toggle Theme"
-                className="p-2 rounded-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
               >
                 {theme === "dark" ? (
                   <Sun className="w-4 h-4 text-amber-400" />
@@ -186,7 +186,7 @@ export default function Header() {
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setProfileOpen((prev) => !prev)}
-                    className="flex items-center p-0.5 rounded-full hover:ring-2 hover:ring-blue-500/30 transition-all cursor-pointer"
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center p-0.5 rounded-full hover:ring-2 hover:ring-blue-500/30 transition-all cursor-pointer"
                     aria-label="User Profile Menu"
                   >
                     <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-sky-500 flex items-center justify-center text-white text-xs font-bold shadow-xs overflow-hidden border border-zinc-200/80 dark:border-zinc-700">

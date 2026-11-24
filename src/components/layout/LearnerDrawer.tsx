@@ -79,17 +79,20 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
     if (isOpen) {
       const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
       document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
       if (scrollBarWidth > 0) {
         document.body.style.paddingRight = `${scrollBarWidth}px`;
       }
     } else {
-      document.body.style.overflow = "unset";
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
       document.body.style.paddingRight = "0px";
       setCohortDropdownOpen(false);
       setConfirmSignOut(false);
     }
     return () => {
-      document.body.style.overflow = "unset";
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
       document.body.style.paddingRight = "0px";
     };
   }, [isOpen]);
@@ -289,7 +292,7 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
           onTouchEnd={handleTouchEnd}
           onTransitionEnd={() => setIsTransitioning(false)}
           aria-label="Learner Navigation Drawer"
-          className={`fixed inset-y-0 left-0 z-50 w-[300px] sm:w-[330px] max-w-[85vw] bg-white dark:bg-[#121622] text-slate-900 dark:text-slate-100 shadow-xl flex flex-col border-r border-slate-200/80 dark:border-slate-800/80 select-none overflow-hidden transform-gpu ${
+          className={`fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[320px] h-[100dvh] pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] bg-white dark:bg-[#121622] text-slate-900 dark:text-slate-100 shadow-xl flex flex-col border-r border-slate-200/80 dark:border-slate-800/80 select-none overflow-hidden transform-gpu ${
             isTransitioning ? "will-change-transform" : ""
           } transition-transform duration-300 ease-drawer ${
             isOpen ? "translate-x-0" : "-translate-x-full"
@@ -307,7 +310,7 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
                 <span className="font-extrabold text-base tracking-tight leading-none text-slate-900 dark:text-white">
                   Unisole <span className="text-blue-600 dark:text-blue-400">LMS</span>
                 </span>
-                <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-0.5">
+                <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-0.5">
                   Skill AI Labs
                 </span>
               </div>
@@ -317,7 +320,7 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
             <button
               onClick={onClose}
               aria-label="Close navigation"
-              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5 stroke-[2]" />
             </button>

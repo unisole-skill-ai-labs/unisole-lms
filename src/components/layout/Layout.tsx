@@ -16,7 +16,7 @@ export default function Layout() {
   const isPlayer = pathname.startsWith("/learn/") || pathname.startsWith("/player/");
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground antialiased transition-colors duration-200">
+    <div className="min-h-[100dvh] flex flex-col bg-background text-foreground antialiased transition-colors duration-200">
       <Header />
       <main className="flex-1 flex flex-col">
         <ChunkErrorBoundary>
