@@ -61,7 +61,7 @@ export default function SupportPage() {
           <button
             onClick={() => navigate("/")}
             aria-label="Back to Dashboard"
-            className="p-2 -ml-2 rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/60 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="p-2 -ml-2 rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/60 dark:hover:bg-zinc-800 transition-colors cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
             <ArrowLeft className="w-5 h-5 stroke-[2]" />
           </button>

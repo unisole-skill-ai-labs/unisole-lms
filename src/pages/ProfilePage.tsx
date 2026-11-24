@@ -203,7 +203,7 @@ export default function ProfilePage() {
             </span>
             <button
               onClick={() => openEdit("name")}
-              className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline cursor-pointer"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline cursor-pointer"
             >
               Edit
             </button>
@@ -227,7 +227,7 @@ export default function ProfilePage() {
               </div>
               <button
                 onClick={() => openEdit("email")}
-                className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline shrink-0 cursor-pointer"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-end text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline shrink-0 cursor-pointer"
               >
                 {hasRealEmail ? "Edit" : "Add"}
               </button>
@@ -243,7 +243,7 @@ export default function ProfilePage() {
               </div>
               <button
                 onClick={() => openEdit("phone")}
-                className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline shrink-0 cursor-pointer"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-end text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline shrink-0 cursor-pointer"
               >
                 Edit
               </button>
@@ -259,7 +259,7 @@ export default function ProfilePage() {
               </div>
               <button
                 onClick={() => openEdit("timezone")}
-                className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline shrink-0 cursor-pointer"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-end text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline shrink-0 cursor-pointer"
               >
                 Edit
               </button>
@@ -270,7 +270,7 @@ export default function ProfilePage() {
           <div className="pt-2">
             <button
               onClick={() => setActiveModal("resetPassword")}
-              className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline cursor-pointer"
+              className="min-h-[44px] flex items-center text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline cursor-pointer"
             >
               Reset Password
             </button>

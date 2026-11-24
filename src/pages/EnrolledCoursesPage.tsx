@@ -139,7 +139,7 @@ function CourseCard({ item, submissionsData }: CourseCardProps) {
         <Link
           to={`/learn/${pathwayId}`}
           {...getPrefetchHandlers(`/learn/${pathwayId}`)}
-          className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 flex items-center justify-center sm:justify-start gap-1 py-1"
+          className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 flex items-center justify-center sm:justify-start gap-1 py-1 min-h-[44px]"
         >
           <span>Curriculum Overview</span>
           <ArrowRight className="w-3.5 h-3.5" />
@@ -234,7 +234,7 @@ export default function EnrolledCoursesPage() {
               <button
                 key={filter}
                 onClick={() => setFilterState(filter)}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                className={`min-h-[44px] flex items-center justify-center px-3.5 py-1 rounded-lg text-xs font-bold transition-all ${
                   filterState === filter
                     ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-xs"
                     : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"

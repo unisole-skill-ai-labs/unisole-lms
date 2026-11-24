@@ -572,7 +572,7 @@ export default function DashboardPage() {
                       );
                     });
                   }}
-                  className="w-full min-h-[40px] py-2.5 px-4 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                  className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
                 >
                   <span>Resume last lesson: {cleanLessonTitle(resumeCandidate.title)}</span>
                   <Play className="w-3.5 h-3.5 fill-current text-blue-600 dark:text-blue-400" />
