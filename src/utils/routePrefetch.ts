@@ -21,6 +21,7 @@ export const routeLoaders = {
   notifications: () => import("../pages/NotificationsPage"),
   support: () => import("../pages/SupportPage"),
   notFound: () => import("../pages/NotFoundPage"),
+  sso: () => import("../pages/SsoExchangePage"),
 
   // Admin & Mentor Studio
   adminLayout: () => import("../components/layout/AdminLayout"),

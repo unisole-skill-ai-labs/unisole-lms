@@ -87,7 +87,12 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
   const collegeOptions = serverColleges.length > 0 ? serverColleges : DEFAULT_COLLEGES;
   const branchOptions = serverBranches.length > 0 ? serverBranches : DEFAULT_BRANCHES;
 
-  const [errorMsg, setErrorMsg] = useState("");
+  const queryParams = new URLSearchParams(location.search);
+  const initialError =
+    queryParams.get("error") === "session_expired"
+      ? "Session expired, please log in"
+      : queryParams.get("message") || (location.state as any)?.error || "";
+  const [errorMsg, setErrorMsg] = useState(initialError);
 
   const [checkUserMutation, { isLoading: isCheckingUser }] = useCheckUserMutation();
   const [loginMutation, { isLoading: isLoggingIn }] = useLoginMutation();

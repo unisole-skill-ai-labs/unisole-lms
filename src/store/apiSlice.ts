@@ -146,6 +146,22 @@ export const apiSlice = createApi({
       },
       invalidatesTags: ["User", "Enrollment", "Pathway"],
     }),
+    exchangeSsoCode: builder.mutation({
+      query: (body: { code: string }) => ({
+        url: "/api/auth/sso/exchange",
+        method: "POST",
+        body,
+      }),
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(setCredentials(data));
+        } catch {
+          // Handled in component
+        }
+      },
+      invalidatesTags: ["User", "Enrollment", "Pathway", "DashboardSummary"],
+    }),
     getMe: builder.query({
       query: () => "/api/auth/me",
       providesTags: ["User"],
@@ -643,6 +659,7 @@ export const {
   useAdminLoginMutation,
   useSendOtpMutation,
   useVerifyOtpMutation,
+  useExchangeSsoCodeMutation,
   useGetMeQuery,
   useGetPublicPathwaysQuery,
   useGetPublicPathwayBySlugQuery,
