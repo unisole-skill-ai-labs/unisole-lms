@@ -25,7 +25,7 @@ export default function Layout() {
           </Suspense>
         </ChunkErrorBoundary>
       </main>
-      {!isPlayer && <Footer />}
+      <Footer />
       {!isPlayer && <MobileNav />}
     </div>
   );
