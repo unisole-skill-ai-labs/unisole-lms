@@ -160,7 +160,13 @@ export default function DashboardPage() {
 
   // Shared Course Flow computation (Single source of truth)
   const modules = useMemo(() => {
-    const rawModules = pathwayContent?.courses?.flatMap((c: any) => c.modules || []) || [];
+    const allModules = pathwayContent?.courses?.flatMap((c: any) => c.modules || []) || [];
+    const rawModules = allModules
+      .filter((m: any) => m && m.status === "PUBLISHED" && m.isActive !== false && !m.title?.toLowerCase().includes("intro to ai"))
+      .map((m: any) => ({
+        ...m,
+        lessons: (m.lessons || []).filter((l: any) => l && l.status === "PUBLISHED" && l.isActive !== false),
+      }));
     if (rawModules.length > 0) return rawModules;
     if (allowCurriculumFallback && canonical.modules && canonical.modules.length > 0) {
       return canonical.modules;

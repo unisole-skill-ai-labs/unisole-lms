@@ -148,7 +148,7 @@ export default function LmsPlayerPage() {
 
     if (validCourseModules.length > 0) {
       return validCourseModules.map((m: any, idx: number) => {
-        const backendLessons = m.lessons || [];
+        const backendLessons = (m.lessons || []).filter((l: any) => l && l.status === "PUBLISHED" && l.isActive !== false);
         const liveCount = backendLessons.filter(
           (l: any) =>
             l.curriculumMode === "LIVE" ||
