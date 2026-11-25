@@ -19,6 +19,7 @@ import {
   formatWeekTitle,
 } from "../utils/courseFlow";
 import { cleanLessonTitle } from "../utils/formatContent";
+import { filterVisibleModules, isPublishedVisible } from "../utils/curriculumVisibility";
 
 interface CourseCardProps {
   item: any;
@@ -33,6 +34,7 @@ function CourseCard({ item, submissionsData }: CourseCardProps) {
     { pathwayId, summary: true },
     {
       skip: !pathwayId,
+      refetchOnMountOrArgChange: true,
     }
   );
   const { data: progressData } = useGetStudentProgressQuery(pathwayId, {
@@ -40,8 +42,11 @@ function CourseCard({ item, submissionsData }: CourseCardProps) {
   });
 
   const modules = useMemo(() => {
-    return pathwayContent?.courses?.[0]?.modules || [];
-  }, [pathwayContent]);
+    return filterVisibleModules(pathwayContent?.courses || [], pathwayId).map((m: any) => ({
+      ...m,
+      lessons: (m.lessons || []).filter(isPublishedVisible),
+    }));
+  }, [pathwayContent, pathwayId]);
 
   const completedIdsArray: string[] = useMemo(() => {
     return Array.from(new Set((progressData?.completedLessonIds || []) as string[]));
