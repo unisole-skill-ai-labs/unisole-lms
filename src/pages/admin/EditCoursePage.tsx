@@ -772,12 +772,12 @@ export default function EditCoursePage() {
 
         case "LECTURE_VIDEO":
           title = customTitle || "Lecture Video";
-          videoUrl = "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RDdQw4w9WgXcQ&start_radio=1";
+          videoUrl = "";
           payloadContent = {
             type: "VIDEO",
             category: "LECTURE",
             curriculumMode: "LECTURE",
-            videoUrl,
+            videoUrl: "",
             isFreePreview: false,
             contentMarkdown: "Watch the lecture video end-to-end and prepare study notes.",
           };
@@ -1467,6 +1467,7 @@ export default function EditCoursePage() {
                         placeholder="https://youtu.be/..."
                         className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 font-mono"
                       />
+                      <p className="text-[10px] text-slate-400 mt-1">Paste a video link</p>
                     </div>
                     <div>
                       <label className="block text-[11px] font-semibold text-slate-400 mb-1">
