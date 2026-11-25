@@ -94,7 +94,6 @@ export default function AdminCoursesPage() {
   // Filter & Search states (debounced 250ms)
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "PUBLISHED" | "DRAFT">("ALL");
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -135,11 +134,11 @@ export default function AdminCoursesPage() {
   // Confirmation dialogs
   const [actionConfirmModal, setActionConfirmModal] = useState<{
     open: boolean;
-    type: "UNPUBLISH" | "PUBLISH" | "DELETE";
+    type: "DELETE";
     course: CourseCardData | null;
   }>({
     open: false,
-    type: "UNPUBLISH",
+    type: "DELETE",
     course: null,
   });
 
@@ -213,18 +212,12 @@ export default function AdminCoursesPage() {
     };
   });
 
-  // Filter tabs count
-  const publishedCount = courses.filter((c) => c.status === "PUBLISHED").length;
-  const draftCount = courses.filter((c) => c.status === "DRAFT").length;
-
   const filteredCourses = courses.filter((c) => {
     const matchesSearch =
       c.title.toLowerCase().includes(search.toLowerCase()) ||
       c.slug.toLowerCase().includes(search.toLowerCase()) ||
       (c.shortDescription && c.shortDescription.toLowerCase().includes(search.toLowerCase()));
-    const matchesStatus =
-      statusFilter === "ALL" ? true : c.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    return matchesSearch;
   });
 
   // Format date helper
@@ -266,14 +259,13 @@ export default function AdminCoursesPage() {
         title,
         slug,
         shortDescription,
-        status: "DRAFT",
       }).unwrap();
 
       setTitle("");
       setSlug("");
       setShortDescription("");
       setShowCreateModal(false);
-      showToast("Course created successfully as Draft.");
+      showToast("Course created successfully.");
       refetch();
     } catch (err: any) {
       setFormError(err?.data?.error || "Failed to create course. Please try again.");
@@ -449,25 +441,13 @@ export default function AdminCoursesPage() {
     setActiveMenuCourseId(null);
   };
 
-  // Execute Destructive Action (Publish, Unpublish, Delete)
+  // Execute Destructive Action (Delete)
   const handleConfirmAction = async () => {
     const { type, course } = actionConfirmModal;
     if (!course) return;
 
     try {
-      if (type === "UNPUBLISH") {
-        await updateCourse({
-          id: course.id,
-          body: { status: "DRAFT" },
-        }).unwrap();
-        showToast(`Course "${course.title}" unpublished (set to Draft).`);
-      } else if (type === "PUBLISH") {
-        await updateCourse({
-          id: course.id,
-          body: { status: "PUBLISHED" },
-        }).unwrap();
-        showToast(`Course "${course.title}" is now Published to learners.`);
-      } else if (type === "DELETE") {
+      if (type === "DELETE") {
         await deleteCourse(course.id).unwrap();
         showToast(`Course "${course.title}" has been deleted.`);
       }
@@ -475,7 +455,7 @@ export default function AdminCoursesPage() {
     } catch (err: any) {
       showToast(err?.data?.error || `Action ${type} failed. Please try again.`);
     } finally {
-      setActionConfirmModal({ open: false, type: "UNPUBLISH", course: null });
+      setActionConfirmModal({ open: false, type: "DELETE", course: null });
     }
   };
 
@@ -563,40 +543,6 @@ export default function AdminCoursesPage() {
             </button>
           )}
         </div>
-
-        {/* Filter Pill Switcher */}
-        <div className="flex items-center gap-1 bg-slate-100/80 dark:bg-[#0B1120] p-1 rounded-xl border border-slate-200/80 dark:border-slate-800/80 self-start sm:self-auto">
-          <button
-            onClick={() => setStatusFilter("ALL")}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-              statusFilter === "ALL"
-                ? "bg-white dark:bg-sky-500/20 text-sky-600 dark:text-sky-300 font-bold shadow-2xs"
-                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white"
-            }`}
-          >
-            All ({courses.length})
-          </button>
-          <button
-            onClick={() => setStatusFilter("PUBLISHED")}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-              statusFilter === "PUBLISHED"
-                ? "bg-white dark:bg-sky-500/20 text-sky-600 dark:text-sky-300 font-bold shadow-2xs"
-                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white"
-            }`}
-          >
-            Published ({publishedCount})
-          </button>
-          <button
-            onClick={() => setStatusFilter("DRAFT")}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-              statusFilter === "DRAFT"
-                ? "bg-white dark:bg-sky-500/20 text-sky-600 dark:text-sky-300 font-bold shadow-2xs"
-                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white"
-            }`}
-          >
-            Drafts ({draftCount})
-          </button>
-        </div>
       </div>
 
       {/* Loading Skeleton */}
@@ -661,12 +607,12 @@ export default function AdminCoursesPage() {
           {search ? (
             <button
               onClick={() => {
+                setSearchInput("");
                 setSearch("");
-                setStatusFilter("ALL");
               }}
               className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/40 hover:bg-sky-100 rounded-xl border border-sky-200/60 dark:border-sky-800/60 transition-all cursor-pointer"
             >
-              Clear Search & Filters
+              Clear Search
             </button>
           ) : (
             <div className="flex items-center justify-center gap-3">
@@ -789,39 +735,6 @@ export default function AdminCoursesPage() {
 
                           <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
 
-                          {/* Publish / Unpublish Toggle */}
-                          {course.status === "PUBLISHED" ? (
-                            <button
-                              onClick={() => {
-                                setActiveMenuCourseId(null);
-                                setActionConfirmModal({
-                                  open: true,
-                                  type: "UNPUBLISH",
-                                  course,
-                                });
-                              }}
-                              className="w-full flex items-center gap-2.5 px-3.5 py-2 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors text-left cursor-pointer"
-                            >
-                              <AlertTriangle className="w-3.5 h-3.5" />
-                              <span>Unpublish (to Draft)</span>
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                setActiveMenuCourseId(null);
-                                setActionConfirmModal({
-                                  open: true,
-                                  type: "PUBLISH",
-                                  course,
-                                });
-                              }}
-                              className="w-full flex items-center gap-2.5 px-3.5 py-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors text-left cursor-pointer"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Publish Course</span>
-                            </button>
-                          )}
-
                           {/* Delete Course (Admin only) */}
                           {isAdmin && (
                             <button
@@ -845,23 +758,13 @@ export default function AdminCoursesPage() {
                   </div>
 
                   {/* Badges Row */}
-                  <div className="flex items-center gap-2 mt-3">
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        course.status === "PUBLISHED"
-                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                          : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-                      }`}
-                    >
-                      {course.status === "PUBLISHED" ? "Published" : "Draft"}
-                    </span>
-
-                    {hasUnsavedChanges && (
+                  {hasUnsavedChanges && (
+                    <div className="flex items-center gap-2 mt-3">
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 animate-pulse">
                         Unsaved changes
                       </span>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   {/* Course Summary */}
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-2.5 line-clamp-2 leading-relaxed">
@@ -1315,21 +1218,11 @@ export default function AdminCoursesPage() {
                     : "bg-emerald-500/10 text-emerald-500"
                 }`}
               >
-                {actionConfirmModal.type === "DELETE" ? (
-                  <Trash2 className="w-5 h-5" />
-                ) : actionConfirmModal.type === "UNPUBLISH" ? (
-                  <AlertTriangle className="w-5 h-5" />
-                ) : (
-                  <CheckCircle2 className="w-5 h-5" />
-                )}
+                <Trash2 className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                  {actionConfirmModal.type === "DELETE"
-                    ? "Delete Course"
-                    : actionConfirmModal.type === "UNPUBLISH"
-                    ? "Unpublish Course"
-                    : "Publish Course"}
+                  Delete Course
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   {actionConfirmModal.course.title}
@@ -1338,18 +1231,14 @@ export default function AdminCoursesPage() {
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              {actionConfirmModal.type === "DELETE"
-                ? `Are you sure you want to permanently delete "${actionConfirmModal.course.title}"? All attached curriculum modules and lesson definitions will be removed.`
-                : actionConfirmModal.type === "UNPUBLISH"
-                ? `Are you sure you want to unpublish "${actionConfirmModal.course.title}"? The course will be moved to Draft status and hidden from prospective students.`
-                : `Are you sure you want to publish "${actionConfirmModal.course.title}"? Learners will immediately be able to view and access active modules.`}
+              {`Are you sure you want to permanently delete "${actionConfirmModal.course.title}"? All attached curriculum modules and lesson definitions will be removed.`}
             </p>
 
             <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() =>
-                  setActionConfirmModal({ open: false, type: "UNPUBLISH", course: null })
+                  setActionConfirmModal({ open: false, type: "DELETE", course: null })
                 }
                 className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
               >
@@ -1359,19 +1248,9 @@ export default function AdminCoursesPage() {
                 type="button"
                 onClick={handleConfirmAction}
                 disabled={isUpdating || isDeleting}
-                className={`px-4 py-2 text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer ${
-                  actionConfirmModal.type === "DELETE"
-                    ? "bg-rose-500 hover:bg-rose-600 text-white"
-                    : actionConfirmModal.type === "UNPUBLISH"
-                    ? "bg-amber-500 hover:bg-amber-600 text-white"
-                    : "bg-sky-400 hover:bg-sky-300 text-slate-950"
-                }`}
+                className="px-4 py-2 text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer bg-rose-500 hover:bg-rose-600 text-white"
               >
-                {actionConfirmModal.type === "DELETE"
-                  ? "Delete Course"
-                  : actionConfirmModal.type === "UNPUBLISH"
-                  ? "Unpublish"
-                  : "Publish"}
+                Delete Course
               </button>
             </div>
           </div>

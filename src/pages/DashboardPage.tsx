@@ -24,7 +24,7 @@ import { formatIstDisplay } from "../utils/timezone";
 import {
   allowDevCurriculumFallback,
   filterVisibleModules,
-  isPublishedVisible,
+  isStudentVisible,
 } from "../utils/curriculumVisibility";
 import { getCurriculum } from "../constants/curriculumData";
 import {
@@ -163,7 +163,7 @@ export default function DashboardPage() {
   const modules = useMemo(() => {
     const rawModules = filterVisibleModules(pathwayContent?.courses || [], currentProgramId).map((m: any) => ({
       ...m,
-      lessons: (m.lessons || []).filter(isPublishedVisible),
+      lessons: (m.lessons || []).filter(isStudentVisible),
     }));
     if (rawModules.length > 0) return rawModules;
     if (allowCurriculumFallback && canonical.modules && canonical.modules.length > 0) {
@@ -204,7 +204,7 @@ export default function DashboardPage() {
     );
     if (!belongsToCourse) return false;
     if (resumeCandidate.isLocked || resumeWeek.isLocked) return false;
-    if ((resumeCandidate as any).status === "ARCHIVED" || (resumeCandidate as any).isActive === false) return false;
+    if (!isStudentVisible(resumeCandidate)) return false;
     return true;
   }, [resumeCandidate, resumeWeek, courseFlow.completedActivities, targetWeekProgressPercent, modules]);
 

@@ -1,5 +1,5 @@
-export function isPublishedVisible(entity: any): boolean {
-  return Boolean(entity && entity.status === "PUBLISHED" && entity.isActive !== false);
+export function isStudentVisible(entity: any): boolean {
+  return Boolean(entity && entity.isActive !== false && !entity.deletedAt);
 }
 
 /**
@@ -30,7 +30,7 @@ export function filterVisibleModules(courses: any[], pathwayId?: string): any[] 
     (m: any) =>
       m &&
       m.title &&
-      isPublishedVisible(m) &&
+      isStudentVisible(m) &&
       !m.title.toLowerCase().includes("intro to ai")
   );
 }

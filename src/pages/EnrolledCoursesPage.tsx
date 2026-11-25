@@ -19,7 +19,7 @@ import {
   formatWeekTitle,
 } from "../utils/courseFlow";
 import { cleanLessonTitle } from "../utils/formatContent";
-import { filterVisibleModules, isPublishedVisible } from "../utils/curriculumVisibility";
+import { filterVisibleModules, isStudentVisible } from "../utils/curriculumVisibility";
 
 interface CourseCardProps {
   item: any;
@@ -44,7 +44,7 @@ function CourseCard({ item, submissionsData }: CourseCardProps) {
   const modules = useMemo(() => {
     return filterVisibleModules(pathwayContent?.courses || [], pathwayId).map((m: any) => ({
       ...m,
-      lessons: (m.lessons || []).filter(isPublishedVisible),
+      lessons: (m.lessons || []).filter(isStudentVisible),
     }));
   }, [pathwayContent, pathwayId]);
 
