@@ -211,11 +211,6 @@ export default function LessonViewer({
                 {lesson.durationMinutes} minutes
               </span>
             )}
-            {parsedContent.isFreePreview && (
-              <Badge variant="default" size="sm">
-                Free Preview
-              </Badge>
-            )}
           </div>
 
           <h1 className="text-xl sm:text-2xl font-extrabold text-zinc-900 dark:text-zinc-100 leading-tight">

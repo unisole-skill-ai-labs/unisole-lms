@@ -50,7 +50,6 @@ import {
   Unlock,
   Edit3,
   Calendar,
-  Archive,
 } from "lucide-react";
 import {
   useGetAdminCourseByIdQuery,
@@ -73,8 +72,7 @@ import {
   useAssignMentorMutation,
   useUnassignMentorMutation,
 } from "../../store/apiSlice";
-import { useAutosave } from "../../utils/useAutosave";
-import { LessonType, ContentStatus, QuizQuestion } from "../../types";
+import { LessonType, QuizQuestion } from "../../types";
 import RichEditor from "../../components/ui/RichEditor";
 import { renderMarkdownToHtml } from "../../utils/formatContent";
 import {
@@ -203,16 +201,18 @@ export default function EditCoursePage() {
   const [newModuleUnlockAt, setNewModuleUnlockAt] = useState("");
   const [newModuleLockAt, setNewModuleLockAt] = useState("");
   const [showAddModule, setShowAddModule] = useState(false);
-  const [showArchivedModules, setShowArchivedModules] = useState(false);
   const [newLessonTitle, setNewLessonTitle] = useState("");
   const [addingLessonForModuleId, setAddingLessonForModuleId] = useState<string | null>(null);
+  const [pendingNewLessons, setPendingNewLessons] = useState<any[]>([]);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [savedSnapshotJson, setSavedSnapshotJson] = useState<string>("");
+  const needsBaselineSyncRef = useRef<string | null>(null);
+  const lastPopulatedKeyRef = useRef<string | null>(null);
 
   // Active Lesson Form State
   const [lessonTitle, setLessonTitle] = useState("");
-  const [lessonStatus, setLessonStatus] = useState<ContentStatus>("DRAFT");
   const [lessonUnlockAt, setLessonUnlockAt] = useState("");
   const [lessonLockAt, setLessonLockAt] = useState("");
-  const [isFreePreview, setIsFreePreview] = useState(false);
   const [curriculumMode, setCurriculumMode] = useState<"LECTURE" | "PRACTICE" | "TEST" | "FOLDER">("LECTURE");
   const [practiceType, setPracticeType] = useState<"MCQ" | "PROJECT">("MCQ");
   const [testType, setTestType] = useState<"CODING_TEST" | "SUBJECTIVE_TEST" | "VIDEO_TEST" | "PROJECT">("CODING_TEST");
@@ -276,19 +276,33 @@ export default function EditCoursePage() {
   const [newAttachmentUrl, setNewAttachmentUrl] = useState("");
   const [showAddAttachment, setShowAddAttachment] = useState(false);
 
-  // Fetch full details of active lesson
+  // Fetch full details of active lesson (skip for unsaved local items)
+  const pendingLesson = useMemo(
+    () => pendingNewLessons.find((l) => l.id === activeLessonId) || null,
+    [pendingNewLessons, activeLessonId]
+  );
   const { data: activeLessonData, refetch: refetchActiveLesson } = useGetAdminLessonByIdQuery(
     activeLessonId || "",
-    { skip: !activeLessonId }
+    { skip: !activeLessonId || activeLessonId.startsWith("unsaved_") }
   );
 
-  // Find fallback lesson if not in DB
-  // Populate editor when active lesson changes (from backend)
+  // Populate editor when active lesson changes (from backend or pending local item)
   useEffect(() => {
-    const dataToUse = activeLessonData;
-    if (dataToUse) {
+    if (!activeLessonId) {
+      lastPopulatedKeyRef.current = null;
+      return;
+    }
+    const dataToUse = activeLessonId.startsWith("unsaved_") ? pendingLesson : activeLessonData;
+    if (dataToUse && lastPopulatedKeyRef.current !== activeLessonId) {
+      lastPopulatedKeyRef.current = activeLessonId;
+      if (activeLessonId.startsWith("unsaved_")) {
+        needsBaselineSyncRef.current = null;
+        setSavedSnapshotJson("__UNSAVED_NEW__");
+        setSaveStatus("idle");
+      } else {
+        needsBaselineSyncRef.current = dataToUse.id;
+      }
       setLessonTitle(dataToUse.title || "");
-      setLessonStatus((dataToUse.status as ContentStatus) || "PUBLISHED");
       setDurationMinutes(
         typeof dataToUse.durationMinutes === "number"
           ? dataToUse.durationMinutes
@@ -298,10 +312,10 @@ export default function EditCoursePage() {
       setLessonUnlockAt(toIstDatetimeLocal(dataToUse.unlockAt));
       setLessonLockAt(toIstDatetimeLocal(dataToUse.lockAt));
 
-      // Try to parse structured content from activeLessonData
-      if (activeLessonData?.content && activeLessonData.content.startsWith("{")) {
+      // Try to parse structured content from lesson
+      if (dataToUse?.content && dataToUse.content.startsWith("{")) {
         try {
-          const parsed = JSON.parse(activeLessonData.content);
+          const parsed = JSON.parse(dataToUse.content);
           if (parsed.curriculumMode) {
             setCurriculumMode(parsed.curriculumMode);
           } else if (parsed.type === "FOLDER" || parsed.category === "FOLDER") {
@@ -330,7 +344,6 @@ export default function EditCoursePage() {
           if (parsed.testType) setTestType(parsed.testType);
 
           setLessonType(parsed.type || "READING");
-          setIsFreePreview(!!parsed.isFreePreview);
           const rawMd = parsed.contentMarkdown || "";
           const rawHtml = parsed.contentHtml || renderMarkdownToHtml(rawMd);
           setContentMarkdown(rawMd || rawHtml);
@@ -366,14 +379,14 @@ export default function EditCoursePage() {
             setAttachments(parsed.attachments);
           }
         } catch {
-          const raw = activeLessonData.content || "";
+          const raw = dataToUse.content || "";
           setContentMarkdown(raw);
           setContentHtml(renderMarkdownToHtml(raw));
           setCurriculumMode("LECTURE");
         }
       }
     }
-  }, [activeLessonData]);
+  }, [activeLessonData, pendingLesson, activeLessonId]);
 
   // Aggregate formData for autosave
   const isLec = curriculumMode === "LECTURE";
@@ -401,7 +414,6 @@ export default function EditCoursePage() {
 
   const formData = {
     title: lessonTitle,
-    status: lessonStatus,
     durationMinutes,
     videoUrl,
     unlockAt: lessonUnlockAt,
@@ -411,7 +423,6 @@ export default function EditCoursePage() {
     curriculumMode,
     practiceType: isPrac ? practiceType : undefined,
     testType: isTst ? testType : undefined,
-    isFreePreview,
     contentMarkdown,
     contentHtml,
     codeLanguage,
@@ -444,65 +455,123 @@ export default function EditCoursePage() {
     attachments,
   };
 
-  // Autosave handler
-  const handleSaveLesson = async (currentData: typeof formData) => {
-    if (!activeLessonId) return;
+  const currentFormJson = JSON.stringify(formData);
+
+  useEffect(() => {
+    if (needsBaselineSyncRef.current && needsBaselineSyncRef.current === activeLessonId) {
+      needsBaselineSyncRef.current = null;
+      setSavedSnapshotJson(currentFormJson);
+      setSaveStatus("idle");
+    }
+  }, [currentFormJson, activeLessonId]);
+
+  const hasUnsavedChanges = Boolean(
+    activeLessonId &&
+      (activeLessonId.startsWith("unsaved_") ||
+        (savedSnapshotJson !== "" && currentFormJson !== savedSnapshotJson))
+  );
+
+  // Manual Save handler (no autosave)
+  const handleManualSave = async () => {
+    if (!activeLessonId || saveStatus === "saving") return;
+    setSaveStatus("saving");
 
     const payloadContent = JSON.stringify({
-      type: currentData.type,
-      category: currentData.category,
-      curriculumMode: currentData.curriculumMode,
-      practiceType: currentData.practiceType,
-      testType: currentData.testType,
-      isFreePreview: currentData.isFreePreview,
-      contentMarkdown: currentData.contentMarkdown,
-      contentHtml: currentData.contentHtml,
-      codeLanguage: currentData.codeLanguage,
-      codeSnippet: currentData.codeSnippet,
-      quiz: currentData.quiz,
-      assignment: currentData.assignment,
-      codingTest: currentData.codingTest,
-      subjectiveTest: currentData.subjectiveTest,
-      videoTest: currentData.videoTest,
-      attachments: currentData.attachments,
+      type: formData.type,
+      category: formData.category,
+      curriculumMode: formData.curriculumMode,
+      practiceType: formData.practiceType,
+      testType: formData.testType,
+      contentMarkdown: formData.contentMarkdown,
+      contentHtml: formData.contentHtml,
+      codeLanguage: formData.codeLanguage,
+      codeSnippet: formData.codeSnippet,
+      quiz: formData.quiz,
+      assignment: formData.assignment,
+      codingTest: formData.codingTest,
+      subjectiveTest: formData.subjectiveTest,
+      videoTest: formData.videoTest,
+      attachments: formData.attachments,
     });
 
-    await updateLessonMutation({
-      id: activeLessonId,
-      body: {
-        title: currentData.title,
-        status: currentData.status,
-        durationMinutes: currentData.durationMinutes,
-        videoUrl: currentData.videoUrl,
-        unlockAt: fromIstDatetimeLocal(currentData.unlockAt),
-        lockAt: fromIstDatetimeLocal(currentData.lockAt),
-        content: payloadContent,
-        description: currentData.contentMarkdown
-          ? currentData.contentMarkdown.replace(/<[^>]*>/g, "").slice(0, 200)
-          : "",
-      },
-    }).unwrap();
-  };
+    const descriptionText = formData.contentMarkdown
+      ? formData.contentMarkdown.replace(/<[^>]*>/g, "").slice(0, 200)
+      : "";
 
-  const { status: saveStatus, forceSave } = useAutosave({
-    data: formData,
-    onSave: handleSaveLesson,
-    enabled: !!activeLessonId,
-    itemKey: activeLessonId,
-    delayMs: 1200,
-  });
+    try {
+      if (activeLessonId.startsWith("unsaved_")) {
+        const pending = pendingNewLessons.find((l) => l.id === activeLessonId);
+        if (!pending) return;
+
+        const created = await createAndAttachLesson({
+          moduleId: pending.moduleId,
+          title: formData.title || pending.title,
+          slug: pending.slug,
+          content: payloadContent,
+          videoUrl: formData.videoUrl,
+          durationMinutes: formData.durationMinutes,
+          unlockAt: fromIstDatetimeLocal(formData.unlockAt),
+          lockAt: fromIstDatetimeLocal(formData.lockAt),
+        }).unwrap();
+
+        setPendingNewLessons((prev) => prev.filter((l) => l.id !== activeLessonId));
+        lastPopulatedKeyRef.current = created.id;
+        setSavedSnapshotJson(currentFormJson);
+        setActiveLessonId(created.id);
+        setSaveStatus("saved");
+        refetchModules();
+        showToast(`Saved "${formData.title || pending.title}".`);
+      } else {
+        await updateLessonMutation({
+          id: activeLessonId,
+          body: {
+            title: formData.title,
+            durationMinutes: formData.durationMinutes,
+            videoUrl: formData.videoUrl,
+            unlockAt: fromIstDatetimeLocal(formData.unlockAt),
+            lockAt: fromIstDatetimeLocal(formData.lockAt),
+            content: payloadContent,
+            description: descriptionText,
+          },
+        }).unwrap();
+
+        setSavedSnapshotJson(currentFormJson);
+        setSaveStatus("saved");
+        refetchModules();
+        showToast("Changes saved.");
+      }
+    } catch (err: any) {
+      console.error("Save failed:", err);
+      setSaveStatus("error");
+      showToast(err?.data?.message || err?.data?.error || "Failed to save changes.", "error");
+    }
+  };
 
   // Warn before navigating away with unsaved changes
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (saveStatus === "saving") {
+      if (hasUnsavedChanges || pendingNewLessons.length > 0) {
         e.preventDefault();
         e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [saveStatus]);
+  }, [hasUnsavedChanges, pendingNewLessons.length]);
+
+  const handleSelectLessonWithGuard = (lessonId: string) => {
+    if (lessonId === activeLessonId) return;
+    if (hasUnsavedChanges) {
+      if (!window.confirm("You have unsaved changes. Discard them and switch activities?")) {
+        return;
+      }
+      if (activeLessonId?.startsWith("unsaved_")) {
+        setPendingNewLessons((prev) => prev.filter((l) => l.id !== activeLessonId));
+      }
+    }
+    setSaveStatus("idle");
+    setActiveLessonId(lessonId);
+  };
 
   // Test case management for Coding Test
   const addTestCase = () => {
@@ -549,7 +618,7 @@ export default function EditCoursePage() {
       const createdMod = await createModule({
         title: titleToUse,
         slug,
-        status: "DRAFT",
+        status: "PUBLISHED",
         unlockAt: fromIstDatetimeLocal(newModuleUnlockAt),
         lockAt: fromIstDatetimeLocal(newModuleLockAt),
       }).unwrap();
@@ -698,36 +767,15 @@ export default function EditCoursePage() {
       console.error("Failed to remove chapter:", err);
       const errMsg = err?.data?.message || err?.data?.error || "";
       if (err?.status === 409 || errMsg.toLowerCase().includes("student activity")) {
-        const wantArchive = window.confirm(
-          `Cannot delete "${modTitle}" because it contains student activity (progress or submissions).\n\nWould you like to Archive this chapter instead?\n\nArchived chapters are hidden from students and from new progress, but preserve all student records.`
-        );
-        if (wantArchive) {
-          try {
-            await updateModuleApi({ id: moduleId, body: { status: "ARCHIVED" } }).unwrap();
-            refetchModules();
-            showToast(`Chapter "${modTitle}" has been archived.`);
-          } catch {
-            showToast("Failed to archive chapter.", "error");
-          }
-          return;
-        }
+        showToast(`Cannot delete "${modTitle}" because it has student activity.`, "error");
+        return;
       }
       showToast(errMsg || "Failed to remove chapter.", "error");
     }
   };
 
-  const handleRestoreChapter = async (moduleId: string) => {
-    try {
-      await updateModuleApi({ id: moduleId, body: { status: "DRAFT" } }).unwrap();
-      refetchModules();
-      showToast("Chapter restored to Draft.");
-    } catch {
-      showToast("Failed to restore chapter.", "error");
-    }
-  };
-
-  // Create & attach a pre-configured Template Lesson
-  const handleAddLessonWithType = async (
+  // Add a new unsaved activity in client state only (persists only when Save is clicked)
+  const handleAddLessonWithType = (
     moduleId: string,
     lessonTypeKey:
       | "LECTURE_VIDEO"
@@ -742,197 +790,193 @@ export default function EditCoursePage() {
     customTitle?: string,
     targetFolderId?: string
   ) => {
-    if (isAddingLesson) return;
-    setIsAddingLesson(true);
-    try {
-      const slug = `${course?.slug || "course"}-les-${Date.now()}`;
-      let title = customTitle || "New Lesson";
-      let payloadContent: any = {};
-      let videoUrl: string | undefined = undefined;
+    if (hasUnsavedChanges) {
+      if (!window.confirm("You have unsaved changes. Discard them and create a new activity?")) {
+        return;
+      }
+      if (activeLessonId?.startsWith("unsaved_")) {
+        setPendingNewLessons((prev) => prev.filter((l) => l.id !== activeLessonId));
+      }
+    }
 
-      switch (lessonTypeKey) {
-        case "FOLDER":
-          title = customTitle || "📁 Resources & Lab Files";
-          payloadContent = {
-            type: "FOLDER",
-            category: "FOLDER",
-            curriculumMode: "FOLDER",
-            isFreePreview: true,
-            contentMarkdown: "### 📁 Resources & Learning Assets\n\nDownload starter files, slides, and supplementary cheat sheets for this chapter.",
-            attachments: [
+    const nowTs = Date.now();
+    const slug = `${course?.slug || "course"}-les-${nowTs}`;
+    let title = customTitle || "New Lesson";
+    let payloadContent: any = {};
+    let videoUrl: string | undefined = undefined;
+
+    switch (lessonTypeKey) {
+      case "FOLDER":
+        title = customTitle || "📁 Resources & Lab Files";
+        payloadContent = {
+          type: "FOLDER",
+          category: "FOLDER",
+          curriculumMode: "FOLDER",
+          contentMarkdown: "### 📁 Resources & Learning Assets\n\nDownload starter files, slides, and supplementary cheat sheets for this chapter.",
+          attachments: [
+            {
+              id: `att-${nowTs}`,
+              name: "Starter Code & Project Files",
+              url: "https://github.com",
+              size: "2.4 MB",
+            },
+          ],
+        };
+        break;
+
+      case "LECTURE_VIDEO":
+        title = customTitle || "Lecture Video";
+        videoUrl = "";
+        payloadContent = {
+          type: "VIDEO",
+          category: "LECTURE",
+          curriculumMode: "LECTURE",
+          videoUrl: "",
+          contentMarkdown: "Watch the lecture video end-to-end and prepare study notes.",
+        };
+        break;
+
+      case "PRACTICE_MCQ":
+        title = customTitle || "Practice Quiz (MCQ)";
+        payloadContent = {
+          type: "QUIZ",
+          category: "PRACTICE",
+          curriculumMode: "PRACTICE",
+          practiceType: "MCQ",
+          contentMarkdown: "Test your understanding with these practice multiple choice questions.",
+          quiz: {
+            passingScorePercent: 70,
+            questions: [
               {
-                id: `att-${Date.now()}`,
-                name: "Starter Code & Project Files",
-                url: "https://github.com",
-                size: "2.4 MB",
+                id: `q-${nowTs}`,
+                question: "What is the primary objective of this module?",
+                options: ["Option A", "Option B", "Option C", "Option D"],
+                correctOptionIndex: 0,
+                explanation: "Option A is the correct answer based on lecture concepts.",
               },
             ],
-          };
-          break;
+          },
+        };
+        break;
 
-        case "LECTURE_VIDEO":
-          title = customTitle || "Lecture Video";
-          videoUrl = "";
-          payloadContent = {
-            type: "VIDEO",
-            category: "LECTURE",
-            curriculumMode: "LECTURE",
-            videoUrl: "",
-            isFreePreview: false,
-            contentMarkdown: "Watch the lecture video end-to-end and prepare study notes.",
-          };
-          break;
+      case "PRACTICE_PROJECT":
+        title = customTitle || "Hands-on Practice Lab";
+        payloadContent = {
+          type: "ASSIGNMENT",
+          category: "PRACTICE",
+          curriculumMode: "PRACTICE",
+          practiceType: "PROJECT",
+          contentMarkdown: "Build the lab project locally and verify the test results.",
+          assignment: {
+            instructions: "Follow instructions to build the feature and submit your repository or notes.",
+            allowedTypes: ["URL", "GITHUB"],
+            maxPoints: 100,
+          },
+        };
+        break;
 
-        case "PRACTICE_MCQ":
-          title = customTitle || "Practice Quiz (MCQ)";
-          payloadContent = {
-            type: "QUIZ",
-            category: "PRACTICE",
-            curriculumMode: "PRACTICE",
-            practiceType: "MCQ",
-            isFreePreview: false,
-            contentMarkdown: "Test your understanding with these practice multiple choice questions.",
-            quiz: {
-              passingScorePercent: 70,
-              questions: [
-                {
-                  id: `q-${Date.now()}`,
-                  question: "What is the primary objective of this module?",
-                  options: ["Option A", "Option B", "Option C", "Option D"],
-                  correctOptionIndex: 0,
-                  explanation: "Option A is the correct answer based on lecture concepts.",
-                },
-              ],
-            },
-          };
-          break;
+      case "TEST_CODING":
+        title = customTitle || "Coding Assessment Test";
+        payloadContent = {
+          type: "CODING_TEST",
+          category: "TEST",
+          curriculumMode: "TEST",
+          testType: "CODING_TEST",
+          contentMarkdown: "Write optimal code solving the problem specification.",
+          codingTest: {
+            starterCode: "def solution():\n    # Implement solution here\n    pass\n",
+            language: "python",
+            testCases: [
+              { id: "tc-1", input: "1, 2", expectedOutput: "3", isHidden: false },
+              { id: "tc-2", input: "5, 10", expectedOutput: "15", isHidden: true },
+            ],
+            maxScore: 100,
+          },
+        };
+        break;
 
-        case "PRACTICE_PROJECT":
-          title = customTitle || "Hands-on Practice Lab";
-          payloadContent = {
-            type: "ASSIGNMENT",
-            category: "PRACTICE",
-            curriculumMode: "PRACTICE",
-            practiceType: "PROJECT",
-            isFreePreview: false,
-            contentMarkdown: "Build the lab project locally and verify the test results.",
-            assignment: {
-              instructions: "Follow instructions to build the feature and submit your repository or notes.",
-              allowedTypes: ["URL", "GITHUB"],
-              maxPoints: 100,
-            },
-          };
-          break;
+      case "TEST_VIVA":
+        title = customTitle || "Video Viva Demonstration";
+        payloadContent = {
+          type: "VIDEO_TEST",
+          category: "TEST",
+          curriculumMode: "TEST",
+          testType: "VIDEO_TEST",
+          contentMarkdown: "Record a short video walkthrough explaining your architecture and codebase.",
+          videoTest: {
+            prompt: "Demonstrate working software and explain key design decisions.",
+            maxDurationSec: 180,
+            maxScore: 100,
+          },
+        };
+        break;
 
-        case "TEST_CODING":
-          title = customTitle || "Coding Assessment Test";
-          payloadContent = {
-            type: "CODING_TEST",
-            category: "TEST",
-            curriculumMode: "TEST",
-            testType: "CODING_TEST",
-            isFreePreview: false,
-            contentMarkdown: "Write optimal code solving the problem specification.",
-            codingTest: {
-              starterCode: "def solution():\n    # Implement solution here\n    pass\n",
-              language: "python",
-              testCases: [
-                { id: "tc-1", input: "1, 2", expectedOutput: "3", isHidden: false },
-                { id: "tc-2", input: "5, 10", expectedOutput: "15", isHidden: true },
-              ],
-              maxScore: 100,
-            },
-          };
-          break;
+      case "TEST_SUBJECTIVE":
+        title = customTitle || "Subjective Architecture Test";
+        payloadContent = {
+          type: "SUBJECTIVE_TEST",
+          category: "TEST",
+          curriculumMode: "TEST",
+          testType: "SUBJECTIVE_TEST",
+          contentMarkdown: "Answer the engineering rationale and system design questions below.",
+          subjectiveTest: {
+            prompt: "Explain system trade-offs and engineering design patterns.",
+            rubrics: "Technical accuracy (40 pts), Architecture depth (30 pts), Clarity (30 pts)",
+            maxScore: 100,
+          },
+        };
+        break;
 
-        case "TEST_VIVA":
-          title = customTitle || "Video Viva Demonstration";
-          payloadContent = {
-            type: "VIDEO_TEST",
-            category: "TEST",
-            curriculumMode: "TEST",
-            testType: "VIDEO_TEST",
-            isFreePreview: false,
-            contentMarkdown: "Record a short video walkthrough explaining your architecture and codebase.",
-            videoTest: {
-              prompt: "Demonstrate working software and explain key design decisions.",
-              maxDurationSec: 180,
-              maxScore: 100,
-            },
-          };
-          break;
+      case "TEST_PROJECT":
+        title = customTitle || "Capstone Evaluated Project";
+        payloadContent = {
+          type: "ASSIGNMENT",
+          category: "TEST",
+          curriculumMode: "TEST",
+          testType: "PROJECT",
+          contentMarkdown: "Deploy your final project and submit for mentor evaluation.",
+          assignment: {
+            instructions: "Submit production GitHub repository and live deployment URL.",
+            allowedTypes: ["URL", "GITHUB"],
+            maxPoints: 100,
+          },
+        };
+        break;
 
-        case "TEST_SUBJECTIVE":
-          title = customTitle || "Subjective Architecture Test";
-          payloadContent = {
-            type: "SUBJECTIVE_TEST",
-            category: "TEST",
-            curriculumMode: "TEST",
-            testType: "SUBJECTIVE_TEST",
-            isFreePreview: false,
-            contentMarkdown: "Answer the engineering rationale and system design questions below.",
-            subjectiveTest: {
-              prompt: "Explain system trade-offs and engineering design patterns.",
-              rubrics: "Technical accuracy (40 pts), Architecture depth (30 pts), Clarity (30 pts)",
-              maxScore: 100,
-            },
-          };
-          break;
-
-        case "TEST_PROJECT":
-          title = customTitle || "Capstone Evaluated Project";
-          payloadContent = {
-            type: "ASSIGNMENT",
-            category: "TEST",
-            curriculumMode: "TEST",
-            testType: "PROJECT",
-            isFreePreview: false,
-            contentMarkdown: "Deploy your final project and submit for mentor evaluation.",
-            assignment: {
-              instructions: "Submit production GitHub repository and live deployment URL.",
-              allowedTypes: ["URL", "GITHUB"],
-              maxPoints: 100,
-            },
-          };
-          break;
-
-        default:
-          title = customTitle || "New Lesson";
-          payloadContent = {
-            type: "READING",
-            category: "LECTURE",
-            curriculumMode: "LECTURE",
-            isFreePreview: false,
-            contentMarkdown: "Write lesson reading notes here...",
-          };
-          break;
-      }
-
-      if (targetFolderId) {
-        payloadContent.folderId = targetFolderId;
-      }
-
-      const created = await createAndAttachLesson({
-        moduleId,
-        title,
-        slug,
-        status: "DRAFT",
-        content: JSON.stringify(payloadContent),
-        videoUrl,
-        durationMinutes: 15,
-      }).unwrap();
-
-      setNewLessonTitle("");
-      setAddingLessonForModuleId(null);
-      setActiveLessonId(created.id);
-      refetchModules();
-      showToast(`Created activity "${title}".`);
-    } catch (err: any) {
-      console.error("Failed to create lesson:", err);
-      showToast(err?.data?.message || err?.data?.error || "Could not add this activity. Please try again.", "error");
-    } finally {
-      setIsAddingLesson(false);
+      default:
+        title = customTitle || "New Lesson";
+        payloadContent = {
+          type: "READING",
+          category: "LECTURE",
+          curriculumMode: "LECTURE",
+          contentMarkdown: "Write lesson reading notes here...",
+        };
+        break;
     }
+
+    if (targetFolderId) {
+      payloadContent.folderId = targetFolderId;
+    }
+
+    const tempId = `unsaved_${nowTs}`;
+    const newPendingItem = {
+      id: tempId,
+      lessonId: tempId,
+      moduleId,
+      title,
+      slug,
+      content: JSON.stringify(payloadContent),
+      videoUrl: videoUrl || "",
+      durationMinutes: 15,
+      position: 9999,
+      isUnsavedNew: true,
+    };
+
+    setPendingNewLessons((prev) => [...prev, newPendingItem]);
+    setNewLessonTitle("");
+    setAddingLessonForModuleId(null);
+    setSaveStatus("idle");
+    setActiveLessonId(tempId);
   };
 
   // Create & attach a new generic Lesson
@@ -1027,6 +1071,13 @@ export default function EditCoursePage() {
         <div className="flex items-center gap-3">
           <Link
             to="/admin/courses"
+            onClick={(e) => {
+              if (hasUnsavedChanges || pendingNewLessons.length > 0) {
+                if (!window.confirm("You have unsaved changes. Discard them and leave?")) {
+                  e.preventDefault();
+                }
+              }
+            }}
             className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -1040,42 +1091,6 @@ export default function EditCoursePage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Autosave Status Pill */}
-          {activeLessonId && saveStatus !== "idle" && (
-            <div className="flex items-center gap-1.5 text-xs font-medium transition-all duration-200">
-              {saveStatus === "saving" && (
-                <span className="text-slate-400 flex items-center gap-1.5 text-[11px]">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-500" />
-                  <span>Autosaving...</span>
-                </span>
-              )}
-              {saveStatus === "saved" && (
-                <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 text-[11px] font-semibold">
-                  <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>Saved</span>
-                </span>
-              )}
-              {saveStatus === "error" && (
-                <span className="text-rose-500 flex items-center gap-1 text-[11px] font-semibold">
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  <span>Save error</span>
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Quick Manual Save */}
-          {activeLessonId && (
-            <button
-              onClick={forceSave}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors border border-slate-200/80 dark:border-slate-800/80 cursor-pointer"
-              title="Save changes"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span>Save</span>
-            </button>
-          )}
-
           {/* Course Mentors & Cohort Cockpit - Restricted to Super Admin / Admin */}
           {isAdmin && (
             <button
@@ -1221,87 +1236,45 @@ export default function EditCoursePage() {
               </div>
             ) : (
               <>
-                {displayModules
-                  .filter((m: any) => m.status !== "ARCHIVED")
-                  .map((cMod: any, idx: number, arr: any[]) => {
-                    return (
-                      <ChapterSection
-                        key={cMod.moduleId}
-                        moduleId={cMod.moduleId}
-                        moduleTitle={cMod.title}
-                        moduleUnlockAt={cMod.unlockAt}
-                        moduleLockAt={cMod.lockAt}
-                        position={idx + 1}
-                        isFirst={idx === 0}
-                        isLast={idx === arr.length - 1}
-                        allModules={displayModules}
-                        activeLessonId={activeLessonId}
-                        canManageCurriculum={canManageCurriculum}
-                        isDragging={draggedChapterIdx === idx}
-                        isDragOver={dragOverChapterIdx === idx}
-                        onDragStart={(e) => handleChapterDragStart(e, idx)}
-                        onDragOver={(e) => handleChapterDragOver(e, idx)}
-                        onDrop={(e) => handleChapterDrop(e, idx)}
-                        onSelectLesson={(lessonId) => setActiveLessonId(lessonId)}
-                        onDeleteChapter={() => handleDeleteChapter(cMod.moduleId)}
-                        onRenameModule={(newTitle) => handleRenameModule(cMod.moduleId, newTitle)}
-                        onUpdateModuleSchedule={(unlockAt, lockAt) =>
-                          handleSetModuleSchedule(cMod.moduleId, unlockAt, lockAt)
+                {displayModules.map((cMod: any, idx: number, arr: any[]) => {
+                  return (
+                    <ChapterSection
+                      key={cMod.moduleId}
+                      moduleId={cMod.moduleId}
+                      moduleTitle={cMod.title}
+                      moduleUnlockAt={cMod.unlockAt}
+                      moduleLockAt={cMod.lockAt}
+                      position={idx + 1}
+                      isFirst={idx === 0}
+                      isLast={idx === arr.length - 1}
+                      allModules={displayModules}
+                      pendingLessons={pendingNewLessons.filter((l) => l.moduleId === cMod.moduleId)}
+                      activeLessonId={activeLessonId}
+                      canManageCurriculum={canManageCurriculum}
+                      isDragging={draggedChapterIdx === idx}
+                      isDragOver={dragOverChapterIdx === idx}
+                      onDragStart={(e) => handleChapterDragStart(e, idx)}
+                      onDragOver={(e) => handleChapterDragOver(e, idx)}
+                      onDrop={(e) => handleChapterDrop(e, idx)}
+                      onSelectLesson={handleSelectLessonWithGuard}
+                      onDiscardPendingLesson={(tempId) => {
+                        setPendingNewLessons((prev) => prev.filter((l) => l.id !== tempId));
+                        if (activeLessonId === tempId) {
+                          setActiveLessonId(null);
+                          setSaveStatus("idle");
                         }
-                        onAddLessonWithType={(typeKey, customTitle, targetFolderId) =>
-                          handleAddLessonWithType(cMod.moduleId, typeKey, customTitle, targetFolderId)
-                        }
-                      />
-                    );
-                  })}
-
-                {/* Collapsed Section for Archived Chapters */}
-                {displayModules.some((m: any) => m.status === "ARCHIVED") && (
-                  <div className="pt-3 border-t border-slate-200/80 dark:border-slate-800/80 mt-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowArchivedModules(!showArchivedModules)}
-                      className="w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/15 border border-amber-500/20 cursor-pointer transition-colors"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Archive className="w-3.5 h-3.5 text-amber-500" />
-                        <span>
-                          Archived Chapters ({displayModules.filter((m: any) => m.status === "ARCHIVED").length})
-                        </span>
-                      </span>
-                      {showArchivedModules ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                    </button>
-
-                    {showArchivedModules && (
-                      <div className="mt-2 space-y-2">
-                        {displayModules
-                          .filter((m: any) => m.status === "ARCHIVED")
-                          .map((aMod: any) => (
-                            <div
-                              key={aMod.moduleId || aMod.id}
-                              className="p-3 bg-white dark:bg-[#0B1120] rounded-xl border border-dashed border-amber-300 dark:border-amber-700/60 flex items-center justify-between"
-                            >
-                              <div className="min-w-0 flex-1 mr-2">
-                                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate block">
-                                  {aMod.title}
-                                </span>
-                                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
-                                  Archived (hidden from learners)
-                                </span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleRestoreChapter(aMod.moduleId || aMod.id)}
-                                className="px-2.5 py-1 text-xs font-bold text-sky-600 hover:text-sky-500 bg-sky-50 dark:bg-sky-950/40 hover:bg-sky-100 rounded-lg transition-colors cursor-pointer shrink-0"
-                              >
-                                Restore
-                              </button>
-                            </div>
-                          ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+                      }}
+                      onDeleteChapter={() => handleDeleteChapter(cMod.moduleId)}
+                      onRenameModule={(newTitle) => handleRenameModule(cMod.moduleId, newTitle)}
+                      onUpdateModuleSchedule={(unlockAt, lockAt) =>
+                        handleSetModuleSchedule(cMod.moduleId, unlockAt, lockAt)
+                      }
+                      onAddLessonWithType={(typeKey, customTitle, targetFolderId) =>
+                        handleAddLessonWithType(cMod.moduleId, typeKey, customTitle, targetFolderId)
+                      }
+                    />
+                  );
+                })}
               </>
             )}
           </div>
@@ -1323,25 +1296,6 @@ export default function EditCoursePage() {
             </div>
           ) : (
             <div className="max-w-4xl mx-auto w-full bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-6 sm:p-8 shadow-2xs space-y-6">
-              {/* Archived Lesson Warning Banner */}
-              {lessonStatus === "ARCHIVED" && (
-                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2.5">
-                    <Archive className="w-4 h-4 text-amber-500 shrink-0" />
-                    <span>
-                      <strong>This activity is archived.</strong> It is hidden from learners and new progress is blocked. All existing student progress and submissions remain intact.
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setLessonStatus("DRAFT")}
-                    className="px-3 py-1 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors cursor-pointer shrink-0"
-                  >
-                    Restore to Draft
-                  </button>
-                </div>
-              )}
-
               {/* Lesson Details Header */}
               <div className="space-y-4 pb-6 border-b border-slate-100 dark:border-slate-800/60">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1391,52 +1345,37 @@ export default function EditCoursePage() {
                     </span>
                   </div>
 
-                  {/* Status & Free Preview Controls */}
-                  <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600 dark:text-slate-300">
-                      <input
-                        type="checkbox"
-                        checked={isFreePreview}
-                        onChange={(e) => setIsFreePreview(e.target.checked)}
-                        className="rounded border-slate-300 text-sky-500 focus:ring-sky-500"
-                      />
-                      <span>Free Preview</span>
-                    </label>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (lessonStatus === "ARCHIVED") {
-                          setLessonStatus("DRAFT");
-                        } else if (lessonStatus === "PUBLISHED") {
-                          setLessonStatus("DRAFT");
-                        } else {
-                          setLessonStatus("PUBLISHED");
-                        }
-                      }}
-                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-colors cursor-pointer ${
-                        lessonStatus === "PUBLISHED"
-                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                          : lessonStatus === "ARCHIVED"
-                          ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
-                          : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                      }`}
-                    >
-                      {lessonStatus === "PUBLISHED" ? "Published" : lessonStatus === "ARCHIVED" ? "Archived" : "Draft"}
-                    </button>
-
-                    {lessonStatus !== "ARCHIVED" && canManageCurriculum && (
+                  {/* Save Action & Status (placed where Archive used to be) */}
+                  <div className="flex items-center gap-3">
+                    {saveStatus === "saving" && (
+                      <span className="text-slate-400 flex items-center gap-1.5 text-[11px] font-medium">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-500" />
+                        <span>Saving...</span>
+                      </span>
+                    )}
+                    {saveStatus === "saved" && !hasUnsavedChanges && (
+                      <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 text-[11px] font-semibold">
+                        <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>Saved</span>
+                      </span>
+                    )}
+                    {saveStatus === "error" && (
+                      <span className="text-rose-500 flex items-center gap-1 text-[11px] font-semibold">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        <span>Save failed</span>
+                      </span>
+                    )}
+                    {canManageCurriculum && (
                       <button
                         type="button"
-                        onClick={() => {
-                          if (window.confirm("Archive this activity? It will be hidden from learners, but all student progress will be preserved.")) {
-                            setLessonStatus("ARCHIVED");
-                          }
-                        }}
-                        className="text-[10px] font-bold px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer"
-                        title="Archive this activity"
+                        data-testid="lesson-save-btn"
+                        onClick={handleManualSave}
+                        disabled={!hasUnsavedChanges || saveStatus === "saving"}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer bg-sky-500 hover:bg-sky-400 text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={hasUnsavedChanges ? "Save changes (instantly visible to students)" : "No unsaved changes"}
                       >
-                        Archive
+                        <Save className="w-3.5 h-3.5" />
+                        <span>{saveStatus === "saving" ? "Saving..." : "Save"}</span>
                       </button>
                     )}
                   </div>
@@ -2557,10 +2496,12 @@ interface ChapterSectionProps {
   isFirst: boolean;
   isLast: boolean;
   allModules: any[];
+  pendingLessons?: any[];
   fallbackItems?: any[];
   activeLessonId: string | null;
   canManageCurriculum?: boolean;
   onSelectLesson: (id: string) => void;
+  onDiscardPendingLesson?: (id: string) => void;
   onDeleteChapter: () => void;
   onRenameModule?: (newTitle: string) => void;
   onUpdateModuleSchedule?: (unlockAt: string | null, lockAt: string | null) => void;
@@ -2592,10 +2533,12 @@ function ChapterSection({
   moduleLockAt,
   position,
   allModules,
+  pendingLessons = [],
   fallbackItems = [],
   activeLessonId,
   canManageCurriculum = true,
   onSelectLesson,
+  onDiscardPendingLesson,
   onDeleteChapter,
   onRenameModule,
   onUpdateModuleSchedule,
@@ -2623,7 +2566,6 @@ function ChapterSection({
   const [customFolderTargetId, setCustomFolderTargetId] = useState<string | undefined>(undefined);
   const [movingLessonId, setMovingLessonId] = useState<string | null>(null);
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
-  const [showArchivedLessons, setShowArchivedLessons] = useState(false);
 
   // Module rename & scheduling state
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -2677,10 +2619,10 @@ function ChapterSection({
     };
   }, [showAddMenu, activeFolderAddMenuId]);
 
-  // Effective lessons directly from database
+  // Effective lessons directly from database + unsaved local items
   const effectiveLessons = useMemo(() => {
-    return moduleLessons || [];
-  }, [moduleLessons]);
+    return [...(moduleLessons || []), ...(pendingLessons || [])];
+  }, [moduleLessons, pendingLessons]);
 
   // Parse all lesson items and build folder hierarchy
   const { parsedLessons, foldersMap, rootLessons, folderChildrenMap } = useMemo(() => {
@@ -2918,9 +2860,13 @@ function ChapterSection({
     }
   };
 
-  // Delete lesson from chapter with Archive offer on student activity
+  // Delete lesson from chapter
   const handleDeleteLesson = async (e: React.MouseEvent, lessonId: string) => {
     e.stopPropagation();
+    if (lessonId.startsWith("unsaved_")) {
+      onDiscardPendingLesson?.(lessonId);
+      return;
+    }
     const targetItem = effectiveLessons.find((l: any) => (l.lessonId || l.id) === lessonId);
     const itemTitle = targetItem?.title || "this activity";
     if (!window.confirm(`Are you sure you want to delete "${itemTitle}"?`)) return;
@@ -2930,32 +2876,7 @@ function ChapterSection({
     } catch (err: any) {
       console.error("Failed to delete lesson:", err);
       const errMsg = err?.data?.message || err?.data?.error || "";
-      if (err?.status === 409 || errMsg.toLowerCase().includes("student activity")) {
-        const wantArchive = window.confirm(
-          `Cannot delete "${itemTitle}" because it has student activity (progress or submissions).\n\nWould you like to Archive this activity instead?\n\nArchived activities are hidden from learners and from new submissions, but preserve all student progress.`
-        );
-        if (wantArchive) {
-          try {
-            await updateLessonApi({ id: lessonId, body: { status: "ARCHIVED" } }).unwrap();
-            refetchLessons();
-            alert(`Activity "${itemTitle}" has been archived.`);
-          } catch {
-            alert("Failed to archive activity.");
-          }
-          return;
-        }
-      }
       alert(errMsg || "Failed to delete activity.");
-    }
-  };
-
-  const handleRestoreLesson = async (e: React.MouseEvent, lessonId: string) => {
-    e.stopPropagation();
-    try {
-      await updateLessonApi({ id: lessonId, body: { status: "DRAFT" } }).unwrap();
-      refetchLessons();
-    } catch {
-      alert("Failed to restore activity.");
     }
   };
 
@@ -3049,6 +2970,7 @@ function ChapterSection({
         <div className="grid grid-cols-3 gap-1.5">
           <button
             type="button"
+            data-testid="add-type-VIDEO"
             onClick={() => {
               setShowAddMenu(false);
               setActiveFolderAddMenuId(null);
@@ -3066,6 +2988,7 @@ function ChapterSection({
 
           <button
             type="button"
+            data-testid="add-type-MCQ"
             onClick={() => {
               setShowAddMenu(false);
               setActiveFolderAddMenuId(null);
@@ -3083,6 +3006,7 @@ function ChapterSection({
 
           <button
             type="button"
+            data-testid="add-type-LAB"
             onClick={() => {
               setShowAddMenu(false);
               setActiveFolderAddMenuId(null);
@@ -3108,6 +3032,7 @@ function ChapterSection({
         <div className="grid grid-cols-4 gap-1.5">
           <button
             type="button"
+            data-testid="add-type-VIDEO"
             onClick={() => {
               setShowAddMenu(false);
               setActiveFolderAddMenuId(null);
@@ -3125,6 +3050,7 @@ function ChapterSection({
 
           <button
             type="button"
+            data-testid="add-type-VIDEO"
             onClick={() => {
               setShowAddMenu(false);
               setActiveFolderAddMenuId(null);
@@ -3142,6 +3068,7 @@ function ChapterSection({
 
           <button
             type="button"
+            data-testid="add-type-SUBJECTIVE"
             onClick={() => {
               setShowAddMenu(false);
               setActiveFolderAddMenuId(null);
@@ -3159,6 +3086,7 @@ function ChapterSection({
 
           <button
             type="button"
+            data-testid="add-type-PROJECT"
             onClick={() => {
               setShowAddMenu(false);
               setActiveFolderAddMenuId(null);
@@ -3181,6 +3109,7 @@ function ChapterSection({
         {!targetFolderId && (
           <button
             type="button"
+            data-testid="add-type-VIDEO"
             onClick={() => {
               setShowAddMenu(false);
               onAddLessonWithType("FOLDER");
@@ -3491,12 +3420,12 @@ function ChapterSection({
               )}
             </div>
           ) : (
-            rootLessons.filter((item: any) => item.status !== "ARCHIVED").map((item: any) => {
+            rootLessons.map((item: any) => {
               const isFolder = item.isFolder;
               const isSelected = activeLessonId === item.lessonId;
               const badge = getLessonBadge(item);
               const displayTitle = item.title && item.title.trim().length > 0 ? item.title : item.lessonId;
-              const childItems = isFolder ? (folderChildrenMap[item.lessonId] || []).filter((c: any) => c.status !== "ARCHIVED") : [];
+              const childItems = isFolder ? (folderChildrenMap[item.lessonId] || []) : [];
               const folderExpanded = isFolder && isFolderOpen(item.lessonId);
               const isFolderDropTarget = dragOverFolderId === item.lessonId;
               const isItemDragOver = dragOverItemId === item.lessonId;
@@ -3798,59 +3727,6 @@ function ChapterSection({
                 </div>
               );
             })
-          )}
-
-          {/* Collapsed Section for Archived Activities in Chapter */}
-          {effectiveLessons.some((les: any) => les.status === "ARCHIVED") && (
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 mt-1">
-              <button
-                type="button"
-                onClick={() => setShowArchivedLessons(!showArchivedLessons)}
-                className="w-full flex items-center justify-between py-1 px-1.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 hover:text-amber-700 hover:bg-amber-500/10 rounded-lg transition-colors cursor-pointer"
-              >
-                <span className="flex items-center gap-1.5">
-                  <Archive className="w-3 h-3 text-amber-500 shrink-0" />
-                  <span>
-                    Archived Activities ({effectiveLessons.filter((les: any) => les.status === "ARCHIVED").length})
-                  </span>
-                </span>
-                {showArchivedLessons ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-              </button>
-
-              {showArchivedLessons && (
-                <div className="space-y-1.5 pt-1">
-                  {effectiveLessons
-                    .filter((les: any) => les.status === "ARCHIVED")
-                    .map((aLes: any) => (
-                      <div
-                        key={aLes.lessonId || aLes.id}
-                        onClick={() => onSelectLesson(aLes.lessonId || aLes.id)}
-                        className={`p-2 rounded-xl border border-dashed border-amber-300 dark:border-amber-800/60 flex items-center justify-between transition-colors cursor-pointer ${
-                          activeLessonId === (aLes.lessonId || aLes.id)
-                            ? "bg-amber-100/60 dark:bg-amber-950/40 border-amber-400"
-                            : "bg-amber-50/40 dark:bg-amber-950/20 hover:bg-amber-50 dark:hover:bg-amber-950/30"
-                        }`}
-                      >
-                        <div className="min-w-0 flex-1 mr-2">
-                          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate block">
-                            {aLes.title || aLes.lessonId}
-                          </span>
-                          <span className="text-[9px] font-mono uppercase text-amber-600 dark:text-amber-400">
-                            Archived
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => handleRestoreLesson(e, aLes.lessonId || aLes.id)}
-                          className="px-2 py-0.5 text-[10px] font-bold text-sky-600 dark:text-sky-400 hover:underline shrink-0"
-                        >
-                          Restore
-                        </button>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
           )}
 
           {/* Inline Custom Lesson Title Input */}

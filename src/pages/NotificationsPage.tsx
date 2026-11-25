@@ -8,13 +8,29 @@ export default function NotificationsPage() {
   const navigate = useNavigate();
   const { data: activitiesData, isLoading } = useGetStudentActivitiesQuery(undefined);
 
+  const newItemsList = activitiesData?.newItems || [];
   const missedList = activitiesData?.missed || [];
   const upcomingList = activitiesData?.upcoming || [];
   const todayUpcoming = upcomingList.filter((u: any) => u.isToday || u.isUrgent);
 
-  const notifications = [
+  const seenLessonIds = new Set<string>();
+  const rawNotifications = [
+    ...newItemsList.map((item: any) => ({
+      id: `notif-${item.id}`,
+      lessonId: item.lessonId,
+      type: "new" as const,
+      title: cleanLessonTitle(item.title),
+      subtitle: `${item.category} · ${item.moduleTitle || "Course"}`,
+      time: item.dateText || "New activity added",
+      link: `/learn/${item.pathwayId || activitiesData?.pathwayId}?lesson=${item.lessonId}`,
+      meetUrl: item.meetUrl,
+      icon: item.type === "live" ? Video : item.type === "quiz" ? FileQuestion : FileText,
+      badge: "New",
+      badgeColor: "sky",
+    })),
     ...todayUpcoming.map((item: any) => ({
       id: `notif-${item.id}`,
+      lessonId: item.lessonId,
       type: "upcoming" as const,
       title: cleanLessonTitle(item.title),
       subtitle: `${item.category} · ${item.moduleTitle || "Current Week"}`,
@@ -27,6 +43,7 @@ export default function NotificationsPage() {
     })),
     ...missedList.map((item: any) => ({
       id: `notif-${item.id}`,
+      lessonId: item.lessonId,
       type: "missed" as const,
       title: cleanLessonTitle(item.title),
       subtitle: `${item.category} · ${item.moduleTitle || "Previous Week"}`,
@@ -38,6 +55,13 @@ export default function NotificationsPage() {
       badgeColor: "rose",
     })),
   ];
+
+  const notifications = rawNotifications.filter((n) => {
+    if (!n.lessonId) return true;
+    if (seenLessonIds.has(n.lessonId)) return false;
+    seenLessonIds.add(n.lessonId);
+    return true;
+  });
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-50/70 dark:bg-[#0B0D13] py-4 sm:py-8 transition-colors">
@@ -115,6 +139,8 @@ export default function NotificationsPage() {
                     className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
                       notif.badgeColor === "rose"
                         ? "bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900/40"
+                        : notif.badgeColor === "sky"
+                        ? "bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border border-sky-200/60 dark:border-sky-900/40"
                         : "bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/40"
                     }`}
                   >
@@ -129,6 +155,8 @@ export default function NotificationsPage() {
                         className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider shrink-0 ${
                           notif.badgeColor === "rose"
                             ? "bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300"
+                            : notif.badgeColor === "sky"
+                            ? "bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300"
                             : "bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300"
                         }`}
                       >

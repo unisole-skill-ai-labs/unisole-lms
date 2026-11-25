@@ -88,7 +88,7 @@ import { formatIstDisplay } from "../utils/timezone";
 import {
   allowDevCurriculumFallback,
   filterVisibleModules,
-  isPublishedVisible,
+  isStudentVisible,
 } from "../utils/curriculumVisibility";
 import {
   getCourseFlowStats,
@@ -140,7 +140,7 @@ export default function LmsPlayerPage() {
 
     if (validCourseModules.length > 0) {
       return validCourseModules.map((m: any, idx: number) => {
-        const backendLessons = (m.lessons || []).filter(isPublishedVisible);
+        const backendLessons = (m.lessons || []).filter(isStudentVisible);
         const liveCount = backendLessons.filter(
           (l: any) =>
             l.curriculumMode === "LIVE" ||
