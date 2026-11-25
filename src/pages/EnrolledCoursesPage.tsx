@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { BookOpen, CheckCircle2, Compass, Play, Layers, Calendar, ArrowRight } from "lucide-react";
+import { BookOpen, CheckCircle2, Compass, Play, Layers, Calendar } from "lucide-react";
 import {
   useGetMyPathwaysQuery,
   useGetPathwayContentQuery,
@@ -140,16 +140,7 @@ function CourseCard({ item, submissionsData }: CourseCardProps) {
       </div>
 
       {/* Card Action Footer */}
-      <div className="mt-5 pt-3.5 border-t border-zinc-100 dark:border-zinc-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-        <Link
-          to={`/learn/${pathwayId}`}
-          {...getPrefetchHandlers(`/learn/${pathwayId}`)}
-          className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 flex items-center justify-center sm:justify-start gap-1 py-1 min-h-[44px]"
-        >
-          <span>Curriculum Overview</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
-
+      <div className="mt-5 pt-3.5 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-end">
         <Link to={nextHref} {...getPrefetchHandlers(nextHref)} className="w-full sm:w-auto">
           <Button
             size="sm"
