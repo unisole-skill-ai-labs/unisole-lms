@@ -4,10 +4,31 @@ const TOKEN_KEY = "unisole-app:token";
 const REFRESH_TOKEN_KEY = "unisole-app:refreshToken";
 const USER_KEY = "unisole-app:user";
 
+const decodeJwt = (token: string | null) => {
+  if (!token) return null;
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+};
+
 const getInitialUser = () => {
   try {
     const raw = localStorage.getItem(USER_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (raw) return JSON.parse(raw);
+    const token = localStorage.getItem(TOKEN_KEY);
+    return decodeJwt(token);
   } catch {
     return null;
   }
@@ -36,9 +57,12 @@ const authSlice = createSlice({
         state.refreshToken = refreshToken;
         localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
       }
-      if (user) {
-        state.user = user;
-        localStorage.setItem(USER_KEY, JSON.stringify(user));
+
+      const decodedUser = effectiveToken ? decodeJwt(effectiveToken) : null;
+      const resolvedUser = user || decodedUser;
+      if (resolvedUser) {
+        state.user = { ...(state.user || {}), ...resolvedUser };
+        localStorage.setItem(USER_KEY, JSON.stringify(state.user));
       }
       state.isAuthenticated = true;
     },

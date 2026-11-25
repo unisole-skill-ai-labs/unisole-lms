@@ -1,8 +1,10 @@
-import React, { useEffect } from "react";
+import React, { useEffect, Suspense } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Header from "./Header";
 import Footer from "./Footer";
 import MobileNav from "./MobileNav";
+import ChunkErrorBoundary from "../common/ChunkErrorBoundary";
+import PageSkeletonFallback from "../common/PageSkeletonFallback";
 
 export default function Layout() {
   const { pathname } = useLocation();
@@ -11,15 +13,19 @@ export default function Layout() {
     window.scrollTo(0, 0);
   }, [pathname]);
 
-  const isPlayer = pathname.startsWith("/learn/");
+  const isPlayer = pathname.startsWith("/learn/") || pathname.startsWith("/player/");
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground antialiased transition-colors duration-200">
+    <div className="min-h-[100dvh] flex flex-col bg-background text-foreground antialiased transition-colors duration-200">
       <Header />
-      <main className={`flex-1 ${isPlayer ? "" : "pb-16 md:pb-0"}`}>
-        <Outlet />
+      <main className="flex-1 flex flex-col">
+        <ChunkErrorBoundary>
+          <Suspense fallback={<PageSkeletonFallback />}>
+            <Outlet />
+          </Suspense>
+        </ChunkErrorBoundary>
       </main>
-      {!isPlayer && <Footer />}
+      <Footer />
       {!isPlayer && <MobileNav />}
     </div>
   );

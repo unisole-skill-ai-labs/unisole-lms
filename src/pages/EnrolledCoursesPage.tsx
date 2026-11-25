@@ -1,137 +1,298 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useMemo, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { BookOpen, Award, CheckCircle2, TrendingUp, Sparkles, Compass, Play, ArrowRight, Layers } from "lucide-react";
-import { useGetMyPathwaysQuery } from "../store/apiSlice";
-import Card from "../components/ui/Card";
+import { BookOpen, CheckCircle2, Compass, Play, Layers, Calendar, ArrowRight } from "lucide-react";
+import {
+  useGetMyPathwaysQuery,
+  useGetPathwayContentQuery,
+  useGetStudentProgressQuery,
+  useGetStudentSubmissionsQuery,
+} from "../store/apiSlice";
 import Badge from "../components/ui/Badge";
-import Spinner from "../components/ui/Spinner";
 import Button from "../components/ui/Button";
+import MacFolderIcon from "../components/ui/MacFolderIcon";
+import { getPrefetchHandlers } from "../utils/routePrefetch";
+import {
+  formatEnrollmentDate,
+  formatExpiryDate,
+  getCourseFlowStats,
+  formatWeekTitle,
+} from "../utils/courseFlow";
+import { cleanLessonTitle } from "../utils/formatContent";
 
-export default function EnrolledCoursesPage() {
-  const { user } = useSelector((state: any) => state.auth);
-  const { data: myPathways = [], isLoading } = useGetMyPathwaysQuery(undefined);
+interface CourseCardProps {
+  item: any;
+  submissionsData: any[];
+}
 
-  const totalEnrolled = myPathways.length;
+function CourseCard({ item, submissionsData }: CourseCardProps) {
+  const pathway = item.pathway || item;
+  const pathwayId = pathway?.id || "cs-agentic";
+
+  const { data: pathwayContent } = useGetPathwayContentQuery(
+    { pathwayId, summary: true },
+    {
+      skip: !pathwayId,
+    }
+  );
+  const { data: progressData } = useGetStudentProgressQuery(pathwayId, {
+    skip: !pathwayId,
+  });
+
+  const modules = useMemo(() => {
+    return pathwayContent?.courses?.[0]?.modules || [];
+  }, [pathwayContent]);
+
+  const completedIdsArray: string[] = useMemo(() => {
+    return Array.from(new Set((progressData?.completedLessonIds || []) as string[]));
+  }, [progressData]);
+
+  const courseFlow = useMemo(() => {
+    return getCourseFlowStats(modules, completedIdsArray, submissionsData || []);
+  }, [modules, completedIdsArray, submissionsData]);
+
+  const progressPercent = courseFlow.progressPercent || 0;
+  const currentWeekNum = (courseFlow.currentWeekIndex || 0) + 1;
+  const totalWeeksCount = courseFlow.weekStats.length || modules.length || 12;
+
+  // Next incomplete activity info
+  const nextItem = courseFlow.nextIncompleteItem;
+  const nextItemTitle = nextItem ? cleanLessonTitle(nextItem.title) : "";
+  const nextWeekTitle = courseFlow.currentWeek
+    ? formatWeekTitle(courseFlow.currentWeek.title, courseFlow.currentWeekIndex || 0)
+    : `Week ${currentWeekNum}`;
+
+  // Next destination link - Always opens Course Overview
+  const nextHref = `/learn/${pathwayId}`;
+
+  // Button label
+  const buttonLabel = progressPercent > 0 ? "Continue Course" : "Start Course";
+
+  const isAnalytics = (pathway.title || "").toLowerCase().includes("analytic") || (pathway.title || "").toLowerCase().includes("data");
+  const isWeb = (pathway.title || "").toLowerCase().includes("web") || (pathway.title || "").toLowerCase().includes("full stack");
+  const folderColor = isAnalytics ? "amber" : isWeb ? "emerald" : "blue";
+
+  const enrolledDateStr = formatEnrollmentDate(item.enrolledAt);
+  const expiryDateStr = formatExpiryDate(item.expiresAt);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-8 animate-fade-in">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="w-full p-5 sm:p-6 flex flex-col justify-between h-full macos-card rounded-2xl group transition-all duration-200 hover:shadow-md border border-zinc-200/90 dark:border-zinc-800 bg-white dark:bg-zinc-900/60">
+      <div className="space-y-4">
+        {/* Top Header Badge & Enrollment Date */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <MacFolderIcon
+              size="md"
+              color={folderColor}
+              className="shrink-0 group-hover:rotate-[-2deg] transition-transform"
+            />
+            <div>
+              <div className="flex items-center gap-2">
+                <Badge variant={courseFlow.isCourseCompleted ? "emerald" : "brand"} size="sm" className="gap-1 font-semibold">
+                  <CheckCircle2 className="w-3 h-3" />
+                  {courseFlow.isCourseCompleted ? "Completed" : "Active"}
+                </Badge>
+                {expiryDateStr && (
+                  <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200/50 dark:border-amber-900/40">
+                    {expiryDateStr}
+                  </span>
+                )}
+              </div>
+              <div className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 font-mono mt-1">
+                {enrolledDateStr}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Title & Description */}
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-zinc-100 tracking-tight">
-            My Learning Pathways
-          </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-1">
-            Access your enrolled curriculums, modular tracks, and video lessons
+          <h3 className="font-extrabold text-base sm:text-lg text-zinc-900 dark:text-zinc-100 line-clamp-2 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+            {pathway.title}
+          </h3>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed mt-1">
+            {pathway.shortDescription || pathway.description || "Comprehensive modular learning curriculum."}
           </p>
         </div>
 
-        <Link to="/">
-          <Button variant="outline" size="sm" icon={Compass}>
-            Explore More Pathways
+        {/* Progress Bar & Line: "Week 1 of 12 · 2% complete" (A1) */}
+        <div className="space-y-1.5 pt-1">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-bold text-zinc-700 dark:text-zinc-300">
+              Week {currentWeekNum} of {totalWeeksCount}
+            </span>
+            <span className="font-extrabold text-blue-600 dark:text-blue-400">
+              {progressPercent}% complete
+            </span>
+          </div>
+          <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-600 dark:bg-blue-500 rounded-full transition-all duration-500"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Card Action Footer */}
+      <div className="mt-5 pt-3.5 border-t border-zinc-100 dark:border-zinc-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+        <Link
+          to={`/learn/${pathwayId}`}
+          {...getPrefetchHandlers(`/learn/${pathwayId}`)}
+          className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 flex items-center justify-center sm:justify-start gap-1 py-1 min-h-[44px]"
+        >
+          <span>Curriculum Overview</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+
+        <Link to={nextHref} {...getPrefetchHandlers(nextHref)} className="w-full sm:w-auto">
+          <Button
+            size="sm"
+            variant="primary"
+            icon={Play}
+            className="w-full sm:w-auto justify-center font-bold text-xs"
+          >
+            {buttonLabel}
           </Button>
         </Link>
       </div>
+    </div>
+  );
+}
 
-      {/* Progress Metric Highlights */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6">
-        <div className="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 mb-1.5">
-            <BookOpen className="w-4 h-4" />
-            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-mono">
-              Enrolled Tracks
+export default function EnrolledCoursesPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const showAll = searchParams.get("all") === "true";
+  const { isAuthenticated } = useSelector((state: any) => state.auth);
+
+  const { data: myPathways = [], isLoading } = useGetMyPathwaysQuery(undefined, {
+    skip: !isAuthenticated,
+  });
+
+  const { data: submissionsData = [] } = useGetStudentSubmissionsQuery(undefined, {
+    skip: !isAuthenticated,
+  });
+
+  // Filter strictly to enrolled pathways, normalize aliases, and deduplicate by canonical ID
+  const displayCourses = useMemo(() => {
+    const seen = new Set<string>();
+    const list: any[] = [];
+    for (const item of myPathways) {
+      const p = item.pathway || item;
+      if (!p) continue;
+      const rawId = p.id || p.slug || "";
+      const canonId = (rawId === "course1" || p.slug === "course1") ? "cs-agentic" : rawId;
+      if (canonId && seen.has(canonId)) {
+        continue;
+      }
+      if (canonId) seen.add(canonId);
+      list.push({
+        ...item,
+        pathway: item.pathway
+          ? {
+              ...item.pathway,
+              id: canonId,
+              slug: item.pathway.slug === "course1" ? "cs-agentic" : item.pathway.slug,
+            }
+          : item.pathway,
+      });
+    }
+    return list;
+  }, [myPathways]);
+
+  const totalEnrolled = displayCourses.length;
+
+  // Filter state for courses
+  const [filterState, setFilterState] = useState<"all" | "in_progress" | "completed">("all");
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 font-sans">
+      {/* Page Header (Consistent "Courses" naming) */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-zinc-100 dark:border-zinc-800/80">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-zinc-100 tracking-tight">
+              Courses
+            </h1>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 border border-blue-100 dark:border-blue-900/40">
+              <BookOpen className="w-3 h-3 stroke-[2.2]" />
+              <span>
+                {totalEnrolled} {totalEnrolled === 1 ? "Enrolled Course" : "Enrolled Courses"}
+              </span>
             </span>
           </div>
-          <span className="text-xl sm:text-3xl font-black text-zinc-900 dark:text-zinc-100">{totalEnrolled}</span>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-1">
+            Courses and curriculums you are actively enrolled in
+          </p>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-1.5">
-            <CheckCircle2 className="w-4 h-4" />
-            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-mono">
-              Access Status
-            </span>
+        {/* Filter chips when 2+ courses exist (A2) */}
+        {totalEnrolled >= 2 && (
+          <div className="flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800/80 p-1 rounded-xl">
+            {(["all", "in_progress", "completed"] as const).map((filter) => (
+              <button
+                key={filter}
+                onClick={() => setFilterState(filter)}
+                className={`min-h-[44px] flex items-center justify-center px-3.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                  filterState === filter
+                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-xs"
+                    : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+                }`}
+              >
+                {filter === "all" ? "All" : filter === "in_progress" ? "In Progress" : "Completed"}
+              </button>
+            ))}
           </div>
-          <span className="text-xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">Active</span>
-        </div>
-
-        <div className="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-xs col-span-2 sm:col-span-1">
-          <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 mb-1.5">
-            <Sparkles className="w-4 h-4" />
-            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-mono">
-              Account Role
-            </span>
-          </div>
-          <span className="text-xl sm:text-3xl font-black text-zinc-900 dark:text-zinc-100">{user?.role || "STUDENT"}</span>
-        </div>
+        )}
       </div>
 
-      {/* Enrolled Pathways Grid */}
+      {/* Enrolled Courses Grid or Skeletons */}
       {isLoading ? (
-        <div className="py-16 text-center">
-          <Spinner label="Loading your enrolled pathways..." size="lg" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          {[1, 2].map((n) => (
+            <div
+              key={n}
+              className="p-6 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 space-y-4 animate-pulse"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-zinc-200 dark:bg-zinc-800" />
+                <div className="space-y-1.5 flex-1">
+                  <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-20" />
+                  <div className="h-3 bg-zinc-100 dark:bg-zinc-800/60 rounded w-28" />
+                </div>
+              </div>
+              <div className="h-5 bg-zinc-200 dark:bg-zinc-800 rounded w-3/4" />
+              <div className="h-3 bg-zinc-100 dark:bg-zinc-800/60 rounded w-full" />
+              <div className="h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full" />
+              <div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded-xl" />
+            </div>
+          ))}
         </div>
       ) : totalEnrolled === 0 ? (
-        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/80 dark:border-zinc-800 p-12 text-center space-y-4 max-w-md mx-auto shadow-xs">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto">
-            <BookOpen className="w-8 h-8" />
-          </div>
-          <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">No active enrollments yet</h3>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-            You haven't enrolled in any learning pathways yet. Browse our curated catalog to start learning!
+        <div className="macos-card rounded-3xl p-10 text-center space-y-4 max-w-md mx-auto">
+          <MacFolderIcon size="lg" color="blue" className="mx-auto mb-2" />
+          <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+            No active enrolled courses yet
+          </h3>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-xs mx-auto">
+            You haven't enrolled in any courses yet.
           </p>
           <Link to="/">
-            <Button variant="primary" size="md" icon={Compass}>
-              Browse Pathways Catalog
+            <Button variant="primary" size="sm">
+              Go to Dashboard
             </Button>
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {myPathways.map((item: any) => {
-            const pathway = item.pathway;
-            if (!pathway) return null;
-
-            return (
-              <div
-                key={item.enrollmentId || pathway.id}
-                className="minimal-card p-6 flex flex-col justify-between h-full group bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <Badge variant="emerald" size="sm" className="gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Active
-                    </Badge>
-                    <span className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 font-mono">
-                      {item.enrolledAt ? new Date(item.enrolledAt).toLocaleDateString("en-IN") : "Enrolled"}
-                    </span>
-                  </div>
-
-                  <h3 className="font-extrabold text-base text-zinc-900 dark:text-zinc-100 line-clamp-2 leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                    {pathway.title}
-                  </h3>
-
-                  <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed">
-                    {pathway.shortDescription || pathway.description || "Comprehensive modular learning curriculum."}
-                  </p>
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
-                    <Layers className="w-3.5 h-3.5 text-indigo-500" />
-                    Full Access
-                  </span>
-
-                  <Link to={`/learn/${pathway.id}`}>
-                    <Button size="sm" variant="primary" icon={Play}>
-                      Continue Learning
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          {displayCourses.map((item: any) => (
+            <CourseCard
+              key={item.enrollmentId || item.id || item.pathway?.id}
+              item={item}
+              submissionsData={submissionsData}
+            />
+          ))}
         </div>
       )}
     </div>

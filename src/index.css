@@ -3,7 +3,11 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    scrollbar-gutter: stable;
+  }
   :root {
+    --nav-h: 4rem;
     --background: 0 0% 100%; /* #ffffff */
     --foreground: 240 10% 4%; /* #09090b */
     
@@ -37,32 +41,32 @@
   }
 
   .dark {
-    --background: 240 10% 4%; /* #09090b */
-    --foreground: 0 0% 98%; /* #fafafa */
+    --background: 224 25% 6%; /* #0b0d13 */
+    --foreground: 210 40% 98%; /* #f8fafc */
     
-    --card: 240 10% 6%; /* #101014 */
-    --card-foreground: 0 0% 98%;
+    --card: 224 24% 10%; /* #121622 */
+    --card-foreground: 210 40% 98%;
     
-    --popover: 240 10% 6%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 224 24% 10%; /* #121622 */
+    --popover-foreground: 210 40% 98%;
     
     --primary: 238 84% 67%; /* #6366f1 */
     --primary-foreground: 0 0% 100%;
     
-    --secondary: 240 4% 12%; /* #1c1c21 */
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 224 20% 16%; /* #1e2433 */
+    --secondary-foreground: 210 40% 98%;
     
-    --muted: 240 5% 65%; /* #a1a1aa */
-    --muted-foreground: 240 5% 65%;
+    --muted: 220 14% 65%; /* #94a3b8 */
+    --muted-foreground: 220 14% 60%;
     
-    --accent: 240 4% 12%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 224 20% 16%; /* #1e2433 */
+    --accent-foreground: 210 40% 98%;
     
     --destructive: 0 63% 51%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 4% 16%; /* #27272a */
-    --input: 240 4% 16%;
+    --border: 224 20% 18%; /* #23293a */
+    --input: 224 20% 18%;
     --ring: 238 84% 67%;
   }
 }
@@ -93,9 +97,9 @@
 }
 
 .dark .minimal-card, .dark .luxury-card {
-  background: #111114;
+  background: #121622;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.5);
 }
 
 .minimal-card:hover, .luxury-card:hover {
@@ -117,9 +121,9 @@
 }
 
 .dark .glass-panel, .dark .glass-card {
-  background: rgba(16, 16, 20, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(18, 22, 34, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -175,3 +179,184 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(161, 161, 170, 0.5);
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Rich Content Typography for LMS Student View & CMS Studio
+   Ensures bold is bold, italic is italic, headings look like headings,
+   and lists render bullets/numbers cleanly.
+───────────────────────────────────────────────────────────── */
+.rich-content {
+  color: inherit;
+  line-height: 1.7;
+}
+
+.rich-content b,
+.rich-content strong {
+  font-weight: 700 !important;
+  color: inherit;
+}
+
+.rich-content i,
+.rich-content em {
+  font-style: italic !important;
+  color: inherit;
+}
+
+.rich-content u {
+  text-decoration: underline !important;
+}
+
+.rich-content h1 {
+  font-size: 1.5rem !important;
+  font-weight: 800 !important;
+  margin-top: 1.5rem !important;
+  margin-bottom: 0.5rem !important;
+  line-height: 1.25 !important;
+  color: inherit;
+}
+
+.rich-content h2 {
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  margin-top: 1.25rem !important;
+  margin-bottom: 0.4rem !important;
+  line-height: 1.3 !important;
+  color: inherit;
+}
+
+.rich-content h3 {
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  margin-top: 1rem !important;
+  margin-bottom: 0.35rem !important;
+  line-height: 1.35 !important;
+  color: inherit;
+}
+
+.rich-content p {
+  margin-top: 0.35rem !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.rich-content ul {
+  list-style-type: disc !important;
+  padding-left: 1.5rem !important;
+  margin: 0.5rem 0 0.75rem 0 !important;
+}
+
+.rich-content ol {
+  list-style-type: decimal !important;
+  padding-left: 1.5rem !important;
+  margin: 0.5rem 0 0.75rem 0 !important;
+}
+
+.rich-content li {
+  margin-top: 0.25rem !important;
+  margin-bottom: 0.25rem !important;
+  padding-left: 0.25rem !important;
+}
+
+.rich-content a {
+  color: #6366f1 !important;
+  text-decoration: underline !important;
+  font-weight: 500 !important;
+}
+
+.rich-content a:hover {
+  color: #4f46e5 !important;
+}
+
+.rich-content code {
+  background: rgba(120, 120, 120, 0.15) !important;
+  padding: 0.15rem 0.4rem !important;
+  border-radius: 0.3rem !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 0.875em !important;
+}
+
+.rich-content pre {
+  background: #0d0f17 !important;
+  color: #f1f5f9 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding: 0.85rem 1.15rem !important;
+  border-radius: 0.75rem !important;
+  overflow-x: auto !important;
+  margin: 0.85rem 0 !important;
+  font-size: 0.85rem !important;
+}
+
+.rich-content blockquote {
+  border-left: 3px solid #6366f1 !important;
+  padding-left: 1rem !important;
+  margin: 0.75rem 0 !important;
+  color: #a1a1aa !important;
+  font-style: italic !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   macOS Design Philosophy System Utilities
+   (Human Interface Guidelines: Translucency, Depth, Hairlines, Dock)
+───────────────────────────────────────────────────────────── */
+.macos-card {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 14px rgba(0, 0, 0, 0.03);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .macos-card {
+  background: rgba(22, 26, 38, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.macos-card:hover {
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06), 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+.dark .macos-card:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+.macos-dock {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.dark .macos-dock {
+  background: rgba(24, 27, 36, 0.78);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.macos-tag-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+/* Reduced motion optimization (A4) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+

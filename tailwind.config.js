@@ -3,6 +3,10 @@ import tailwindcssAnimate from 'tailwindcss-animate';
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
+  safelist: [
+    'grid-rows-[0fr]',
+    'grid-rows-[1fr]',
+  ],
   darkMode: 'class',
   theme: {
     extend: {
@@ -73,18 +77,31 @@ export default {
           900: '#312e81',
           950: '#1e1b4b',
         },
+        slate: {
+          50: '#f8fafc',
+          100: '#f1f5f9',
+          200: '#e2e8f0',
+          300: '#cbd5e1',
+          400: '#94a3b8',
+          500: '#64748b',
+          600: '#475569',
+          700: '#334155',
+          800: '#23293a',
+          900: '#121622',
+          950: '#0b0d13',
+        },
         zinc: {
-          50: '#fafafa',
-          100: '#f4f4f5',
-          200: '#e4e4e7',
-          300: '#d4d4d8',
-          400: '#a1a1aa',
-          500: '#71717a',
-          600: '#52525b',
-          700: '#3f3f46',
-          800: '#27272a',
-          900: '#18181b',
-          950: '#09090b',
+          50: '#f8fafc',
+          100: '#f1f5f9',
+          200: '#e2e8f0',
+          300: '#cbd5e1',
+          400: '#94a3b8',
+          500: '#64748b',
+          600: '#475569',
+          700: '#334155',
+          800: '#23293a',
+          900: '#121622',
+          950: '#0b0d13',
         },
       },
       borderRadius: {
@@ -105,14 +122,20 @@ export default {
         sans: ["'Plus Jakarta Sans'", "'Inter'", 'system-ui', '-apple-system', 'sans-serif'],
         mono: ["'JetBrains Mono'", "'Fira Code'", 'monospace'],
       },
-      keyframes: {
-        'fade-in': {
-          '0%': { opacity: '0', transform: 'translateY(4px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
-        },
+      transitionDuration: {
+        150: '150ms',
+        200: '200ms',
+        250: '250ms',
+        300: '300ms',
       },
-      animation: {
-        'fade-in': 'fade-in 0.2s ease-out',
+      transitionTimingFunction: {
+        'drawer': 'cubic-bezier(0.22, 1, 0.36, 1)',
+        'ease-out-expo': 'cubic-bezier(0.16, 1, 0.3, 1)',
+        'ease-in-out-smooth': 'cubic-bezier(0.4, 0, 0.2, 1)',
+      },
+      gridTemplateRows: {
+        '0': '0fr',
+        '1': '1fr',
       },
     },
   },

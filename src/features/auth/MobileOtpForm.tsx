@@ -10,19 +10,25 @@ import {
   AlertCircle,
   Sparkles,
   ChevronDown,
+  KeyRound,
+  RotateCcw,
+  MessageSquare,
 } from "lucide-react";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import {
   useCheckUserMutation,
   useLoginMutation,
+  useSendOtpMutation,
+  useVerifyOtpMutation,
   useGetCollegesQuery,
   useGetBranchesQuery,
 } from "../../store/apiSlice";
 import { setCredentials } from "../../store/authSlice";
 import { extractErrorMessage } from "../../utils/error";
+import { getWebsiteUrl } from "../../utils/env";
 
-type AuthStep = "PHONE" | "PROFILE_SETUP";
+type AuthStep = "PHONE" | "OTP" | "PROFILE_SETUP";
 
 interface MobileOtpFormProps {
   initialMode?: "login" | "register";
@@ -58,11 +64,16 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
   const location = useLocation();
   const dispatch = useDispatch();
 
-  const from = new URLSearchParams(location.search).get("redirect") || "/enrolled";
+  const from =
+    new URLSearchParams(location.search).get("redirect") ||
+    (location.state as any)?.from?.pathname ||
+    "/dashboard";
 
   // Form states
   const [step, setStep] = useState<AuthStep>("PHONE");
   const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [deliveryChannel, setDeliveryChannel] = useState<"WHATSAPP" | "SMS">("WHATSAPP");
   const [name, setName] = useState("");
   const [selectedCollege, setSelectedCollege] = useState("");
   const [customCollege, setCustomCollege] = useState("");
@@ -79,10 +90,19 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
   const collegeOptions = serverColleges.length > 0 ? serverColleges : DEFAULT_COLLEGES;
   const branchOptions = serverBranches.length > 0 ? serverBranches : DEFAULT_BRANCHES;
 
-  const [errorMsg, setErrorMsg] = useState("");
+  const queryParams = new URLSearchParams(location.search);
+  const initialError =
+    queryParams.get("error") === "session_expired"
+      ? "Session expired, please log in"
+      : queryParams.get("message") || (location.state as any)?.error || "";
+  const [errorMsg, setErrorMsg] = useState(initialError);
 
   const [checkUserMutation, { isLoading: isCheckingUser }] = useCheckUserMutation();
   const [loginMutation, { isLoading: isLoggingIn }] = useLoginMutation();
+  const [sendOtpMutation, { isLoading: isSendingOtp }] = useSendOtpMutation();
+  const [verifyOtpMutation, { isLoading: isVerifyingOtp }] = useVerifyOtpMutation();
+
+  const isRoadshowMode = import.meta.env.VITE_ROADSHOW_MODE === "true";
 
   // Step 1: User enters phone number and clicks continue
   const handlePhoneSubmit = async (e?: React.FormEvent) => {
@@ -98,22 +118,32 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
     try {
       const checkRes = await checkUserMutation({ phone: cleanPhone }).unwrap();
 
-      if (checkRes.exists && checkRes.user) {
-        // User exists: login directly and redirect
-        const response = await loginMutation({ phone: cleanPhone }).unwrap();
-        dispatch(setCredentials(response));
-        navigate(from, { replace: true });
+      if (isRoadshowMode) {
+        if (checkRes.exists && checkRes.user) {
+          // User exists: roadshow direct login shortcut
+          const response = await loginMutation({ phone: cleanPhone }).unwrap();
+          dispatch(setCredentials(response));
+          navigate(from, { replace: true });
+        } else {
+          // New user: ask for Name, College, Branch
+          setStep("PROFILE_SETUP");
+        }
       } else {
-        // New user: ask for Name, College, Branch
-        setStep("PROFILE_SETUP");
+        // Standard OTP verification flow (Default)
+        if (!checkRes.exists || !checkRes.user) {
+          setStep("PROFILE_SETUP");
+        } else {
+          setDeliveryChannel("WHATSAPP");
+          await sendOtpMutation({ phone: cleanPhone, channel: "WHATSAPP" }).unwrap();
+          setStep("OTP");
+        }
       }
-    } catch {
-      // Fallback: ask for profile details
-      setStep("PROFILE_SETUP");
+    } catch (err) {
+      setErrorMsg(extractErrorMessage(err, "Unable to verify mobile number. Please try again."));
     }
   };
 
-  // Step 2: New user fills profile and completes registration directly
+  // Step 2: New user fills profile and completes registration
   const handleProfileSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setErrorMsg("");
@@ -150,24 +180,73 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
       return;
     }
 
+    if (isRoadshowMode) {
+      try {
+        const response = await loginMutation({
+          phone: cleanPhone,
+          name: name.trim(),
+          collegeName: effectiveCollege,
+          collegeId: selectedCollegeObj?.id || undefined,
+          branch: effectiveBranch,
+        }).unwrap();
+
+        dispatch(setCredentials(response));
+        navigate(from, { replace: true });
+      } catch (err) {
+        setErrorMsg(extractErrorMessage(err, "Failed to complete registration. Please try again."));
+      }
+    } else {
+      // Send OTP to verify new registration
+      try {
+        setDeliveryChannel("WHATSAPP");
+        await sendOtpMutation({ phone: cleanPhone, channel: "WHATSAPP" }).unwrap();
+        setStep("OTP");
+      } catch (err) {
+        setErrorMsg(extractErrorMessage(err, "Failed to send verification code. Please try again."));
+      }
+    }
+  };
+
+  // Step 3: Verify OTP
+  const handleOtpSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setErrorMsg("");
+
+    const cleanOtp = otp.trim();
+    if (!cleanOtp) {
+      setErrorMsg("Please enter the verification code");
+      return;
+    }
+
+    const cleanPhone = phone.replace(/\D/g, "");
+    const effectiveCollege =
+      selectedCollege === "other" || selectedCollege === "Other University / College"
+        ? customCollege.trim()
+        : selectedCollege.trim();
+    const effectiveBranch =
+      selectedBranch === "other" || selectedBranch === "Other / Multidisciplinary"
+        ? customBranch.trim()
+        : selectedBranch.trim();
+
     try {
-      const response = await loginMutation({
+      const response = await verifyOtpMutation({
         phone: cleanPhone,
-        name: name.trim(),
-        collegeName: effectiveCollege,
+        otp: cleanOtp,
+        name: name ? name.trim() : undefined,
+        collegeName: effectiveCollege || undefined,
         collegeId: selectedCollegeObj?.id || undefined,
-        branch: effectiveBranch,
+        branch: effectiveBranch || undefined,
       }).unwrap();
 
       dispatch(setCredentials(response));
       navigate(from, { replace: true });
     } catch (err) {
-      setErrorMsg(extractErrorMessage(err, "Failed to complete registration. Please try again."));
+      setErrorMsg(extractErrorMessage(err, "Invalid or expired verification code. Please check and try again."));
     }
   };
 
   return (
-    <div className="p-6 sm:p-8 max-w-md w-full mx-auto shadow-2xl border border-zinc-200/80 dark:border-zinc-800 rounded-3xl bg-white dark:bg-zinc-900 animate-fade-in">
+    <div className="p-6 sm:p-8 max-w-md w-full mx-auto shadow-2xl border border-zinc-200/80 dark:border-zinc-800 rounded-3xl bg-white dark:bg-zinc-900 ">
       <div className="text-center mb-6">
         <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 mb-3 shadow-inner">
           <Phone className="w-6 h-6" />
@@ -202,13 +281,15 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
               </div>
               <input
                 type="tel"
+                inputMode="tel"
+                autoComplete="tel"
                 placeholder="9876543210"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                 maxLength={10}
                 required
                 autoFocus
-                className="w-full pl-20 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-hidden focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono font-bold"
+                className="w-full pl-20 pr-4 py-2.5 min-h-[44px] bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-base sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-hidden focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono font-bold"
               />
             </div>
             <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">
@@ -221,21 +302,143 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
             variant="primary"
             size="lg"
             className="w-full"
-            loading={isCheckingUser || isLoggingIn}
+            loading={isCheckingUser || isLoggingIn || isSendingOtp}
             icon={ArrowRight}
           >
-            Continue to Start
+            {isRoadshowMode ? "Continue to Start" : "Get OTP Code"}
           </Button>
 
           <p className="text-[11px] text-center text-zinc-400 dark:text-zinc-500 pt-1">
-            Direct instant authentication.
+            {isRoadshowMode ? "Direct instant authentication enabled." : "A 4-digit verification code will be sent."}
           </p>
+        </form>
+      )}
+
+      {step === "OTP" && (
+        /* STEP: Verification Code */
+        <form onSubmit={handleOtpSubmit} className="space-y-4 ">
+          <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/40 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-200 font-medium">
+              <Phone className="w-4 h-4 text-indigo-500 shrink-0" />
+              <span>Mobile: <strong>+91 {phone}</strong></span>
+              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
+                {deliveryChannel === "WHATSAPP" ? "WhatsApp" : "SMS"}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setStep("PHONE");
+                setOtp("");
+                setErrorMsg("");
+              }}
+              className="min-h-[44px] px-2 text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline font-semibold cursor-pointer flex items-center"
+            >
+              Change
+            </button>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
+              Verification Code <span className="text-rose-500">*</span>
+            </label>
+            <div className="relative">
+              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400">
+                <KeyRound className="w-4 h-4" />
+              </div>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="one-time-code"
+                placeholder="Enter code (e.g. 1234)"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                maxLength={6}
+                required
+                autoFocus
+                className="w-full pl-10 pr-4 py-2.5 min-h-[44px] bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-base sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-hidden focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono font-bold tracking-widest text-center"
+              />
+            </div>
+            <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">
+              {deliveryChannel === "WHATSAPP"
+                ? "Enter the verification code sent to your WhatsApp."
+                : "Enter the verification code sent via SMS to your mobile."}
+            </p>
+          </div>
+
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            className="w-full"
+            loading={isVerifyingOtp}
+            icon={ArrowRight}
+          >
+            Verify & Start Learning
+          </Button>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-1 text-xs">
+            <button
+              type="button"
+              onClick={async () => {
+                setErrorMsg("");
+                try {
+                  await sendOtpMutation({ phone: phone.replace(/\D/g, ""), channel: deliveryChannel }).unwrap();
+                } catch (err) {
+                  setErrorMsg(extractErrorMessage(err, "Failed to resend code"));
+                }
+              }}
+              disabled={isSendingOtp}
+              className="min-h-[44px] px-3 text-zinc-500 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1 font-medium transition-colors cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Resend Code</span>
+            </button>
+
+            {deliveryChannel === "WHATSAPP" ? (
+              <button
+                type="button"
+                onClick={async () => {
+                  setErrorMsg("");
+                  try {
+                    setDeliveryChannel("SMS");
+                    await sendOtpMutation({ phone: phone.replace(/\D/g, ""), channel: "SMS" }).unwrap();
+                  } catch (err) {
+                    setErrorMsg(extractErrorMessage(err, "Failed to send code via SMS"));
+                  }
+                }}
+                disabled={isSendingOtp}
+                className="min-h-[44px] px-3 text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-semibold transition-colors cursor-pointer"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>Send via SMS instead</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={async () => {
+                  setErrorMsg("");
+                  try {
+                    setDeliveryChannel("WHATSAPP");
+                    await sendOtpMutation({ phone: phone.replace(/\D/g, ""), channel: "WHATSAPP" }).unwrap();
+                  } catch (err) {
+                    setErrorMsg(extractErrorMessage(err, "Failed to send code via WhatsApp"));
+                  }
+                }}
+                disabled={isSendingOtp}
+                className="min-h-[44px] px-3 text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 font-semibold transition-colors cursor-pointer"
+              >
+                <span>Send via WhatsApp instead</span>
+              </button>
+            )}
+          </div>
         </form>
       )}
 
       {step === "PROFILE_SETUP" && (
         /* STEP 2: New User Profile Details */
-        <form onSubmit={handleProfileSubmit} className="space-y-3.5 animate-fade-in">
+        <form onSubmit={handleProfileSubmit} className="space-y-3.5 ">
           <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/40 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-200 font-medium">
               <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
@@ -247,7 +450,7 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
                 setStep("PHONE");
                 setErrorMsg("");
               }}
-              className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline font-semibold cursor-pointer"
+              className="min-h-[44px] px-2 text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline font-semibold cursor-pointer flex items-center"
             >
               Change
             </button>
@@ -275,7 +478,7 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
                 value={selectedCollege}
                 onChange={(e) => setSelectedCollege(e.target.value)}
                 required
-                className="w-full pl-10 pr-9 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer"
+                className="w-full pl-10 pr-9 py-2.5 min-h-[44px] bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-base sm:text-sm text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer"
               >
                 <option value="">-- Select Your College / University --</option>
                 {collegeOptions.map((c: any) => (
@@ -289,7 +492,7 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
             </div>
 
             {(selectedCollege === "other" || selectedCollege === "Other University / College") && (
-              <div className="pt-2 animate-fade-in">
+              <div className="pt-2 ">
                 <Input
                   label="Specify College / University Name *"
                   type="text"
@@ -314,7 +517,7 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
                 value={selectedBranch}
                 onChange={(e) => setSelectedBranch(e.target.value)}
                 required
-                className="w-full pl-10 pr-9 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer"
+                className="w-full pl-10 pr-9 py-2.5 min-h-[44px] bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-base sm:text-sm text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:bg-white dark:focus:bg-zinc-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer"
               >
                 <option value="">-- Select Your Academic Branch --</option>
                 {branchOptions.map((b: any) => (
@@ -328,7 +531,7 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
             </div>
 
             {(selectedBranch === "other" || selectedBranch === "Other / Multidisciplinary") && (
-              <div className="pt-2 animate-fade-in">
+              <div className="pt-2 ">
                 <Input
                   label="Specify Branch / Stream Name *"
                   type="text"
@@ -354,6 +557,16 @@ export default function MobileOtpForm({ initialMode = "login" }: MobileOtpFormPr
           </Button>
         </form>
       )}
+
+      {/* Back to unisole.org link */}
+      <div className="pt-4 mt-4 border-t border-zinc-100 dark:border-zinc-800 text-center">
+        <a
+          href={getWebsiteUrl()}
+          className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-white inline-flex items-center gap-1 transition-colors font-medium"
+        >
+          ← Back to unisole.org
+        </a>
+      </div>
     </div>
   );
 }

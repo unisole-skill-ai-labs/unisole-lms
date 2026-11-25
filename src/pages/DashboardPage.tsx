@@ -1,131 +1,839 @@
-import React, { useState, useMemo } from "react";
-import { Compass, BookOpen, Layers, Sparkles, Award, ShieldCheck, GraduationCap } from "lucide-react";
+import React, { useState, useMemo, useEffect, useRef, startTransition } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { prefetchByPath } from "../utils/routePrefetch";
 import {
-  useGetPublicPathwaysQuery,
-  useGetCategoriesQuery,
+  Play,
+  ArrowRight,
+  Calendar as CalendarIcon,
+  Clock,
+  FileQuestion,
+  FileText,
+  Video,
+  CheckCircle2,
+  ChevronRight,
+  ExternalLink,
+  ChevronDown,
+  RefreshCw,
+  BookOpen,
+  Radio,
+  AlertCircle,
+  Lock,
+} from "lucide-react";
+import { formatIstDisplay } from "../utils/timezone";
+import { getCurriculum } from "../constants/curriculumData";
+import {
   useGetMyPathwaysQuery,
+  useGetDashboardSummaryQuery,
+  useGetMeQuery,
 } from "../store/apiSlice";
-import PathwayCard from "../features/pathways/PathwayCard";
-import PathwayFilter from "../features/pathways/PathwayFilter";
-import Spinner from "../components/ui/Spinner";
-import Button from "../components/ui/Button";
+import { cleanLessonTitle } from "../utils/formatContent";
+import {
+  getCourseFlowStats,
+  formatWeekTitle,
+  getCountdownText,
+  getLiveJoinStatus,
+  getStudentFirstName,
+  formatDateStandard,
+} from "../utils/courseFlow";
 
-export default function DashboardPage() {
-  const { isAuthenticated } = useSelector((state: any) => state.auth);
+// Isolated Minute-by-minute countdown badge (A3: prevents entire dashboard from re-rendering every minute)
+const LiveCountdownBadge = React.memo(function LiveCountdownBadge({
+  targetDate,
+  isLive,
+}: {
+  targetDate?: string | null;
+  isLive?: boolean;
+}) {
+  const [countdown, setCountdown] = useState<string | null>(targetDate ? getCountdownText(targetDate) : null);
 
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  useEffect(() => {
+    if (!targetDate) return;
+    setCountdown(getCountdownText(targetDate));
+    const timer = setInterval(() => {
+      setCountdown(getCountdownText(targetDate));
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [targetDate]);
 
-  const { data: pathways = [], isLoading: isPathwaysLoading } = useGetPublicPathwaysQuery(undefined);
-  const { data: categories = [] } = useGetCategoriesQuery(undefined);
-  const { data: myPathways = [] } = useGetMyPathwaysQuery(undefined, {
-    skip: !isAuthenticated,
-  });
-
-  const enrolledPathwayIds = useMemo(() => {
-    const ids = new Set();
-    myPathways.forEach((item: any) => {
-      if (item.pathway?.id) ids.add(item.pathway.id);
-    });
-    return ids;
-  }, [myPathways]);
-
-  // Client-side filtering
-  const filteredPathways = useMemo(() => {
-    return pathways.filter((p: any) => {
-      const matchCat = selectedCategory
-        ? (p.categories || []).some((c: any) => c.id === selectedCategory || c.name === selectedCategory)
-        : true;
-      const matchSearch = searchTerm
-        ? p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (p.shortDescription && p.shortDescription.toLowerCase().includes(searchTerm.toLowerCase()))
-        : true;
-      return matchCat && matchSearch;
-    });
-  }, [pathways, selectedCategory, searchTerm]);
+  if (!countdown) return null;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-8 animate-fade-in">
-      {/* Hero Header */}
-      <div className="bg-gradient-to-br from-indigo-950 via-zinc-900 to-zinc-950 dark:from-indigo-950 dark:via-zinc-950 dark:to-black rounded-3xl p-6 sm:p-10 text-white shadow-2xl relative overflow-hidden border border-zinc-800/80">
-        <div className="absolute right-0 top-0 translate-x-1/4 -translate-y-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 max-w-2xl space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 dark:bg-white/5 backdrop-blur-md text-xs font-semibold text-indigo-200 border border-white/10">
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>Curated Skill Pathways & AI Labs</span>
+    <span
+      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+        isLive
+          ? "bg-rose-500 text-white animate-pulse"
+          : "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300"
+      }`}
+    >
+      {countdown}
+    </span>
+  );
+});
+
+export default function DashboardPage() {
+  const { isAuthenticated, user } = useSelector((state: any) => state.auth);
+  const navigate = useNavigate();
+
+  // 1. Enrolled Programs
+  const {
+    data: myPathways = [],
+    isLoading: isPathwaysLoading,
+    isError: isPathwaysError,
+    refetch: refetchPathways,
+  } = useGetMyPathwaysQuery(undefined, { skip: !isAuthenticated });
+
+  const enrolledCourses = useMemo(() => {
+    const seen = new Set<string>();
+    const list: any[] = [];
+    for (const item of myPathways) {
+      const p = item.pathway || item;
+      if (!p || (!p.title && !p.name)) continue;
+      const rawId = p.id || p.slug || "";
+      const canonId = (rawId === "course1" || p.slug === "course1") ? "cs-agentic" : rawId;
+      if (canonId && seen.has(canonId)) continue;
+      if (canonId) seen.add(canonId);
+      list.push({
+        ...p,
+        id: canonId,
+        slug: p.slug === "course1" ? "cs-agentic" : p.slug,
+      });
+    }
+    return list;
+  }, [myPathways]);
+
+  // Selected active program (defaults to first enrolled program or "cs-agentic")
+  const [selectedProgramId, setSelectedProgramId] = useState<string>("");
+  const [programDropdownOpen, setProgramDropdownOpen] = useState(false);
+
+  const activeProgram = useMemo(() => {
+    if (selectedProgramId) {
+      const match = enrolledCourses.find((c: any) => (c.id || c.slug) === selectedProgramId);
+      if (match) return match;
+    }
+    return (
+      enrolledCourses[0] || {
+        id: "cs-agentic",
+        slug: "cs-agentic",
+        title: "AI Agent Engineering",
+      }
+    );
+  }, [enrolledCourses, selectedProgramId]);
+
+  const currentProgramId = activeProgram.id || activeProgram.slug || "cs-agentic";
+  const programTitle = activeProgram.title || activeProgram.name || "AI Agent Engineering";
+
+  // 2. Aggregated Single Endpoint (B2) - Reduces mobile dashboard requests from 5 to 1
+  const {
+    data: summaryData,
+    isLoading: isSummaryLoading,
+    isError: isContentError,
+    refetch: refetchSummary,
+  } = useGetDashboardSummaryQuery(currentProgramId, { skip: !currentProgramId || !isAuthenticated });
+
+  const pathwayContent = summaryData?.pathwayContent;
+  const progressData = summaryData?.progress;
+  const submissionsData = summaryData?.submissions;
+  const activitiesData = summaryData?.activities;
+  const calendarEvents = summaryData?.calendarEvents || [];
+
+  const isContentLoading = isSummaryLoading && !pathwayContent;
+  const isProgressLoading = isSummaryLoading && !progressData;
+  const isActivitiesLoading = isSummaryLoading && !activitiesData;
+
+  const refetchContent = refetchSummary;
+  const refetchProgress = refetchSummary;
+  const refetchSubmissions = refetchSummary;
+  const refetchActivities = refetchSummary;
+  const refetchCalendar = refetchSummary;
+
+  const allowCurriculumFallback =
+    typeof window !== "undefined" &&
+    (import.meta.env.VITE_ALLOW_CURRICULUM_FALLBACK === "true" ||
+      import.meta.env.DEV ||
+      window.location.hostname.includes("stg"));
+
+  const canonical = useMemo(
+    () => getCurriculum(currentProgramId),
+    [currentProgramId]
+  );
+
+  // Shared Course Flow computation (Single source of truth)
+  const modules = useMemo(() => {
+    const allModules = pathwayContent?.courses?.flatMap((c: any) => c.modules || []) || [];
+    const rawModules = allModules
+      .filter((m: any) => m && m.status === "PUBLISHED" && m.isActive !== false && !m.title?.toLowerCase().includes("intro to ai"))
+      .map((m: any) => ({
+        ...m,
+        lessons: (m.lessons || []).filter((l: any) => l && l.status === "PUBLISHED" && l.isActive !== false),
+      }));
+    if (rawModules.length > 0) return rawModules;
+    if (allowCurriculumFallback && canonical.modules && canonical.modules.length > 0) {
+      return canonical.modules;
+    }
+    return [];
+  }, [pathwayContent, allowCurriculumFallback, canonical]);
+
+  const completedIdsArray: string[] = useMemo(() => {
+    return Array.from(new Set((progressData?.completedLessonIds || []) as string[]));
+  }, [progressData]);
+
+  const courseFlow = useMemo(() => {
+    return getCourseFlowStats(modules, completedIdsArray, submissionsData || []);
+  }, [modules, completedIdsArray, submissionsData]);
+
+  // Target the first incomplete module across the course
+  const firstIncompleteWeek = useMemo(() => {
+    return courseFlow.weekStats.find((ws) => !ws.isCompleted);
+  }, [courseFlow.weekStats]);
+
+  const targetWeek = firstIncompleteWeek || courseFlow.weekStats[0];
+  const isTargetWeekLocked = targetWeek ? targetWeek.isLocked : false;
+  const targetWeekNum = targetWeek ? targetWeek.weekNumber : 1;
+  const targetWeekTitle = targetWeek ? targetWeek.formattedTitle : "Module 1";
+  const targetWeekProgressPercent = targetWeek ? targetWeek.progressPercent : 0;
+  const totalWeeksCount = courseFlow.weekStats.length || modules.length || 12;
+
+  // Candidate for "Resume last lesson"
+  const resumeCandidate = courseFlow.nextIncompleteItem;
+  const resumeWeek = courseFlow.nextIncompleteWeek;
+
+  const canResumeLesson = useMemo(() => {
+    if (!resumeCandidate || !resumeWeek) return false;
+    if (courseFlow.completedActivities === 0 && targetWeekProgressPercent === 0) return false;
+    const belongsToCourse = modules.some((m: any) =>
+      (m.lessons || m.items || []).some((l: any) => l.id === resumeCandidate.id)
+    );
+    if (!belongsToCourse) return false;
+    if (resumeCandidate.isLocked || resumeWeek.isLocked) return false;
+    if ((resumeCandidate as any).status === "ARCHIVED" || (resumeCandidate as any).isActive === false) return false;
+    return true;
+  }, [resumeCandidate, resumeWeek, courseFlow.completedActivities, targetWeekProgressPercent, modules]);
+
+  // Next upcoming live class or deadline with minute-level countdown (B3)
+  const upcomingLive = useMemo(() => {
+    // Check if courseFlow has an active or upcoming live session
+    if (courseFlow.upcomingLiveSession) {
+      const { item, details } = courseFlow.upcomingLiveSession;
+      const status = getLiveJoinStatus(item, item.unlockAt);
+      const countdown = getCountdownText(item.unlockAt);
+      return {
+        id: item.id,
+        title: cleanLessonTitle(item.title),
+        dateFormatted: details.dateFormatted,
+        timeFormatted: details.timeFormatted,
+        userTimeZone: details.userTimeZone,
+        meetUrl: details.meetUrl,
+        countdown,
+        rawTargetDate: item.unlockAt,
+        status,
+        type: "live",
+        lessonId: item.id,
+      };
+    }
+
+    // Fallback to activitiesData or calendarEvents
+    const upcomingList = activitiesData?.upcoming || [];
+    const liveActivity = upcomingList.find(
+      (a: any) => a.type === "live" || a.category === "LIVE"
+    );
+
+    if (liveActivity) {
+      const status = getLiveJoinStatus(liveActivity, liveActivity.unlockAt);
+      const countdown = getCountdownText(liveActivity.unlockAt);
+      return {
+        id: liveActivity.id,
+        title: cleanLessonTitle(liveActivity.title),
+        dateFormatted: formatDateStandard(liveActivity.unlockAt || Date.now(), false),
+        timeFormatted: liveActivity.dateText || "6:00 PM",
+        userTimeZone: status.userTimeZone,
+        meetUrl: liveActivity.meetUrl || status.meetUrl,
+        countdown,
+        rawTargetDate: liveActivity.unlockAt,
+        status,
+        type: "live",
+        lessonId: liveActivity.lessonId || liveActivity.id,
+      };
+    }
+
+    const futureCal = calendarEvents.find(
+      (ev: any) =>
+        ev.event_type === "LIVE_CLASS" &&
+        new Date(ev.start_time).getTime() >= Date.now() - 2.5 * 60 * 60 * 1000
+    );
+
+    if (futureCal) {
+      const status = getLiveJoinStatus(futureCal, futureCal.start_time);
+      const countdown = getCountdownText(futureCal.start_time);
+      return {
+        id: futureCal.id,
+        title: cleanLessonTitle(futureCal.title),
+        dateFormatted: formatDateStandard(futureCal.start_time, false),
+        timeFormatted: new Date(futureCal.start_time).toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+        }),
+        userTimeZone: status.userTimeZone,
+        meetUrl: futureCal.meet_url || status.meetUrl,
+        countdown,
+        rawTargetDate: futureCal.start_time,
+        status,
+        type: "live",
+        lessonId: futureCal.lesson_id,
+      };
+    }
+
+    return null;
+  }, [courseFlow.upcomingLiveSession, activitiesData, calendarEvents]);
+
+  // Grouped Pending Activities (B4: Overdue first, max 3 items)
+  const { overdueActivities, upcomingActivities, totalPendingCount } = useMemo(() => {
+    const missed = activitiesData?.missed || [];
+    const upcoming = activitiesData?.upcoming || [];
+
+    const isActivity = (item: any) => {
+      const t = (item.type || "").toLowerCase();
+      const cat = (item.category || "").toLowerCase();
+      return (
+        t === "quiz" ||
+        t === "assignment" ||
+        t === "lab" ||
+        cat.includes("quiz") ||
+        cat.includes("lab") ||
+        cat.includes("assignment") ||
+        cat.includes("project")
+      );
+    };
+
+    const overdueList = missed.filter(isActivity);
+    const upcomingList = upcoming.filter(isActivity);
+
+    const overdueSlice = overdueList.slice(0, 3);
+    const remainingSlots = Math.max(0, 3 - overdueSlice.length);
+    const upcomingSlice = upcomingList.slice(0, remainingSlots);
+
+    return {
+      overdueActivities: overdueSlice,
+      upcomingActivities: upcomingSlice,
+      totalPendingCount: overdueList.length + upcomingList.length,
+    };
+  }, [activitiesData]);
+
+  // Fetch user profile if name is not yet in redux auth state
+  const { data: profileUser, isLoading: isProfileLoading } = useGetMeQuery(undefined, {
+    skip: !isAuthenticated || Boolean(user?.name),
+  });
+
+  const effectiveUser = user?.name ? user : (profileUser || user);
+  const firstName = getStudentFirstName(effectiveUser);
+  const isUserLoading = isAuthenticated && !firstName && isProfileLoading;
+
+  // Refresh handler
+  const handleRefresh = () => {
+    refetchPathways();
+    refetchContent();
+    refetchProgress();
+    refetchSubmissions();
+    refetchActivities();
+    refetchCalendar();
+  };
+
+  // Mobile pull-to-refresh (B5)
+  const touchStartY = useRef(0);
+  const [isPullRefreshing, setIsPullRefreshing] = useState(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (window.scrollY === 0) {
+      touchStartY.current = e.touches[0].clientY;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartY.current > 0 && window.scrollY === 0) {
+      const distance = e.touches[0].clientY - touchStartY.current;
+      if (distance > 70) {
+        setIsPullRefreshing(true);
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (isPullRefreshing) {
+      handleRefresh();
+      setTimeout(() => setIsPullRefreshing(false), 800);
+    }
+    touchStartY.current = 0;
+  };
+
+  const isInitialLoading = isPathwaysLoading || isContentLoading || isProgressLoading;
+
+  return (
+    <div
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      className="min-h-[calc(100vh-4rem)] bg-slate-50/70 dark:bg-[#0B0D13] py-4 sm:py-6 transition-colors pb-24 sm:pb-12"
+    >
+      <div className="max-w-xl md:max-w-3xl mx-auto px-4 sm:px-6 space-y-4 sm:space-y-5">
+        {/* Mobile Pull-to-Refresh Feedback Indicator */}
+        {isPullRefreshing && (
+          <div className="flex items-center justify-center gap-2 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50/80 dark:bg-blue-950/40 rounded-xl animate-pulse">
+            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            <span>Refreshing curriculum...</span>
           </div>
+        )}
 
-          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
-            Job-Ready Skills with <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-300">Structured Pathways</span>
-          </h1>
+        {/* ─── Greeting (Real first name "Hi, {username}", fallback to "Hi there") ─── */}
+        <div className="flex items-center justify-between pt-1">
+          {isUserLoading ? (
+            <div className="h-8 w-44 bg-zinc-200 dark:bg-zinc-800 rounded-lg animate-pulse" />
+          ) : (
+            <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+              {firstName ? `Hi, ${firstName}` : "Hi there"}
+            </h1>
+          )}
 
-          <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed max-w-xl">
-            Explore industry-crafted curriculums featuring reusable courses, modules, and hands-on video lessons tailored for college learners and engineering professionals.
-          </p>
-
-          <div className="flex flex-wrap items-center gap-4 pt-2 text-xs font-semibold text-zinc-400">
-            <div className="flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>College Verified</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <GraduationCap className="w-4 h-4 text-indigo-400" />
-              <span>Modular Credits</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Award className="w-4 h-4 text-amber-400" />
-              <span>Industry Certified</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Filter and Search Bar */}
-      <PathwayFilter
-        categories={categories}
-        selectedCategory={selectedCategory}
-        onSelectCategory={setSelectedCategory}
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        onReset={() => {
-          setSelectedCategory("");
-          setSearchTerm("");
-        }}
-      />
-
-      {/* Pathways Grid */}
-      {isPathwaysLoading ? (
-        <Spinner label="Loading pathways catalog..." size="lg" />
-      ) : filteredPathways.length === 0 ? (
-        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/80 dark:border-zinc-800 p-12 text-center space-y-3 max-w-md mx-auto shadow-xs">
-          <Compass className="w-10 h-10 text-zinc-400 mx-auto" />
-          <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">No pathways matched your criteria</h3>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Try adjusting your search terms or clearing the selected category filter.
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setSelectedCategory("");
-              setSearchTerm("");
-            }}
+          {/* Desktop-only Refresh button (hidden on mobile, B5) */}
+          <button
+            type="button"
+            onClick={handleRefresh}
+            aria-label="Refresh curriculum"
+            className="hidden sm:inline-flex items-center gap-1.5 p-2 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            title="Refresh"
           >
-            Reset Filters
-          </Button>
+            <RefreshCw className="w-4 h-4 stroke-[1.8]" />
+            <span className="text-xs font-medium">Refresh</span>
+          </button>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredPathways.map((pathway: any) => (
-            <PathwayCard
-              key={pathway.id}
-              pathway={pathway}
-              isEnrolled={enrolledPathwayIds.has(pathway.id)}
-            />
-          ))}
-        </div>
-      )}
+
+        {/* ─── Program Switcher (Rendered only if student has > 1 enrolled program) ─── */}
+        {enrolledCourses.length > 1 && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setProgramDropdownOpen((prev) => !prev)}
+              className="w-full flex items-center justify-between min-h-[44px] px-3.5 py-2.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-2xs hover:border-zinc-300 dark:hover:border-zinc-700 transition-all cursor-pointer text-left"
+            >
+              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                <BookOpen className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                <div className="min-w-0">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block leading-tight">
+                    Current Program
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate block mt-0.5">
+                    {programTitle}
+                  </span>
+                </div>
+              </div>
+              <ChevronDown
+                className={`w-4 h-4 text-zinc-400 shrink-0 transition-transform ${
+                  programDropdownOpen ? "rotate-180 text-blue-600" : ""
+                }`}
+              />
+            </button>
+
+            {programDropdownOpen && (
+              <div className="absolute top-full left-0 right-0 mt-1.5 p-1.5 bg-white dark:bg-[#121622] rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 z-30 space-y-0.5 ">
+                <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                  Select Program
+                </div>
+                {enrolledCourses.map((c: any) => {
+                  const id = c.id || c.slug;
+                  const title = c.title || c.name;
+                  const isSelected = id === currentProgramId;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedProgramId(id);
+                        setProgramDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-left transition-colors cursor-pointer ${
+                        isSelected
+                          ? "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"
+                          : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                      }`}
+                    >
+                      <span className="truncate">{title}</span>
+                      {isSelected && (
+                        <span className="text-[11px] font-bold text-blue-600">Active</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── B2. Unified Resume Card (Merged with Progress Bar) ─── */}
+        {isInitialLoading ? (
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl p-5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs animate-pulse space-y-4">
+            <div className="h-3.5 bg-zinc-200 dark:bg-zinc-800 rounded w-1/4" />
+            <div className="h-5 bg-zinc-200 dark:bg-zinc-800 rounded w-3/4" />
+            <div className="h-4 bg-zinc-100 dark:bg-zinc-800/60 rounded w-1/2" />
+            <div className="h-2 bg-zinc-200 dark:bg-zinc-800 rounded-full w-full" />
+            <div className="h-11 bg-zinc-200 dark:bg-zinc-800 rounded-2xl w-full" />
+          </div>
+        ) : isContentError && enrolledCourses.length === 0 ? (
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-zinc-200/80 dark:border-zinc-800 shadow-xs text-center space-y-3">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Unable to load course content.
+            </p>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="min-h-[44px] px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold"
+            >
+              Retry
+            </button>
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-[#121622] rounded-3xl p-5 sm:p-6 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-4">
+            {/* Header: Program & Merged Progress Line (B2) */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider truncate">
+                  {programTitle}
+                </span>
+                <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 shrink-0 font-mono">
+                  {isTargetWeekLocked && targetWeek?.module?.unlockAt
+                    ? `Locked · Unlocks on ${formatIstDisplay(targetWeek.module.unlockAt)}`
+                    : `Week ${targetWeekNum} of ${totalWeeksCount} · ${targetWeekProgressPercent}% complete`}
+                </span>
+              </div>
+              <h2 className="text-xs sm:text-sm font-semibold text-zinc-500 dark:text-zinc-400 truncate">
+                {targetWeekTitle}
+              </h2>
+              {isTargetWeekLocked ? (
+                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400">
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Unlocks on {formatIstDisplay(targetWeek?.module?.unlockAt)}</span>
+                </div>
+              ) : (
+                <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                  {cleanLessonTitle(resumeCandidate?.title || targetWeek?.metaSummary || "Module Activities")}
+                </h3>
+              )}
+            </div>
+
+            {/* Thin Progress Bar (B2) */}
+            <div className="space-y-1.5">
+              <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-600 rounded-full transition-all duration-300"
+                  style={{ width: `${targetWeekProgressPercent}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Primary Action Button: Target first incomplete, unlocked week module */}
+            <div className="space-y-2">
+              {isTargetWeekLocked ? (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full min-h-[44px] py-3 px-5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 text-sm font-bold flex items-center justify-center gap-2 cursor-not-allowed border border-zinc-200 dark:border-zinc-700"
+                >
+                  <Lock className="w-4 h-4" />
+                  <span>Week {targetWeekNum}: Unlocks on {formatIstDisplay(targetWeek?.module?.unlockAt)}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onMouseEnter={() => prefetchByPath(`/learn/${currentProgramId}/module/${targetWeek?.module?.id || ""}`)}
+                  onTouchStart={() => prefetchByPath(`/learn/${currentProgramId}/module/${targetWeek?.module?.id || ""}`)}
+                  onFocus={() => prefetchByPath(`/learn/${currentProgramId}/module/${targetWeek?.module?.id || ""}`)}
+                  onClick={() => {
+                    startTransition(() => {
+                      navigate(`/learn/${currentProgramId}/module/${targetWeek?.module?.id || ""}`);
+                    });
+                  }}
+                  className="w-full min-h-[44px] py-3 px-5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <span>
+                    {targetWeekProgressPercent > 0
+                      ? `Continue Week ${targetWeekNum}`
+                      : `Start Week ${targetWeekNum}`}
+                  </span>
+                  <Play className="w-4 h-4 fill-current" />
+                </button>
+              )}
+
+              {/* Explicit Resume last lesson button */}
+              {canResumeLesson && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    startTransition(() => {
+                      navigate(
+                        `/learn/${currentProgramId}?module=${resumeWeek?.id || ""}&lesson=${resumeCandidate.id}`
+                      );
+                    });
+                  }}
+                  className="w-full min-h-[44px] py-2.5 px-4 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <span>Resume last lesson: {cleanLessonTitle(resumeCandidate.title)}</span>
+                  <Play className="w-3.5 h-3.5 fill-current text-blue-600 dark:text-blue-400" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ─── B3. Today / Upcoming (Live Workshop with Countdown & 10min Window) ─── */}
+        <section className="bg-white dark:bg-[#121622] rounded-3xl p-4 sm:p-5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
+              Today / Upcoming
+            </h2>
+            <Link
+              to="/calendar"
+              className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+            >
+              <span>View calendar</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          {isActivitiesLoading ? (
+            <div className="h-16 bg-zinc-100 dark:bg-zinc-800/60 rounded-2xl animate-pulse" />
+          ) : !upcomingLive ? (
+            <div className="py-2 text-xs text-zinc-500 dark:text-zinc-400">
+              Nothing scheduled
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-sky-50/60 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/30 flex-wrap sm:flex-nowrap">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-950/70 border border-sky-200/60 dark:border-sky-900/40 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                  <Video className="w-5 h-5 stroke-[1.8]" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-300">
+                      {upcomingLive.dateFormatted} • {upcomingLive.timeFormatted}
+                    </span>
+                    <LiveCountdownBadge
+                      targetDate={upcomingLive.rawTargetDate}
+                      isLive={upcomingLive.status.isLive}
+                    />
+                  </div>
+                  <h3 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate mt-0.5">
+                    {upcomingLive.title}
+                  </h3>
+                  <div className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-0.5">
+                    Timezone: {upcomingLive.userTimeZone}
+                  </div>
+                </div>
+              </div>
+
+              {/* Join Button / Countdown Status Action (B3) */}
+              <div className="shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
+                {upcomingLive.status.canJoin && upcomingLive.meetUrl ? (
+                  <a
+                    href={upcomingLive.meetUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full sm:w-auto min-h-[44px] px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-xs inline-flex items-center justify-center gap-1.5 transition-colors animate-pulse"
+                  >
+                    <Radio className="w-3.5 h-3.5" />
+                    <span>Join Live</span>
+                  </a>
+                ) : upcomingLive.status.hasRecording && upcomingLive.status.recordingUrl ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(
+                        `/learn/${currentProgramId}?lesson=${upcomingLive.lessonId}`
+                      )
+                    }
+                    className="w-full sm:w-auto min-h-[44px] px-4 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold shadow-2xs inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <span>Watch recording</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    title={upcomingLive.status.label}
+                    className="w-full sm:w-auto min-h-[44px] px-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 text-xs font-semibold cursor-not-allowed inline-flex items-center justify-center gap-1.5"
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>{upcomingLive.status.label}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ─── B4. Pending Activities (Overdue items grouped on top, max 3 items) ─── */}
+        <section className="bg-white dark:bg-[#121622] rounded-3xl p-4 sm:p-5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
+                Pending Activities
+              </h2>
+              {totalPendingCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
+                  {totalPendingCount}
+                </span>
+              )}
+            </div>
+            <Link
+              to="/activities"
+              className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+            >
+              <span>View all</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          {isActivitiesLoading ? (
+            <div className="space-y-2.5">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-16 bg-zinc-100 dark:bg-zinc-800/60 rounded-2xl animate-pulse"
+                />
+              ))}
+            </div>
+          ) : overdueActivities.length === 0 && upcomingActivities.length === 0 ? (
+            <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 text-center space-y-1">
+              <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                All caught up!
+              </p>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                No pending quizzes, labs, or assignments.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {/* Group 1: Overdue Items (B4) */}
+              {overdueActivities.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5 px-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
+                    <AlertCircle className="w-3 h-3" />
+                    <span>Overdue ({overdueActivities.length})</span>
+                  </div>
+                  {overdueActivities.map((act: any) => {
+                    const targetLink = `/learn/${act.pathwayId || currentProgramId}?lesson=${act.lessonId}`;
+                    return (
+                      <div
+                        key={act.id}
+                        onClick={() => navigate(targetLink)}
+                        className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-rose-50/40 dark:bg-rose-950/20 hover:bg-rose-50/80 dark:hover:bg-rose-950/40 border border-rose-200/70 dark:border-rose-900/40 transition-colors cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 pr-2">
+                          <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                            {act.type === "quiz" ? (
+                              <FileQuestion className="w-4 h-4 stroke-[1.8]" />
+                            ) : (
+                              <FileText className="w-4 h-4 stroke-[1.8]" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                                Overdue
+                              </span>
+                              <span className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 truncate">
+                                {act.category || (act.type === "quiz" ? "Quiz" : "Lab")} · {act.moduleTitle || "Week 1"}
+                              </span>
+                            </div>
+                            <h3 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-rose-600 transition-colors mt-0.5">
+                              {cleanLessonTitle(act.title)}
+                            </h3>
+                            {act.allowLateSubmission && (
+                              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                                Late submission allowed
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Neutral / Amber action button for overdue items (B4) */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(targetLink);
+                          }}
+                          className="min-h-[44px] px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-xs transition-colors shrink-0 cursor-pointer"
+                        >
+                          Submit
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Group 2: Upcoming Items (B4) */}
+              {upcomingActivities.length > 0 && (
+                <div className="space-y-2">
+                  {overdueActivities.length > 0 && (
+                    <div className="px-1 text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+                      Upcoming
+                    </div>
+                  )}
+                  {upcomingActivities.map((act: any) => {
+                    const targetLink = `/learn/${act.pathwayId || currentProgramId}?lesson=${act.lessonId}`;
+                    return (
+                      <div
+                        key={act.id}
+                        onClick={() => navigate(targetLink)}
+                        className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-zinc-50/70 dark:bg-zinc-900/50 hover:bg-zinc-100/80 dark:hover:bg-zinc-800/60 border border-zinc-200/60 dark:border-zinc-800/80 transition-colors cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 pr-2">
+                          <div
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                              act.type === "quiz"
+                                ? "bg-purple-100 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400"
+                                : "bg-blue-100 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400"
+                            }`}
+                          >
+                            {act.type === "quiz" ? (
+                              <FileQuestion className="w-4 h-4 stroke-[1.8]" />
+                            ) : (
+                              <FileText className="w-4 h-4 stroke-[1.8]" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 truncate">
+                              {act.category || (act.type === "quiz" ? "Quiz" : "Lab")} · {act.moduleTitle || "Week 1"}
+                            </div>
+                            <h3 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                              {cleanLessonTitle(act.title)}
+                            </h3>
+                            <div className="flex items-center gap-1 text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                              <Clock className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{act.dateText}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Standard primary accent button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(targetLink);
+                          }}
+                          className="min-h-[44px] px-3.5 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors shrink-0 cursor-pointer"
+                        >
+                          Start
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
