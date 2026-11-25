@@ -338,18 +338,22 @@ export default function CalendarPage() {
     ];
   }, [currentDate]);
 
-  // Combine DB events with Canonical fallback
+  const allowCalendarFallback =
+    !import.meta.env.PROD ||
+    import.meta.env.MODE === "staging" ||
+    (typeof window !== "undefined" &&
+      (window.location.hostname.includes("stg") ||
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1"));
+
+  // Use DB events exclusively in production, and only fall back to sample schedule in non-prod when DB is empty
   const effectiveRawEvents = useMemo(() => {
     const dbList = Array.isArray(rawEvents) ? rawEvents : [];
-    const combined = [...dbList];
-    const existingIds = new Set(dbList.map((e: any) => e.id));
-    canonicalEvents.forEach((ce) => {
-      if (!existingIds.has(ce.id)) {
-        combined.push(ce);
-      }
-    });
-    return combined;
-  }, [rawEvents, canonicalEvents]);
+    if (dbList.length > 0 || !allowCalendarFallback) {
+      return dbList;
+    }
+    return canonicalEvents;
+  }, [rawEvents, canonicalEvents, allowCalendarFallback]);
 
   // Available Mentors & Cohorts for Filter Dropdowns (C1)
   const availableMentors = useMemo(() => {
@@ -357,8 +361,6 @@ export default function CalendarPage() {
     effectiveRawEvents.forEach((e: any) => {
       if (e.mentorName) mentorsSet.add(e.mentorName);
     });
-    mentorsSet.add("Dr. Vikram Sethi");
-    mentorsSet.add("Sarah Chen");
     return Array.from(mentorsSet);
   }, [effectiveRawEvents]);
 
