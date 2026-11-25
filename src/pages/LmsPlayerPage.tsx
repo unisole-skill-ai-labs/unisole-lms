@@ -93,6 +93,7 @@ import {
 import {
   getCourseFlowStats,
   getItemStatus,
+  formatWeekDurationLabel,
   getLiveSessionDetails,
   getItemMeta,
   formatWeekTitle,
@@ -1356,7 +1357,7 @@ export default function LmsPlayerPage() {
                       Curriculum Module
                     </span>
                     <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
-                      • Week {currentModuleIndex + 1} of {modules.length}
+                      • {formatWeekDurationLabel(currentModuleIndex + 1, courses[0] || pathwayData?.pathway)}
                     </span>
                   </div>
                   <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">

@@ -17,6 +17,7 @@ import {
   formatExpiryDate,
   getCourseFlowStats,
   formatWeekTitle,
+  formatWeekDurationLabel,
 } from "../utils/courseFlow";
 import { cleanLessonTitle } from "../utils/formatContent";
 import { filterVisibleModules, isStudentVisible } from "../utils/curriculumVisibility";
@@ -58,7 +59,6 @@ function CourseCard({ item, submissionsData }: CourseCardProps) {
 
   const progressPercent = courseFlow.progressPercent || 0;
   const currentWeekNum = (courseFlow.currentWeekIndex || 0) + 1;
-  const totalWeeksCount = courseFlow.weekStats.length || modules.length || 12;
 
   // Next incomplete activity info
   const nextItem = courseFlow.nextIncompleteItem;
@@ -120,11 +120,11 @@ function CourseCard({ item, submissionsData }: CourseCardProps) {
           </p>
         </div>
 
-        {/* Progress Bar & Line: "Week 1 of 12 · 2% complete" (A1) */}
+        {/* Progress Bar & Line: "Week 1 · 15-month program · 2% complete" */}
         <div className="space-y-1.5 pt-1">
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold text-zinc-700 dark:text-zinc-300">
-              Week {currentWeekNum} of {totalWeeksCount}
+              {formatWeekDurationLabel(currentWeekNum, pathwayContent?.courses?.[0] || pathway)}
             </span>
             <span className="font-extrabold text-blue-600 dark:text-blue-400">
               {progressPercent}% complete

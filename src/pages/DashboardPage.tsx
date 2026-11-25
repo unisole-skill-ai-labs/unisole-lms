@@ -33,6 +33,7 @@ import {
   useGetMeQuery,
 } from "../store/apiSlice";
 import { cleanLessonTitle } from "../utils/formatContent";
+import { formatWeekDurationLabel } from "../utils/courseFlow";
 import {
   getCourseFlowStats,
   formatWeekTitle,
@@ -208,7 +209,6 @@ export default function DashboardPage() {
     ? `/learn/${currentProgramId}/module/${targetModuleId}`
     : `/learn/${currentProgramId}`;
   const hasAnyModules = courseFlow.weekStats.length > 0;
-  const totalWeeksCount = courseFlow.weekStats.length || modules.length || 0;
 
   // Candidate for "Resume last lesson"
   const resumeCandidate = courseFlow.nextIncompleteItem;
@@ -516,7 +516,7 @@ export default function DashboardPage() {
                 <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 shrink-0 font-mono">
                   {isTargetWeekLocked && targetWeek?.module?.unlockAt
                     ? `Locked · Unlocks on ${formatIstDisplay(targetWeek.module.unlockAt)}`
-                    : `Week ${targetWeekNum} of ${totalWeeksCount} · ${targetWeekProgressPercent}% complete`}
+                    : `${formatWeekDurationLabel(targetWeekNum, pathwayContent?.courses?.[0] || pathwayContent?.pathway)} · ${targetWeekProgressPercent}% complete`}
                 </span>
               </div>
               <h2 className="text-xs sm:text-sm font-semibold text-zinc-500 dark:text-zinc-400 truncate">
