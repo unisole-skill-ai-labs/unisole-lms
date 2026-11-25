@@ -515,6 +515,61 @@ export const apiSlice = createApi({
               { type: "AdminLessons" as const, id: "LIST" },
             ],
     }),
+    createAndAttachAdminModuleLesson: builder.mutation({
+      query: ({ moduleId, ...body }) => ({
+        url: `/api/admin/modules/${moduleId}/create-lesson`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: (res, _err, { moduleId }) => [
+        "AdminModules",
+        "AdminLessons",
+        { type: "AdminLessons", id: `${moduleId}-lessons` },
+        ...(res?.id ? [{ type: "AdminLessons" as const, id: res.id }] : []),
+        { type: "AdminLessons", id: "LIST" },
+        "Pathway",
+        "Lesson",
+        "DashboardSummary",
+      ],
+      async onQueryStarted({ moduleId, title, slug, status, content, videoUrl, durationMinutes }, { dispatch, queryFulfilled }) {
+        const tempId = `temp_${Date.now()}`;
+        const patchResult = dispatch(
+          apiSlice.util.updateQueryData("getAdminModuleLessons", moduleId, (draft) => {
+            if (Array.isArray(draft)) {
+              const maxPos = draft.reduce((m: number, l: any) => Math.max(m, Number(l?.position) || 0), 0);
+              draft.push({
+                id: tempId,
+                lessonId: tempId,
+                position: maxPos + 1,
+                title,
+                slug,
+                status: status || "DRAFT",
+                content,
+                videoUrl,
+                durationMinutes,
+              });
+            }
+          })
+        );
+        try {
+          const { data } = await queryFulfilled;
+          if (data) {
+            dispatch(
+              apiSlice.util.updateQueryData("getAdminModuleLessons", moduleId, (draft) => {
+                if (Array.isArray(draft)) {
+                  const idx = draft.findIndex((l: any) => l.lessonId === tempId || l.id === tempId);
+                  if (idx !== -1) {
+                    draft[idx] = { ...data, lessonId: data.id || data.lessonId };
+                  }
+                }
+              })
+            );
+          }
+        } catch {
+          patchResult.undo();
+        }
+      },
+    }),
     attachAdminModuleLesson: builder.mutation({
       query: ({ moduleId, lessonId, position }) => ({
         url: `/api/admin/modules/${moduleId}/lessons`,
@@ -830,6 +885,7 @@ export const {
   useCreateAdminModuleMutation,
   useUpdateAdminModuleMutation,
   useGetAdminModuleLessonsQuery,
+  useCreateAndAttachAdminModuleLessonMutation,
   useAttachAdminModuleLessonMutation,
   useDetachAdminModuleLessonMutation,
   useReorderAdminModuleLessonsMutation,

@@ -61,11 +61,10 @@ import {
   useCreateAdminModuleMutation,
   useUpdateAdminModuleMutation,
   useGetAdminModuleLessonsQuery,
-  useAttachAdminModuleLessonMutation,
+  useCreateAndAttachAdminModuleLessonMutation,
   useDetachAdminModuleLessonMutation,
   useReorderAdminModuleLessonsMutation,
   useMoveAdminModuleLessonMutation,
-  useCreateAdminLessonMutation,
   useGetAdminLessonByIdQuery,
   useUpdateAdminLessonMutation,
   useClearAdminCourseModulesMutation,
@@ -111,8 +110,7 @@ export default function EditCoursePage() {
   const [attachModule] = useAttachAdminCourseModuleMutation();
   const [detachModule] = useDetachAdminCourseModuleMutation();
   const [reorderModulesApi] = useReorderAdminCourseModulesMutation();
-  const [createLesson] = useCreateAdminLessonMutation();
-  const [attachLesson] = useAttachAdminModuleLessonMutation();
+  const [createAndAttachLesson] = useCreateAndAttachAdminModuleLessonMutation();
   const [detachLesson] = useDetachAdminModuleLessonMutation();
   const [reorderLessonsApi] = useReorderAdminModuleLessonsMutation();
   const [moveLessonApi] = useMoveAdminModuleLessonMutation();
@@ -914,19 +912,14 @@ export default function EditCoursePage() {
         payloadContent.folderId = targetFolderId;
       }
 
-      const created = await createLesson({
+      const created = await createAndAttachLesson({
+        moduleId,
         title,
         slug,
         status: "DRAFT",
         content: JSON.stringify(payloadContent),
         videoUrl,
         durationMinutes: 15,
-      }).unwrap();
-
-      await attachLesson({
-        moduleId,
-        lessonId: created.id,
-        position: 0,
       }).unwrap();
 
       setNewLessonTitle("");
@@ -936,7 +929,7 @@ export default function EditCoursePage() {
       showToast(`Created activity "${title}".`);
     } catch (err: any) {
       console.error("Failed to create lesson:", err);
-      showToast(err?.data?.message || err?.data?.error || "Failed to create activity.", "error");
+      showToast(err?.data?.message || err?.data?.error || "Could not add this activity. Please try again.", "error");
     } finally {
       setIsAddingLesson(false);
     }
