@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { Suspense, lazy, useState, useEffect, useMemo, useRef } from "react";
+
+const HlsVideoPlayer = lazy(() => import("../components/lms/HlsVideoPlayer"));
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -390,6 +392,9 @@ export default function LmsPlayerPage() {
               isScheduleLocked: !!(l.unlockAt && new Date(l.unlockAt).getTime() > Date.now()),
               folderId: l.folderId || parsedContent?.folderId || undefined,
               videoUrl: realVideoUrl,
+              videoProvider: l.videoProvider || "YOUTUBE",
+              videoStatus: l.videoStatus || "NONE",
+              videoHlsPath: l.videoHlsPath || null,
               description: l.description || parsedContent?.contentMarkdown || l.content,
               questions: parsedQuestions,
               instructions: parsedInstructions,
@@ -617,11 +622,16 @@ export default function LmsPlayerPage() {
   const [quizScore, setQuizScore] = useState<number | null>(null);
 
   // Lesson Type Resolution Flags
-  const hasRealVideo = !!(
-    selectedLesson?.videoUrl?.trim() &&
-    !selectedLesson.videoUrl.includes("dQw4w9WgXcQ") &&
-    getEmbedVideoUrl(selectedLesson.videoUrl)
-  );
+  const isHlsVideo =
+    (selectedLesson as any)?.videoProvider === "AZURE_HLS" &&
+    (selectedLesson as any)?.videoStatus === "READY";
+  const hasRealVideo =
+    isHlsVideo ||
+    !!(
+      selectedLesson?.videoUrl?.trim() &&
+      !selectedLesson.videoUrl.includes("dQw4w9WgXcQ") &&
+      getEmbedVideoUrl(selectedLesson.videoUrl)
+    );
   const isFolder = selectedLesson?.type === "folder" || (selectedLesson as any)?.category === "FOLDER";
   const isLive = !isFolder && (selectedLesson?.type === "live" || (selectedLesson as any)?.category === "LIVE");
   const isVideo = !isFolder && !isLive && hasRealVideo && (selectedLesson?.type === "video" || (selectedLesson as any)?.category === "LECTURE");
@@ -2273,16 +2283,31 @@ export default function LmsPlayerPage() {
                   </div>
                 </div>
 
-                {/* Embedded YouTube Player (lazy loading & mobile data preservation) */}
+                {/* Video Player: HLS (Azure) or Embedded YouTube/Vimeo */}
                 <div className="flex-1 w-full h-full relative">
-                  <iframe
-                    src={getEmbedVideoUrl(selectedLesson?.videoUrl)}
-                    title={selectedLesson?.title || "Curriculum Video"}
-                    className="w-full h-full border-0 absolute inset-0"
-                    loading="lazy"
-                    allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
+                  {isHlsVideo ? (
+                    <Suspense
+                      fallback={
+                        <div className="w-full h-full flex items-center justify-center bg-black text-slate-400 text-xs">
+                          Loading video player...
+                        </div>
+                      }
+                    >
+                      <HlsVideoPlayer
+                        lessonId={selectedLesson.id}
+                        title={selectedLesson?.title || "Curriculum Video"}
+                      />
+                    </Suspense>
+                  ) : (
+                    <iframe
+                      src={getEmbedVideoUrl(selectedLesson?.videoUrl)}
+                      title={selectedLesson?.title || "Curriculum Video"}
+                      className="w-full h-full border-0 absolute inset-0"
+                      loading="lazy"
+                      allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  )}
                 </div>
               </div>
             </div>

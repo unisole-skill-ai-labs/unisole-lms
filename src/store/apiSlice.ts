@@ -846,6 +846,29 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: ["CalendarEvents"],
     }),
+
+    // Lesson HLS Video hooks
+    getLessonVideoStatus: builder.query({
+      query: (lessonId: string) => `/api/admin/lessons/${lessonId}/video/status`,
+    }),
+    createLessonVideoCliToken: builder.mutation({
+      query: (lessonId: string) => ({
+        url: `/api/admin/lessons/${lessonId}/video/cli-token`,
+        method: "POST",
+      }),
+    }),
+    switchLessonVideoToLink: builder.mutation({
+      query: (lessonId: string) => ({
+        url: `/api/admin/lessons/${lessonId}/video/switch-to-link`,
+        method: "POST",
+      }),
+    }),
+    getLessonVideoAccess: builder.mutation({
+      query: (lessonId: string) => ({
+        url: `/api/lms/lessons/${lessonId}/video-access`,
+        method: "POST",
+      }),
+    }),
   }),
 });
 
@@ -927,4 +950,8 @@ export const {
   useCreateCalendarEventMutation,
   useUpdateCalendarEventMutation,
   useDeleteCalendarEventMutation,
+  useGetLessonVideoStatusQuery,
+  useCreateLessonVideoCliTokenMutation,
+  useSwitchLessonVideoToLinkMutation,
+  useGetLessonVideoAccessMutation,
 } = apiSlice;
