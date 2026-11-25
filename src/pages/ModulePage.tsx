@@ -22,6 +22,11 @@ import {
 import { getCurriculum } from "../constants/curriculumData";
 import { cleanLessonTitle } from "../utils/formatContent";
 import { formatIstDisplay } from "../utils/timezone";
+import {
+  allowDevCurriculumFallback,
+  filterVisibleModules,
+  isPublishedVisible,
+} from "../utils/curriculumVisibility";
 import Spinner from "../components/ui/Spinner";
 import NotFoundPage from "./NotFoundPage";
 import BackButton from "../components/common/BackButton";
@@ -35,7 +40,10 @@ export default function ModulePage() {
     data: pathwayData,
     isLoading: isPathwayLoading,
     error: pathwayError,
-  } = useGetPathwayContentQuery(pathwayId || "");
+  } = useGetPathwayContentQuery(pathwayId || "", {
+    skip: !pathwayId,
+    refetchOnMountOrArgChange: true,
+  });
 
   const { data: progressData } = useGetStudentProgressQuery(pathwayId || "", {
     skip: !pathwayId,
@@ -45,11 +53,7 @@ export default function ModulePage() {
     skip: !pathwayId,
   });
 
-  const allowCurriculumFallback =
-    typeof window !== "undefined" &&
-    (import.meta.env.VITE_ALLOW_CURRICULUM_FALLBACK === "true" ||
-      import.meta.env.DEV ||
-      window.location.hostname.includes("stg"));
+  const allowCurriculumFallback = allowDevCurriculumFallback();
 
   const canonical = useMemo(
     () => getCurriculum(pathwayId || ""),
@@ -64,30 +68,11 @@ export default function ModulePage() {
   const courses = pathwayData?.courses || [];
   const modules = useMemo(() => {
     const normalizedPathway = (pathwayId || "").toLowerCase();
-    const targetCourses = courses.filter((c: any) => {
-      const cId = (c.id || "").toLowerCase();
-      const cSlug = (c.slug || "").toLowerCase();
-      if (normalizedPathway === "cs-agentic" || normalizedPathway === "course1") {
-        return cId === "cs-agentic" || cSlug === "cs-agentic" || cId === "course1";
-      }
-      return cId === normalizedPathway || cSlug === normalizedPathway;
-    });
-    const effectiveCourses = targetCourses.length > 0 ? targetCourses : courses;
-    const allCourseModules = effectiveCourses.flatMap((c: any) => c.modules || []);
-    const validCourseModules = allCourseModules.filter(
-      (m: any) =>
-        m &&
-        m.title &&
-        m.status === "PUBLISHED" &&
-        m.isActive !== false &&
-        !m.title.toLowerCase().includes("intro to ai")
-    );
+    const validCourseModules = filterVisibleModules(courses, pathwayId);
 
     if (validCourseModules.length > 0) {
       return validCourseModules.map((m: any, idx: number) => {
-        const backendLessons = (m.lessons || []).filter(
-          (l: any) => l && l.status === "PUBLISHED" && l.isActive !== false
-        );
+        const backendLessons = (m.lessons || []).filter(isPublishedVisible);
 
         const isModLocked = !!(
           m.isLocked ||
@@ -349,9 +334,9 @@ export default function ModulePage() {
               </span>
             )}
           </div>
-          {currentModule.description && (
+          {(currentModule as any).description && (
             <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-2xl">
-              {currentModule.description}
+              {(currentModule as any).description}
             </p>
           )}
         </div>

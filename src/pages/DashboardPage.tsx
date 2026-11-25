@@ -21,6 +21,7 @@ import {
   Lock,
 } from "lucide-react";
 import { formatIstDisplay } from "../utils/timezone";
+import { allowDevCurriculumFallback } from "../utils/curriculumVisibility";
 import { getCurriculum } from "../constants/curriculumData";
 import {
   useGetMyPathwaysQuery,
@@ -147,11 +148,7 @@ export default function DashboardPage() {
   const refetchActivities = refetchSummary;
   const refetchCalendar = refetchSummary;
 
-  const allowCurriculumFallback =
-    typeof window !== "undefined" &&
-    (import.meta.env.VITE_ALLOW_CURRICULUM_FALLBACK === "true" ||
-      import.meta.env.DEV ||
-      window.location.hostname.includes("stg"));
+  const allowCurriculumFallback = allowDevCurriculumFallback();
 
   const canonical = useMemo(
     () => getCurriculum(currentProgramId),

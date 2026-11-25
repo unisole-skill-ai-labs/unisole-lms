@@ -219,7 +219,7 @@ export const apiSlice = createApi({
       },
       providesTags: (_result, _error, arg) => {
         const id = typeof arg === "object" && arg !== null ? (arg.pathwayId || arg.id) : arg;
-        return [{ type: "Pathway", id: `${id}-CONTENT` }];
+        return ["Pathway", { type: "Pathway", id: `${id}-CONTENT` }];
       },
     }),
     getLessonContent: builder.query({
@@ -751,6 +751,13 @@ export const apiSlice = createApi({
       }),
       providesTags: ["Submissions"],
     }),
+    getAdminSubmissions: builder.query({
+      query: (params) => ({
+        url: "/api/admin/submissions",
+        params,
+      }),
+      providesTags: ["Submissions"],
+    }),
 
     // Mentorship Allocation Endpoints
     getAdminMentors: builder.query({
@@ -913,6 +920,7 @@ export const {
   useGetStudentMentorQuery,
   useGetMentorCockpitQuery,
   useGetSubmissionsAuditQuery,
+  useGetAdminSubmissionsQuery,
   useGetAdminMentorsQuery,
   useAssignMentorMutation,
   useUnassignMentorMutation,
