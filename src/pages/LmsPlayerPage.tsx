@@ -86,6 +86,11 @@ import {
 import { renderMarkdownToHtml, cleanLessonTitle } from "../utils/formatContent";
 import { formatIstDisplay } from "../utils/timezone";
 import {
+  allowDevCurriculumFallback,
+  filterVisibleModules,
+  isPublishedVisible,
+} from "../utils/curriculumVisibility";
+import {
   getCourseFlowStats,
   getItemStatus,
   getLiveSessionDetails,
@@ -107,16 +112,7 @@ export default function LmsPlayerPage() {
     }
   }, [rawPathwayId, navigate]);
 
-  // Curriculum fallback: allowed when VITE_ALLOW_CURRICULUM_FALLBACK is "true", in local dev, and on staging hosts.
-  // In production builds, it is NOT allowed when the flag is absent or "false".
-  const allowCurriculumFallback =
-    import.meta.env.VITE_ALLOW_CURRICULUM_FALLBACK === "true" ||
-    !import.meta.env.PROD ||
-    import.meta.env.MODE === "staging" ||
-    (typeof window !== "undefined" &&
-      (window.location.hostname.includes("stg") ||
-        window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1"));
+  const allowCurriculumFallback = allowDevCurriculumFallback();
 
   // Active canonical curriculum fallback (only referenced when fallback is permitted)
   const canonical = useMemo(() => getCurriculum(pathwayId), [pathwayId]);
@@ -125,7 +121,10 @@ export default function LmsPlayerPage() {
     data: pathwayData,
     isLoading: isPathwayLoading,
     error: pathwayError,
-  } = useGetPathwayContentQuery(pathwayId);
+  } = useGetPathwayContentQuery(pathwayId, {
+    skip: !pathwayId,
+    refetchOnMountOrArgChange: true,
+  });
 
   const pathway = pathwayData?.pathway;
   const courses = pathwayData?.courses || [];
@@ -137,32 +136,11 @@ export default function LmsPlayerPage() {
   // Build modules from backend DB or rich canonical curriculum
   // Build modules dynamically from backend DB API or fallback to canonical curriculum
   const modules: ModuleSection[] = useMemo(() => {
-    const normalizedPathway = (pathwayId || "").toLowerCase();
-    const targetCourses = courses.filter((c: any) => {
-      const cId = (c.id || "").toLowerCase();
-      const cSlug = (c.slug || "").toLowerCase();
-      if (normalizedPathway === "cs-agentic" || normalizedPathway === "course1") {
-        return cId === "cs-agentic" || cSlug === "cs-agentic" || cId === "course1";
-      }
-      return cId === normalizedPathway || cSlug === normalizedPathway;
-    });
-    const effectiveCourses = targetCourses.length > 0 ? targetCourses : courses;
-    const allCourseModules = effectiveCourses.flatMap((c: any) => c.modules || []);
-    // Strictly filter out any obsolete dummy module like "Intro to AI Agents" and non-published modules
-    const validCourseModules = allCourseModules.filter(
-      (m: any) =>
-        m &&
-        m.title &&
-        m.status === "PUBLISHED" &&
-        m.isActive !== false &&
-        !m.title.toLowerCase().includes("intro to ai")
-    );
+    const validCourseModules = filterVisibleModules(courses, pathwayId);
 
     if (validCourseModules.length > 0) {
       return validCourseModules.map((m: any, idx: number) => {
-        const backendLessons = (m.lessons || []).filter(
-          (l: any) => l && l.status === "PUBLISHED" && l.isActive !== false
-        );
+        const backendLessons = (m.lessons || []).filter(isPublishedVisible);
         const liveCount = backendLessons.filter(
           (l: any) =>
             l.curriculumMode === "LIVE" ||
@@ -1858,11 +1836,15 @@ export default function LmsPlayerPage() {
     );
   }
 
-  const handleAssessmentCodeSubmit = async (code: string, testSummary: any) => {
+  const handleAssessmentCodeSubmit = async (code: string, _testSummary: any) => {
     markLessonComplete(selectedLesson.id);
     try {
       await submitAssessmentTaskApi({
         assignmentId: selectedLesson.id,
+        lessonId: selectedLesson.id,
+        pathwayId,
+        type: "coding_test",
+        title: selectedLesson.title,
         codeSnippet: code,
       }).unwrap();
     } catch {
@@ -1875,8 +1857,12 @@ export default function LmsPlayerPage() {
     try {
       await submitAssessmentTaskApi({
         assignmentId: selectedLesson.id,
+        lessonId: selectedLesson.id,
+        pathwayId,
+        type: data.videoUrl ? "video_test" : "subjective_test",
+        title: selectedLesson.title,
         videoUrl: data.videoUrl,
-        notes: data.text,
+        submissionText: data.text,
       }).unwrap();
     } catch {
       // Non-critical fallback
