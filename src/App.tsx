@@ -1,5 +1,5 @@
 import React, { useEffect, Suspense, lazy } from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setCredentials } from "./store/authSlice";
 import Layout from "./components/layout/Layout";
@@ -34,6 +34,11 @@ const SubmissionsPage = lazy(routeLoaders.adminSubmissions);
 const FilesPage = lazy(routeLoaders.adminFiles);
 const StudentsPage = lazy(routeLoaders.adminStudents);
 const AdminLoginPage = lazy(routeLoaders.adminLogin);
+
+function RedirectToPathwayOverview() {
+  const { pathwayId = "" } = useParams();
+  return <Navigate to={pathwayId ? `/learn/${pathwayId}` : "/enrolled"} replace />;
+}
 
 export default function App() {
   const dispatch = useDispatch();
@@ -180,6 +185,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <LmsPlayerPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="learn/:pathwayId/module"
+          element={
+            <ProtectedRoute>
+              <RedirectToPathwayOverview />
             </ProtectedRoute>
           }
         />

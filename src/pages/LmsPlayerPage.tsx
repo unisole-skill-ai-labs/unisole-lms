@@ -1146,7 +1146,11 @@ export default function LmsPlayerPage() {
                       data-testid="module-card"
                       onClick={() => {
                         if (!isLocked) {
-                          navigate(`/learn/${pathwayId}/module/${ws.module.id}`);
+                          if (ws.module?.id) {
+                            navigate(`/learn/${pathwayId}/module/${ws.module.id}`);
+                          } else {
+                            navigate(`/learn/${pathwayId}`);
+                          }
                         }
                       }}
                       className={`rounded-2xl border p-4 sm:p-5 transition-all duration-150 overflow-hidden shadow-2xs ${

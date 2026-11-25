@@ -230,6 +230,14 @@ export const apiSlice = createApi({
       query: () => "/api/lms/enrollments",
       providesTags: [{ type: "Enrollment", id: "LIST" }],
     }),
+    recordModuleVisit: builder.mutation({
+      query: (body) => ({
+        url: "/api/lms/module-visit",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["DashboardSummary"],
+    }),
 
     // ─── Student Progress, Submissions & Activities ──────────────────────────────
     getStudentProgress: builder.query({
@@ -908,6 +916,7 @@ export const {
 
   // Student LMS Progress & Submissions hooks
   useGetDashboardSummaryQuery,
+  useRecordModuleVisitMutation,
   useGetStudentProgressQuery,
   useMarkLessonProgressMutation,
   useGetStudentSubmissionsQuery,
