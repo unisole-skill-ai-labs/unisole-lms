@@ -193,7 +193,7 @@ export default function CalendarPage() {
   const [formEndTime, setFormEndTime] = useState("11:30");
   const [formScope, setFormScope] = useState("COURSE");
   const [formCourseId, setFormCourseId] = useState("cs-agentic");
-  const [formMentorName, setFormMentorName] = useState("Dr. Vikram Sethi");
+  const [formMentorName, setFormMentorName] = useState("");
   const [formStudentName, setFormStudentName] = useState("");
   const [formMeetUrl, setFormMeetUrl] = useState("");
   const [formColorScheme, setFormColorScheme] = useState("blue");
@@ -211,7 +211,7 @@ export default function CalendarPage() {
   };
 
   // RTK Query: Dynamic calendar events from DB
-  const { data: rawEvents = [], isLoading, refetch } = useGetCalendarEventsQuery({});
+  const { data: rawEvents = [], isLoading, isError, refetch } = useGetCalendarEventsQuery({});
   const [createCalendarEventApi, { isLoading: isCreating }] = useCreateCalendarEventMutation();
   const [updateCalendarEventApi, { isLoading: isUpdating }] = useUpdateCalendarEventMutation();
   const [deleteCalendarEventApi, { isLoading: isDeleting }] = useDeleteCalendarEventMutation();
@@ -223,137 +223,11 @@ export default function CalendarPage() {
     skip: !canManageEvents,
   });
 
-  // Canonical Schedule for AI Agent Engineering (guarantees calendar is never empty)
-  const canonicalEvents = useMemo(() => {
-    const startOfWeek = new Date(currentDate);
-    const day = startOfWeek.getDay();
-    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
-    startOfWeek.setDate(diff);
-
-    const makeTime = (dayOffset: number, hours: number, minutes = 0) => {
-      const d = new Date(startOfWeek);
-      d.setDate(startOfWeek.getDate() + dayOffset);
-      d.setHours(hours, minutes, 0, 0);
-      return d.toISOString();
-    };
-
-    return [
-      {
-        id: "ev_agent_mon_lecture",
-        title: "Lecture: System Roles & Tokenization in Production Agents",
-        description: "Week 2 Core Lecture · Foundation of token budgeting and reasoning architectures in production.",
-        eventType: "LIVE_CLASS",
-        startTime: makeTime(0, 10, 0),
-        endTime: makeTime(0, 11, 30),
-        scope: "GLOBAL",
-        courseId: "cs-agentic",
-        courseTitle: "AI Agent Engineering",
-        lessonId: "les_agent_w2_1",
-        colorScheme: "blue",
-        mentorName: "Dr. Vikram Sethi",
-        cohort: "November 2026 Batch",
-        status: "Scheduled",
-      },
-      {
-        id: "ev_agent_tue_live",
-        title: "Live Masterclass: Context Engineering & Dynamic Prompt Hydration",
-        description: "Interactive masterclass with Lead AI Architect covering system roles, token limits, and prompt hydration.",
-        eventType: "LIVE_CLASS",
-        startTime: makeTime(1, 11, 0),
-        endTime: makeTime(1, 12, 30),
-        scope: "GLOBAL",
-        courseId: "cs-agentic",
-        courseTitle: "AI Agent Engineering",
-        lessonId: "les_agent_w2_live",
-        meetUrl: "https://meet.google.com/uni-sole-live",
-        colorScheme: "blue",
-        mentorName: "Dr. Vikram Sethi",
-        cohort: "November 2026 Batch",
-        status: "Scheduled",
-      },
-      {
-        id: "ev_agent_wed_quiz",
-        title: "MCQ Assessment: Reasoning Loops & Tool Selection",
-        description: "Week 2 Knowledge Check · Practice questions on ReAct architecture, function definitions, and fallback models.",
-        eventType: "MILESTONE",
-        startTime: makeTime(2, 14, 0),
-        endTime: makeTime(2, 15, 0),
-        scope: "COURSE",
-        courseId: "cs-agentic",
-        courseTitle: "AI Agent Engineering",
-        lessonId: "les_agent_w2_quiz",
-        colorScheme: "green",
-        cohort: "November 2026 Batch",
-        status: "Scheduled",
-      },
-      {
-        id: "ev_agent_thu_viva",
-        title: "1-on-1 Office Hours & Architecture Review",
-        description: "Dr. Vikram Sethi — 1-on-1 student doubt clearing, code inspection, and project feedback.",
-        eventType: "VIVA_1ON1",
-        startTime: makeTime(3, 16, 30),
-        endTime: makeTime(3, 17, 30),
-        scope: "GLOBAL",
-        courseId: "cs-agentic",
-        courseTitle: "AI Agent Engineering",
-        mentorName: "Dr. Vikram Sethi",
-        studentName: "Aarav Sharma",
-        meetUrl: "https://meet.google.com/uni-mentor-office-hours",
-        colorScheme: "rose",
-        cohort: "November 2026 Batch",
-        status: "Scheduled",
-      },
-      {
-        id: "ev_agent_fri_deadline",
-        title: "Deliverable Due: Autonomous Web Agent with Structured Output",
-        description: "Week 2 Lab Assignment · Submit repository URL with end-to-end integration tests.",
-        eventType: "DEADLINE",
-        startTime: makeTime(4, 15, 0),
-        endTime: makeTime(4, 16, 30),
-        scope: "COURSE",
-        courseId: "cs-agentic",
-        courseTitle: "AI Agent Engineering",
-        lessonId: "les_agent_w2_lab",
-        colorScheme: "purple",
-        cohort: "November 2026 Batch",
-        status: "Scheduled",
-      },
-      {
-        id: "ev_agent_sat_live",
-        title: "Live Red-Teaming Workshop: Prompt Injection & Guardrails",
-        description: "Hands-on weekend red-teaming lab. Test vulnerabilities in multi-agent networks and build defensive filters.",
-        eventType: "LIVE_CLASS",
-        startTime: makeTime(5, 18, 0),
-        endTime: makeTime(5, 19, 30),
-        scope: "GLOBAL",
-        courseId: "cs-agentic",
-        courseTitle: "AI Agent Engineering",
-        lessonId: "les_agent_w2_redteam",
-        meetUrl: "https://meet.google.com/uni-redteam-live",
-        colorScheme: "blue",
-        mentorName: "Sarah Chen",
-        cohort: "November 2026 Batch",
-        status: "Scheduled",
-      },
-    ];
-  }, [currentDate]);
-
-  const allowCalendarFallback =
-    !import.meta.env.PROD ||
-    import.meta.env.MODE === "staging" ||
-    (typeof window !== "undefined" &&
-      (window.location.hostname.includes("stg") ||
-        window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1"));
-
-  // Use DB events exclusively in production, and only fall back to sample schedule in non-prod when DB is empty
-  const effectiveRawEvents = useMemo(() => {
-    const dbList = Array.isArray(rawEvents) ? rawEvents : [];
-    if (dbList.length > 0 || !allowCalendarFallback) {
-      return dbList;
-    }
-    return canonicalEvents;
-  }, [rawEvents, canonicalEvents, allowCalendarFallback]);
+  // Render only real events from the API; empty on empty response or API error
+  const effectiveRawEvents = useMemo(
+    () => (!isError && Array.isArray(rawEvents) ? rawEvents : []),
+    [rawEvents, isError]
+  );
 
   // Available Mentors & Cohorts for Filter Dropdowns (C1)
   const availableMentors = useMemo(() => {
@@ -640,7 +514,7 @@ export default function CalendarPage() {
 
     setFormScope(ev.scope || "COURSE");
     setFormCourseId(ev.courseId || "cs-agentic");
-    setFormMentorName(ev.mentorName || "Dr. Vikram Sethi");
+    setFormMentorName(ev.mentorName || "");
     setFormStudentName(ev.studentName || "");
     setFormMeetUrl(ev.meetUrl || "");
     setFormColorScheme(ev.colorScheme || "blue");
@@ -665,7 +539,7 @@ export default function CalendarPage() {
     setFormEndTime(`${endH}:00`);
     setFormScope("COURSE");
     setFormCourseId("cs-agentic");
-    setFormMentorName("Dr. Vikram Sethi");
+    setFormMentorName("");
     setFormStudentName("");
     setFormMeetUrl("");
     setFormColorScheme("blue");
@@ -1130,6 +1004,14 @@ export default function CalendarPage() {
         </div>
       ) : (
         <>
+          {effectiveRawEvents.length === 0 && (
+            <div className="mb-4 p-6 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center bg-white dark:bg-[#0B1120] space-y-1.5">
+              <CalendarIcon className="w-7 h-7 text-slate-300 dark:text-slate-600 mx-auto" />
+              <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+                No events scheduled
+              </p>
+            </div>
+          )}
           {/* ======================================================== */}
           {/* 1. AGENDA VIEW (Mobile-First Default & Accessible List)   */}
           {/* ======================================================== */}
