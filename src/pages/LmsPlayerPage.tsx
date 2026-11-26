@@ -1040,6 +1040,16 @@ export default function LmsPlayerPage() {
     return <NotFoundPage />;
   }
 
+  // Wait for useEffect to sync selectedLesson/selectedModule on direct ?lesson= load
+  if (currentView === "player" && (!selectedLesson || !selectedModule)) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] bg-white dark:bg-[#070A11] p-4 sm:p-6 space-y-6 animate-pulse max-w-3xl lg:max-w-4xl mx-auto">
+        <div className="h-32 bg-slate-100 dark:bg-slate-900 rounded-2xl p-5" />
+        <div className="h-64 bg-slate-100 dark:bg-slate-900 rounded-2xl p-5" />
+      </div>
+    );
+  }
+
   // -------------------------------------------------------------
   // VIEW 1: Course Overview (Connected Mobile-First Learning Flow)
   // -------------------------------------------------------------

@@ -202,6 +202,28 @@ export default function ModulePage() {
   }, [courses, pathwayId, allowCurriculumFallback, canonical]);
 
   // Loading state
+  // 3. Find current module strictly by ID or slug within this pathway
+  const targetModId = moduleId?.trim().toLowerCase();
+  const currentModule = modules.find((m) => {
+    const mId = m.id.toLowerCase();
+    const mSlug = (m.slug || "").toLowerCase();
+    return (
+      mId === targetModId ||
+      mSlug === targetModId ||
+      mId === `mod_${targetModId}` ||
+      mId === `${pathwayId}-${targetModId}`
+    );
+  });
+
+  // Record last-opened module on server when an unlocked module is viewed
+  React.useEffect(() => {
+    if (!pathwayId || !currentModule?.id || currentModule.isLocked) return;
+    const visitKey = `${pathwayId}:${currentModule.id}`;
+    if (recordedVisitRef.current === visitKey) return;
+    recordedVisitRef.current = visitKey;
+    recordModuleVisit({ pathwayId, moduleId: currentModule.id });
+  }, [pathwayId, currentModule?.id, currentModule?.isLocked, recordModuleVisit]);
+
   if (isPathwayLoading && modules.length === 0) {
     return (
       <div className="min-h-[calc(100vh-4rem)] max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
@@ -238,19 +260,6 @@ export default function ModulePage() {
     );
   }
 
-  // 3. Find current module strictly by ID or slug within this pathway
-  const targetModId = moduleId?.trim().toLowerCase();
-  const currentModule = modules.find((m) => {
-    const mId = m.id.toLowerCase();
-    const mSlug = (m.slug || "").toLowerCase();
-    return (
-      mId === targetModId ||
-      mSlug === targetModId ||
-      mId === `mod_${targetModId}` ||
-      mId === `${pathwayId}-${targetModId}`
-    );
-  });
-
   // Module not found in this course -> 404
   if (!currentModule) {
     return (
@@ -260,15 +269,6 @@ export default function ModulePage() {
       </div>
     );
   }
-
-  // Record last-opened module on server when an unlocked module is viewed
-  React.useEffect(() => {
-    if (!pathwayId || !currentModule?.id || currentModule.isLocked) return;
-    const visitKey = `${pathwayId}:${currentModule.id}`;
-    if (recordedVisitRef.current === visitKey) return;
-    recordedVisitRef.current = visitKey;
-    recordModuleVisit({ pathwayId, moduleId: currentModule.id });
-  }, [pathwayId, currentModule?.id, currentModule?.isLocked, recordModuleVisit]);
 
   const courseTitle = pathwayData?.pathway?.title || canonical.title || "Course Curriculum";
   const moduleLessons = currentModule.items || [];

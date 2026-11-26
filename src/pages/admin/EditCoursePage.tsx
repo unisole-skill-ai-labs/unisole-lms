@@ -136,10 +136,6 @@ export default function EditCoursePage() {
   const isMentor = !isCourseManager && userRoles.includes("MENTOR");
   const canManageCurriculum = isAdmin || isCourseManager;
 
-  if (isMentor && !isAdmin) {
-    return <Navigate to="/admin/submissions" replace />;
-  }
-
   const [showMentorsModal, setShowMentorsModal] = useState(false);
   const [cohortMentorId, setCohortMentorId] = useState("");
   const [cohortFeedback, setCohortFeedback] = useState<string | null>(null);
@@ -1055,6 +1051,10 @@ export default function EditCoursePage() {
   const removeAttachment = (id: string) => {
     setAttachments((prev) => prev.filter((a) => a.id !== id));
   };
+
+  if (isMentor && !isAdmin) {
+    return <Navigate to="/admin/submissions" replace />;
+  }
 
   if (isCourseLoading || isModulesLoading) {
     return (

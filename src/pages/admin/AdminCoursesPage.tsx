@@ -72,10 +72,6 @@ export default function AdminCoursesPage() {
     allRoles.includes("COURSE_AUTHOR");
   const isMentor = !isCourseManager && allRoles.includes("MENTOR");
 
-  if (isMentor && !isAdmin) {
-    return <Navigate to="/admin/submissions" replace />;
-  }
-
   // Shared source of truth: Analytics & Admin Courses
   const { courses: analyticsCourses = [], summary, isLoading: analyticsLoading } = useAdminAnalytics();
   const {
@@ -458,6 +454,10 @@ export default function AdminCoursesPage() {
       setActionConfirmModal({ open: false, type: "DELETE", course: null });
     }
   };
+
+  if (isMentor && !isAdmin) {
+    return <Navigate to="/admin/submissions" replace />;
+  }
 
   return (
     <div className="p-5 sm:p-7 lg:p-8 space-y-6 max-w-[1560px] mx-auto font-sans">
