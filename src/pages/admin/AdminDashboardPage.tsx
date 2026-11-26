@@ -46,16 +46,6 @@ export default function AdminDashboardPage() {
     allRoles.includes("COURSE_AUTHOR");
   const isMentor = !isCourseManager && allRoles.includes("MENTOR");
 
-  if (!isAdmin) {
-    if (isCourseManager) {
-      return <Navigate to="/admin/courses" replace />;
-    }
-    if (isMentor) {
-      return <Navigate to="/admin/submissions" replace />;
-    }
-    return <Navigate to="/admin/courses" replace />;
-  }
-
   // Course Scope & Velocity Period States (A7, A4)
   const [selectedCourseId, setSelectedCourseId] = useState<string>("ALL");
   const [velocityPeriod, setVelocityPeriod] = useState<"Weekly" | "Monthly" | "Yearly">("Monthly");
@@ -109,11 +99,11 @@ export default function AdminDashboardPage() {
     const lPath =
       points.length > 0
         ? points.reduce((acc: string, curr: any, i: number) => {
-            if (i === 0) return `M ${curr.x} ${curr.y}`;
-            const prev = points[i - 1];
-            const cpX = (prev.x + curr.x) / 2;
-            return `${acc} C ${cpX} ${prev.y}, ${cpX} ${curr.y}, ${curr.x} ${curr.y}`;
-          }, "")
+          if (i === 0) return `M ${curr.x} ${curr.y}`;
+          const prev = points[i - 1];
+          const cpX = (prev.x + curr.x) / 2;
+          return `${acc} C ${cpX} ${prev.y}, ${cpX} ${curr.y}, ${curr.x} ${curr.y}`;
+        }, "")
         : "";
 
     const aPath =
@@ -132,6 +122,16 @@ export default function AdminDashboardPage() {
 
     return { areaPath: aPath, linePath: lPath, chartPoints: points, xLabels: labels };
   }, [velocityData, maxCount]);
+
+  if (!isAdmin) {
+    if (isCourseManager) {
+      return <Navigate to="/admin/courses" replace />;
+    }
+    if (isMentor) {
+      return <Navigate to="/admin/submissions" replace />;
+    }
+    return <Navigate to="/admin/courses" replace />;
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto font-sans">
@@ -348,11 +348,10 @@ export default function AdminDashboardPage() {
                 <button
                   key={tab}
                   onClick={() => setVelocityPeriod(tab)}
-                  className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                    velocityPeriod === tab
-                      ? "bg-white dark:bg-purple-600 text-purple-700 dark:text-white font-bold shadow-xs"
-                      : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                  }`}
+                  className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${velocityPeriod === tab
+                    ? "bg-white dark:bg-purple-600 text-purple-700 dark:text-white font-bold shadow-xs"
+                    : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                    }`}
                 >
                   {tab}
                 </button>
