@@ -768,6 +768,27 @@ export const apiSlice = createApi({
       }),
       providesTags: ["Submissions"],
     }),
+    getAdminSubmissionActivities: builder.query({
+      query: (params) => ({
+        url: "/api/admin/submissions/activities",
+        params,
+      }),
+      providesTags: ["Submissions"],
+    }),
+    getAdminActivityDetail: builder.query({
+      query: ({ activityId, ...params }: { activityId: string; [key: string]: any }) => ({
+        url: `/api/admin/submissions/activities/${encodeURIComponent(activityId)}`,
+        params,
+      }),
+      providesTags: ["Submissions"],
+    }),
+    getAdminActivityNotSubmitted: builder.query({
+      query: ({ activityId, ...params }: { activityId: string; [key: string]: any }) => ({
+        url: `/api/admin/submissions/activities/${encodeURIComponent(activityId)}/not-submitted`,
+        params,
+      }),
+      providesTags: ["Submissions"],
+    }),
 
     // Mentorship Allocation Endpoints
     getAdminMentors: builder.query({
@@ -1001,6 +1022,9 @@ export const {
   useGetMentorCockpitQuery,
   useGetSubmissionsAuditQuery,
   useGetAdminSubmissionsQuery,
+  useGetAdminSubmissionActivitiesQuery,
+  useGetAdminActivityDetailQuery,
+  useGetAdminActivityNotSubmittedQuery,
   useGetAdminMentorsQuery,
   useAssignMentorMutation,
   useUnassignMentorMutation,
