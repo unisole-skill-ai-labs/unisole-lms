@@ -26,6 +26,7 @@ import {
   Sparkles,
   PlayCircle,
   FileText,
+  ClipboardList,
   SlidersHorizontal,
   Check,
   Award,
@@ -1615,7 +1616,7 @@ export default function LmsPlayerPage() {
                           ) : isQuiz ? (
                             <FileQuestion className="w-4 h-4 stroke-[2]" />
                           ) : isAssignment ? (
-                            <Code2 className="w-4 h-4 stroke-[2]" />
+                            <ClipboardList className="w-4 h-4 stroke-[2]" />
                           ) : isLive ? (
                             <VideoIcon className="w-4 h-4 stroke-[2]" />
                           ) : (
@@ -2084,7 +2085,7 @@ export default function LmsPlayerPage() {
                                 ) : cItem.type === "coding_test" ? (
                                   <Code2 className="w-4 h-4 stroke-[2.2]" />
                                 ) : (
-                                  <FileText className="w-4 h-4 stroke-[2.2]" />
+                                  <ClipboardList className="w-4 h-4 stroke-[2.2]" />
                                 )}
                               </div>
                               <div className="min-w-0">
@@ -2528,7 +2529,6 @@ export default function LmsPlayerPage() {
                           }`}
                         >
                           <p className="font-bold">{isCorrect ? "Correct!" : "Incorrect"}</p>
-                          <p className="mt-0.5">{q.explanation}</p>
                         </div>
                       )}
                     </div>
