@@ -18,6 +18,7 @@ import {
   useGetPathwayContentQuery,
   useGetStudentProgressQuery,
   useGetStudentSubmissionsQuery,
+  useRecordModuleVisitMutation,
 } from "../store/apiSlice";
 import { getCurriculum } from "../constants/curriculumData";
 import { cleanLessonTitle } from "../utils/formatContent";
@@ -52,6 +53,8 @@ export default function ModulePage() {
   const { data: submissionsData } = useGetStudentSubmissionsQuery(pathwayId || "", {
     skip: !pathwayId,
   });
+  const [recordModuleVisit] = useRecordModuleVisitMutation();
+  const recordedVisitRef = React.useRef<string>("");
 
   const allowCurriculumFallback = allowDevCurriculumFallback();
 
@@ -257,6 +260,15 @@ export default function ModulePage() {
       </div>
     );
   }
+
+  // Record last-opened module on server when an unlocked module is viewed
+  React.useEffect(() => {
+    if (!pathwayId || !currentModule?.id || currentModule.isLocked) return;
+    const visitKey = `${pathwayId}:${currentModule.id}`;
+    if (recordedVisitRef.current === visitKey) return;
+    recordedVisitRef.current = visitKey;
+    recordModuleVisit({ pathwayId, moduleId: currentModule.id });
+  }, [pathwayId, currentModule?.id, currentModule?.isLocked, recordModuleVisit]);
 
   const courseTitle = pathwayData?.pathway?.title || canonical.title || "Course Curriculum";
   const moduleLessons = currentModule.items || [];
