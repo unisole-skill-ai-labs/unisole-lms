@@ -97,7 +97,64 @@ export function renderMarkdownToHtml(input: string): string {
       .join("");
   }
 
-  return text;
+  return sanitizeHtml(text);
+}
+
+const ALLOWED_TAGS = new Set([
+  "P", "BR", "STRONG", "B", "EM", "I", "U", "S",
+  "H1", "H2", "H3", "H4", "H5", "H6",
+  "UL", "OL", "LI", "BLOCKQUOTE", "PRE", "CODE", "A", "SPAN", "DIV", "HR",
+]);
+
+/**
+ * Sanitizes rendered HTML using a strict tag and attribute allowlist (prevents XSS).
+ */
+export function sanitizeHtml(html: string): string {
+  if (!html) return "";
+  if (typeof window === "undefined" || typeof DOMParser === "undefined") {
+    return html.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "");
+  }
+
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const cleanNode = (node: Node): void => {
+    const children = Array.from(node.childNodes);
+    for (const child of children) {
+      if (child.nodeType === Node.ELEMENT_NODE) {
+        const el = child as Element;
+        if (!ALLOWED_TAGS.has(el.tagName)) {
+          if (el.tagName === "SCRIPT" || el.tagName === "STYLE" || el.tagName === "IFRAME") {
+            el.remove();
+          } else {
+            const textNode = doc.createTextNode(el.textContent || "");
+            el.replaceWith(textNode);
+          }
+          continue;
+        }
+        for (const attr of Array.from(el.attributes)) {
+          const name = attr.name.toLowerCase();
+          if (name.startsWith("on")) {
+            el.removeAttribute(attr.name);
+            continue;
+          }
+          if (el.tagName === "A" && name === "href") {
+            const href = attr.value.trim().toLowerCase();
+            if (!(href.startsWith("http://") || href.startsWith("https://") || href.startsWith("/"))) {
+              el.removeAttribute(attr.name);
+            }
+          } else if (!["class", "target", "rel"].includes(name)) {
+            el.removeAttribute(attr.name);
+          }
+        }
+        if (el.tagName === "A") {
+          el.setAttribute("rel", "noopener noreferrer");
+          el.setAttribute("target", "_blank");
+        }
+        cleanNode(el);
+      }
+    }
+  };
+  cleanNode(doc.body);
+  return doc.body.innerHTML;
 }
 
 export function parseLessonContent(raw: string | null | undefined): ParsedLessonPayload {

@@ -41,6 +41,7 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
 
   const [getVideoAccess, { isLoading }] = useGetLessonVideoAccessMutation();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const [qualityOptions, setQualityOptions] = useState<QualityOption[]>([]);
   const [selectedQuality, setSelectedQuality] = useState<"auto" | number>(readSavedQuality);
@@ -149,10 +150,21 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
 
           hlsInstance.loadSource(manifestUrl);
           hlsInstance.attachMedia(videoEl);
+          let networkRetries = 0;
+          let mediaRetries = 0;
           hlsInstance.on(Hls.Events.ERROR, (_event: any, data: any) => {
-            if (data?.fatal) {
-              setErrorMsg("Unable to load video stream. Please try refreshing.");
+            if (!data?.fatal || cancelled) return;
+            if (data.type === Hls.ErrorTypes.NETWORK_ERROR && networkRetries < 2) {
+              networkRetries += 1;
+              hlsInstance.startLoad();
+              return;
             }
+            if (data.type === Hls.ErrorTypes.MEDIA_ERROR && mediaRetries < 2) {
+              mediaRetries += 1;
+              hlsInstance.recoverMediaError();
+              return;
+            }
+            setErrorMsg("Unable to load video stream. Please try again.");
           });
         } else if (videoEl.canPlayType("application/vnd.apple.mpegurl")) {
           // Native HLS fallback (iOS Safari manages ABR natively)
@@ -175,7 +187,7 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
         hlsInstance.destroy();
       }
     };
-  }, [lessonId, getVideoAccess]);
+  }, [lessonId, getVideoAccess, reloadKey]);
 
   const handleSelectQuality = (choice: "auto" | number, levelIndex: number) => {
     setSelectedQuality(choice);
@@ -195,9 +207,16 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
 
   if (errorMsg) {
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-slate-950 text-slate-300 p-6 text-center gap-2">
+      <div className="w-full h-full flex flex-col items-center justify-center bg-slate-950 text-slate-300 p-6 text-center gap-3">
         <AlertCircle className="w-7 h-7 text-rose-400" />
         <p className="text-sm font-medium">{errorMsg}</p>
+        <button
+          type="button"
+          onClick={() => setReloadKey((k) => k + 1)}
+          className="px-4 py-2 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold cursor-pointer"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -270,8 +289,7 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
         title={title || "Lesson Video"}
         controls
         playsInline
-        controlsList="nodownload noplaybackrate"
-        disablePictureInPicture
+        controlsList="nodownload"
         onContextMenu={(e) => e.preventDefault()}
         className="w-full h-full object-contain"
       />
