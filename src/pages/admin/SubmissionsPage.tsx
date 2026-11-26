@@ -43,10 +43,6 @@ export default function SubmissionsPage({ initialMode }: SubmissionsPageProps = 
   const isMentor = userRoles.includes("MENTOR") && !isAdmin && !isCourseManager;
   const canAccess = isAdmin || isCourseManager || isMentor;
 
-  if (!canAccess) {
-    return <Navigate to="/admin/courses" replace />;
-  }
-
   const [activeTab, setActiveTab] = useState<"all" | "cockpit" | "table">(
     !initialMode && (isAdmin || isCourseManager) ? "all" : "cockpit"
   );
@@ -116,6 +112,10 @@ export default function SubmissionsPage({ initialMode }: SubmissionsPageProps = 
   };
 
   const [selectedMenteeId, setSelectedMenteeId] = useState<string | null>(null);
+
+  if (!canAccess) {
+    return <Navigate to="/admin/courses" replace />;
+  }
 
   return (
     <div className="p-5 sm:p-7 lg:p-8 space-y-6 max-w-[1560px] mx-auto font-sans">

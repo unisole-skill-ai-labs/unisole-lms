@@ -25,15 +25,15 @@ export default function AdminLoginPage() {
     ["ADMIN", "SUPER_ADMIN", "MENTOR", "MEMBER", "COURSE_MANAGER", "PROGRAM_MANAGER"].includes(r)
   );
 
-  if (isAuthenticated && isStaff) {
-    return <Navigate to={safeTarget} replace />;
-  }
-
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   const [adminLoginMutation, { isLoading }] = useAdminLoginMutation();
+
+  if (isAuthenticated && isStaff) {
+    return <Navigate to={safeTarget} replace />;
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

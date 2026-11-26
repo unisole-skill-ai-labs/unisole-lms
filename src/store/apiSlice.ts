@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { setCredentials, logout } from "./authSlice";
 
-const API_BASE_URL = (
+export const API_BASE_URL = (
   import.meta.env.VITE_API_URL ||
   import.meta.env.VITE_API_BASE_URL ||
   (typeof window !== "undefined"
@@ -863,6 +863,75 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: ["CalendarEvents"],
     }),
+
+    // Lesson HLS & Simple MP4 Video hooks
+    getLessonVideoStatus: builder.query({
+      query: (lessonId: string) => `/api/admin/lessons/${lessonId}/video/status`,
+    }),
+    createLessonVideoCliToken: builder.mutation({
+      query: (lessonId: string) => ({
+        url: `/api/admin/lessons/${lessonId}/video/cli-token`,
+        method: "POST",
+      }),
+    }),
+    initSimpleVideoUpload: builder.mutation({
+      query: ({
+        lessonId,
+        ...body
+      }: {
+        lessonId: string;
+        fileName: string;
+        contentType: string;
+        sizeBytes: number;
+      }) => ({
+        url: `/api/admin/lessons/${lessonId}/video/simple-upload/init`,
+        method: "POST",
+        body,
+      }),
+    }),
+    completeSimpleVideoUpload: builder.mutation({
+      query: ({
+        lessonId,
+        blobPath,
+        durationMinutes,
+      }: {
+        lessonId: string;
+        blobPath: string;
+        durationMinutes?: number;
+      }) => ({
+        url: `/api/admin/lessons/${lessonId}/video/simple-upload/complete`,
+        method: "POST",
+        body: { blobPath, durationMinutes },
+      }),
+    }),
+    failSimpleVideoUpload: builder.mutation({
+      query: ({ lessonId, error }: { lessonId: string; error: string }) => ({
+        url: `/api/admin/lessons/${lessonId}/video/simple-upload/fail`,
+        method: "POST",
+        body: { error },
+      }),
+    }),
+    getVideoSetupStatus: builder.query({
+      query: () => `/api/admin/videos/setup-check`,
+    }),
+    checkVideoSetup: builder.mutation({
+      query: () => ({
+        url: `/api/admin/videos/setup-check?probe=1`,
+        method: "POST",
+      }),
+    }),
+    switchLessonVideoToLink: builder.mutation({
+      query: (lessonId: string) => ({
+        url: `/api/admin/lessons/${lessonId}/video/switch-to-link`,
+        method: "POST",
+      }),
+    }),
+    getLessonVideoAccess: builder.mutation({
+      query: (lessonId: string) => ({
+        url: `/api/lms/lessons/${lessonId}/video-access`,
+        method: "POST",
+      }),
+    }),
   }),
 });
 
@@ -946,4 +1015,13 @@ export const {
   useCreateCalendarEventMutation,
   useUpdateCalendarEventMutation,
   useDeleteCalendarEventMutation,
+  useGetLessonVideoStatusQuery,
+  useCreateLessonVideoCliTokenMutation,
+  useInitSimpleVideoUploadMutation,
+  useCompleteSimpleVideoUploadMutation,
+  useFailSimpleVideoUploadMutation,
+  useGetVideoSetupStatusQuery,
+  useCheckVideoSetupMutation,
+  useSwitchLessonVideoToLinkMutation,
+  useGetLessonVideoAccessMutation,
 } = apiSlice;
