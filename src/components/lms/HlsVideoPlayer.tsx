@@ -21,9 +21,20 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
       try {
         const res = await getVideoAccess(lessonId).unwrap();
         if (cancelled) return;
-        const manifestUrl = res?.manifestUrl;
         const videoEl = videoRef.current;
-        if (!manifestUrl || !videoEl) {
+        if (!videoEl) {
+          setErrorMsg("Video stream is unavailable.");
+          return;
+        }
+
+        // Direct MP4 playback via short-lived Azure Read SAS URL (supports HTTP Range seeking)
+        if (res?.provider === "AZURE_MP4" && res?.videoUrl) {
+          videoEl.src = res.videoUrl;
+          return;
+        }
+
+        const manifestUrl = res?.manifestUrl;
+        if (!manifestUrl) {
           setErrorMsg("Video stream is unavailable.");
           return;
         }

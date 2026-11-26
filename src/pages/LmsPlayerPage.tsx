@@ -602,7 +602,7 @@ export default function LmsPlayerPage() {
 
   // Lesson Type Resolution Flags
   const isHlsVideo =
-    (selectedLesson as any)?.videoProvider === "AZURE_HLS" &&
+    ["AZURE_HLS", "AZURE_MP4"].includes((selectedLesson as any)?.videoProvider) &&
     (selectedLesson as any)?.videoStatus === "READY";
   const hasRealVideo =
     isHlsVideo ||

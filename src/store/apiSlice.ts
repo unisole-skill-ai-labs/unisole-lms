@@ -864,13 +864,56 @@ export const apiSlice = createApi({
       invalidatesTags: ["CalendarEvents"],
     }),
 
-    // Lesson HLS Video hooks
+    // Lesson HLS & Simple MP4 Video hooks
     getLessonVideoStatus: builder.query({
       query: (lessonId: string) => `/api/admin/lessons/${lessonId}/video/status`,
     }),
     createLessonVideoCliToken: builder.mutation({
       query: (lessonId: string) => ({
         url: `/api/admin/lessons/${lessonId}/video/cli-token`,
+        method: "POST",
+      }),
+    }),
+    initSimpleVideoUpload: builder.mutation({
+      query: ({
+        lessonId,
+        ...body
+      }: {
+        lessonId: string;
+        fileName: string;
+        contentType: string;
+        sizeBytes: number;
+      }) => ({
+        url: `/api/admin/lessons/${lessonId}/video/simple-upload/init`,
+        method: "POST",
+        body,
+      }),
+    }),
+    completeSimpleVideoUpload: builder.mutation({
+      query: ({
+        lessonId,
+        blobPath,
+        durationMinutes,
+      }: {
+        lessonId: string;
+        blobPath: string;
+        durationMinutes?: number;
+      }) => ({
+        url: `/api/admin/lessons/${lessonId}/video/simple-upload/complete`,
+        method: "POST",
+        body: { blobPath, durationMinutes },
+      }),
+    }),
+    failSimpleVideoUpload: builder.mutation({
+      query: ({ lessonId, error }: { lessonId: string; error: string }) => ({
+        url: `/api/admin/lessons/${lessonId}/video/simple-upload/fail`,
+        method: "POST",
+        body: { error },
+      }),
+    }),
+    checkVideoSetup: builder.mutation({
+      query: () => ({
+        url: `/api/admin/videos/setup-check?probe=1`,
         method: "POST",
       }),
     }),
@@ -971,6 +1014,10 @@ export const {
   useDeleteCalendarEventMutation,
   useGetLessonVideoStatusQuery,
   useCreateLessonVideoCliTokenMutation,
+  useInitSimpleVideoUploadMutation,
+  useCompleteSimpleVideoUploadMutation,
+  useFailSimpleVideoUploadMutation,
+  useCheckVideoSetupMutation,
   useSwitchLessonVideoToLinkMutation,
   useGetLessonVideoAccessMutation,
 } = apiSlice;
