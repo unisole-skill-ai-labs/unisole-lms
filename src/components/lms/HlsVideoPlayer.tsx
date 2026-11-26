@@ -1,16 +1,63 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useGetLessonVideoAccessMutation } from "../../store/apiSlice";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, Settings2, Check } from "lucide-react";
 
 interface HlsVideoPlayerProps {
   lessonId: string;
   title?: string;
 }
 
+interface QualityOption {
+  index: number;
+  height: number;
+  label: string;
+}
+
+const QUALITY_STORAGE_KEY = "unisole_hls_quality";
+
+function readSavedQuality(): "auto" | number {
+  try {
+    const raw = localStorage.getItem(QUALITY_STORAGE_KEY);
+    if (!raw || raw === "auto") return "auto";
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : "auto";
+  } catch {
+    return "auto";
+  }
+}
+
+function writeSavedQuality(val: "auto" | number) {
+  try {
+    localStorage.setItem(QUALITY_STORAGE_KEY, String(val));
+  } catch {
+    // Ignore storage quota / private mode errors
+  }
+}
+
 export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const hlsRef = useRef<any>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
   const [getVideoAccess, { isLoading }] = useGetLessonVideoAccessMutation();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const [qualityOptions, setQualityOptions] = useState<QualityOption[]>([]);
+  const [selectedQuality, setSelectedQuality] = useState<"auto" | number>(readSavedQuality);
+  const [playingHeight, setPlayingHeight] = useState<number | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Close quality menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [menuOpen]);
 
   useEffect(() => {
     let hlsInstance: any = null;
@@ -18,6 +65,10 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
 
     async function loadStream() {
       setErrorMsg(null);
+      setQualityOptions([]);
+      setPlayingHeight(null);
+      setMenuOpen(false);
+
       try {
         const res = await getVideoAccess(lessonId).unwrap();
         if (cancelled) return;
@@ -27,7 +78,7 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
           return;
         }
 
-        // Direct MP4 playback via short-lived Azure Read SAS URL (supports HTTP Range seeking)
+        // Direct MP4 playback via short-lived Azure Read SAS URL (no quality menu)
         if (res?.provider === "AZURE_MP4" && res?.videoUrl) {
           videoEl.src = res.videoUrl;
           return;
@@ -48,6 +99,54 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
             enableWorker: true,
             lowLatencyMode: false,
           });
+          hlsRef.current = hlsInstance;
+
+          hlsInstance.on(Hls.Events.MANIFEST_PARSED, (_event: any, data: any) => {
+            if (cancelled) return;
+            const rawLevels: any[] = data?.levels || hlsInstance.levels || [];
+            // Deduplicate by height (keeping highest bitrate per height) and sort highest first
+            const byHeight = new Map<number, { index: number; height: number; bitrate: number }>();
+            rawLevels.forEach((lvl, idx) => {
+              const h = Number(lvl?.height || 0);
+              if (h <= 0) return;
+              const br = Number(lvl?.bitrate || 0);
+              const prev = byHeight.get(h);
+              if (!prev || br > prev.bitrate) {
+                byHeight.set(h, { index: idx, height: h, bitrate: br });
+              }
+            });
+
+            const sorted: QualityOption[] = Array.from(byHeight.values())
+              .sort((a, b) => b.height - a.height)
+              .map((item) => ({
+                index: item.index,
+                height: item.height,
+                label: `${item.height}p`,
+              }));
+
+            setQualityOptions(sorted);
+
+            // Apply saved preference if available on this video; otherwise fall back to Auto (-1)
+            const saved = readSavedQuality();
+            const match = saved !== "auto" ? sorted.find((o) => o.height === saved) : undefined;
+            if (match) {
+              hlsInstance.currentLevel = match.index;
+              setSelectedQuality(match.height);
+              setPlayingHeight(match.height);
+            } else {
+              hlsInstance.currentLevel = -1;
+              setSelectedQuality("auto");
+            }
+          });
+
+          hlsInstance.on(Hls.Events.LEVEL_SWITCHED, (_event: any, data: any) => {
+            if (cancelled) return;
+            const lvl = hlsInstance.levels?.[data?.level];
+            if (lvl?.height) {
+              setPlayingHeight(Number(lvl.height));
+            }
+          });
+
           hlsInstance.loadSource(manifestUrl);
           hlsInstance.attachMedia(videoEl);
           hlsInstance.on(Hls.Events.ERROR, (_event: any, data: any) => {
@@ -56,7 +155,7 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
             }
           });
         } else if (videoEl.canPlayType("application/vnd.apple.mpegurl")) {
-          // Native HLS fallback (iOS Safari)
+          // Native HLS fallback (iOS Safari manages ABR natively)
           videoEl.src = manifestUrl;
         } else {
           setErrorMsg("Your browser does not support adaptive HLS playback.");
@@ -71,11 +170,28 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
     loadStream();
     return () => {
       cancelled = true;
+      hlsRef.current = null;
       if (hlsInstance) {
         hlsInstance.destroy();
       }
     };
   }, [lessonId, getVideoAccess]);
+
+  const handleSelectQuality = (choice: "auto" | number, levelIndex: number) => {
+    setSelectedQuality(choice);
+    writeSavedQuality(choice);
+    if (hlsRef.current) {
+      hlsRef.current.currentLevel = levelIndex;
+    }
+    if (choice !== "auto") {
+      setPlayingHeight(choice);
+    } else if (hlsRef.current) {
+      const currIdx = hlsRef.current.currentLevel;
+      const currH = currIdx >= 0 ? hlsRef.current.levels?.[currIdx]?.height : null;
+      if (currH) setPlayingHeight(Number(currH));
+    }
+    setMenuOpen(false);
+  };
 
   if (errorMsg) {
     return (
@@ -86,6 +202,13 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
     );
   }
 
+  const buttonLabel =
+    selectedQuality === "auto"
+      ? playingHeight
+        ? `Auto (${playingHeight}p)`
+        : "Auto"
+      : `${selectedQuality}p`;
+
   return (
     <div className="w-full h-full relative bg-black flex items-center justify-center">
       {isLoading && (
@@ -93,6 +216,55 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
           <Loader2 className="w-8 h-8 text-sky-400 animate-spin" />
         </div>
       )}
+
+      {qualityOptions.length > 1 && (
+        <div ref={menuRef} className="absolute top-3 right-3 z-20">
+          <button
+            type="button"
+            data-testid="hls-quality-button"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((prev) => !prev)}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-black/75 hover:bg-black/90 text-white border border-white/20 text-xs font-semibold backdrop-blur-xs shadow-md transition-colors cursor-pointer min-h-[36px]"
+          >
+            <Settings2 className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+            <span>{buttonLabel}</span>
+          </button>
+
+          {menuOpen && (
+            <div
+              role="menu"
+              data-testid="hls-quality-menu"
+              className="absolute right-0 mt-1.5 w-36 rounded-xl bg-slate-900/95 border border-white/15 shadow-xl py-1 backdrop-blur-md z-30"
+            >
+              <button
+                type="button"
+                role="menuitemradio"
+                aria-checked={selectedQuality === "auto"}
+                onClick={() => handleSelectQuality("auto", -1)}
+                className="w-full px-3 py-2 text-left text-xs font-semibold text-white hover:bg-white/10 flex items-center justify-between cursor-pointer min-h-[36px]"
+              >
+                <span>Auto</span>
+                {selectedQuality === "auto" && <Check className="w-3.5 h-3.5 text-sky-400" />}
+              </button>
+              {qualityOptions.map((opt) => (
+                <button
+                  key={opt.height}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={selectedQuality === opt.height}
+                  onClick={() => handleSelectQuality(opt.height, opt.index)}
+                  className="w-full px-3 py-2 text-left text-xs font-semibold text-white hover:bg-white/10 flex items-center justify-between cursor-pointer min-h-[36px]"
+                >
+                  <span>{opt.label}</span>
+                  {selectedQuality === opt.height && <Check className="w-3.5 h-3.5 text-sky-400" />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <video
         ref={videoRef}
         title={title || "Lesson Video"}
