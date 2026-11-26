@@ -212,7 +212,7 @@ export default function DashboardPage() {
 
   // Most recent real student activity for the module card
   const recentActivityLabel = useMemo(() => {
-    const allItems = modules.flatMap((m: any) => m.items || []);
+    const allItems = modules.flatMap((m: any) => m.items || m.lessons || []);
     const itemById = new Map<string, any>();
     for (const it of allItems) {
       if (it?.id) itemById.set(it.id, it);
@@ -221,9 +221,11 @@ export default function DashboardPage() {
     const candidates: Array<{ lessonId: string; ts: number; source: "submission" | "progress" }> = [];
     const progList = Array.isArray(progressData?.completedLessons)
       ? progressData.completedLessons
-      : Array.isArray(progressData)
-        ? progressData
-        : [];
+      : Array.isArray(progressData?.completedLessonIds)
+        ? progressData.completedLessonIds
+        : Array.isArray(progressData)
+          ? progressData
+          : [];
     for (const p of progList) {
       if (typeof p === "string") {
         candidates.push({ lessonId: p, ts: 0, source: "progress" });
@@ -243,7 +245,7 @@ export default function DashboardPage() {
 
     candidates.sort((a, b) => b.ts - a.ts);
     const latest = candidates.find((c) => itemById.has(c.lessonId));
-    if (!latest) return "Not started";
+    if (!latest) return "";
     const item = itemById.get(latest.lessonId);
     const title = cleanLessonTitle(item.title || "");
     if (item.type === "quiz") return `Attempted quiz: ${title}`;
@@ -451,17 +453,7 @@ export default function DashboardPage() {
             </h1>
           )}
 
-          {/* Desktop-only Refresh button (hidden on mobile, B5) */}
-          <button
-            type="button"
-            onClick={handleRefresh}
-            aria-label="Refresh curriculum"
-            className="hidden sm:inline-flex items-center gap-1.5 p-2 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-            title="Refresh"
-          >
-            <RefreshCw className="w-4 h-4 stroke-[1.8]" />
-            <span className="text-xs font-medium">Refresh</span>
-          </button>
+          {/* Desktop-only Refresh button removed */}
         </div>
 
         {/* ─── Program Switcher (Rendered only if student has > 1 enrolled program) ─── */}
@@ -569,11 +561,11 @@ export default function DashboardPage() {
                   <Lock className="w-3.5 h-3.5" />
                   <span>Unlocks on {formatIstDisplay(targetWeek?.module?.unlockAt)}</span>
                 </div>
-              ) : (
+              ) : recentActivityLabel ? (
                 <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 truncate">
                   {recentActivityLabel}
                 </h3>
-              )}
+              ) : null}
             </div>
 
             {/* Thin Progress Bar (B2) */}
@@ -658,13 +650,6 @@ export default function DashboardPage() {
             <h2 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
               Today / Upcoming
             </h2>
-            <Link
-              to="/calendar"
-              className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-            >
-              <span>View calendar</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
           </div>
 
           {isActivitiesLoading ? (

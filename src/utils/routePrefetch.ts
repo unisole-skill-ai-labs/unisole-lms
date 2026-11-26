@@ -60,8 +60,6 @@ export function prefetchByPath(path: string): void {
       routeLoaders.player();
     } else if (cleanPath === "/activities") {
       routeLoaders.activities();
-    } else if (cleanPath === "/calendar") {
-      routeLoaders.calendar();
     } else if (cleanPath === "/notifications") {
       routeLoaders.notifications();
     } else if (cleanPath === "/support") {

@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, BookOpen, Activity, Calendar } from "lucide-react";
+import { Home, BookOpen, Activity } from "lucide-react";
 import { getPrefetchHandlers } from "../../utils/routePrefetch";
 
 export default function MobileNav() {
@@ -10,7 +10,6 @@ export default function MobileNav() {
     { name: "Home", path: "/", icon: Home },
     { name: "Courses", path: "/enrolled", icon: BookOpen },
     { name: "Activities", path: "/activities", icon: Activity },
-    { name: "Calendar", path: "/calendar", icon: Calendar },
   ];
 
   const isActive = (path: string) => {

@@ -238,12 +238,6 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
       to: "/activities",
     },
     {
-      id: "calendar",
-      name: "Calendar",
-      icon: Calendar,
-      to: "/calendar",
-    },
-    {
       id: "courses",
       name: "Courses",
       icon: BookOpen,
