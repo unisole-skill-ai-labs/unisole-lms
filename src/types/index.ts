@@ -65,7 +65,6 @@ export interface Lesson {
   position?: number;
   type?: LessonType;
   status?: ContentStatus;
-  isFreePreview?: boolean;
   quiz?: LessonQuiz;
   assignment?: LessonAssignment;
   attachments?: LessonAttachment[];

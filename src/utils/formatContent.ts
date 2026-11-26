@@ -5,7 +5,6 @@
 
 export interface ParsedLessonPayload {
   type: "READING" | "QUIZ" | "ASSIGNMENT";
-  isFreePreview?: boolean;
   contentMarkdown?: string;
   contentHtml: string;
   codeLanguage?: string;
@@ -121,7 +120,6 @@ export function parseLessonContent(raw: string | null | undefined): ParsedLesson
 
       return {
         type: parsed.type || "READING",
-        isFreePreview: !!parsed.isFreePreview,
         contentMarkdown: parsed.contentMarkdown || rawText,
         contentHtml: finalHtml,
         codeLanguage: parsed.codeLanguage || "typescript",

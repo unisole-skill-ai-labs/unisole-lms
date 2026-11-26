@@ -1,6 +1,24 @@
 import { LessonItem, ModuleSection } from "../constants/curriculumData";
 import { cleanLessonTitle } from "./formatContent";
 
+export const DEFAULT_PROGRAM_DURATION = "15 months";
+
+export function getProgramDurationLabel(courseOrPathway?: any): string {
+  const raw = courseOrPathway?.metadata?.duration;
+  if (typeof raw === "string" && raw.trim() && !/12\s*week/i.test(raw)) {
+    return raw.trim();
+  }
+  return DEFAULT_PROGRAM_DURATION;
+}
+
+export function formatWeekDurationLabel(weekNumber: number, courseOrPathway?: any): string {
+  const duration = getProgramDurationLabel(courseOrPathway);
+  if (duration.toLowerCase() === "15 months") {
+    return `Week ${weekNumber} · 15-month program`;
+  }
+  return `Week ${weekNumber} · ${duration}`;
+}
+
 export type ItemStatus = "COMPLETED" | "IN_PROGRESS" | "NOT_STARTED";
 export type WeekStatus = "Completed" | "In progress" | "Up next" | "Locked" | "Not started";
 

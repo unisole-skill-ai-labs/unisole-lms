@@ -41,9 +41,11 @@ export default function Header() {
     skip: !isAuthenticated,
   });
 
-  const unreadCount =
-    (activitiesData?.missed?.length || 0) +
-    (activitiesData?.upcoming?.filter((u: any) => u.isToday || u.isUrgent)?.length || 0);
+  const unreadCount = new Set([
+    ...(activitiesData?.newItems || []).map((i: any) => i.lessonId || i.id),
+    ...(activitiesData?.missed || []).map((i: any) => i.lessonId || i.id),
+    ...(activitiesData?.upcoming?.filter((u: any) => u.isToday || u.isUrgent) || []).map((i: any) => i.lessonId || i.id),
+  ]).size;
 
   const navLinks = [
     { name: "Dashboard", path: "/", icon: LayoutDashboard },

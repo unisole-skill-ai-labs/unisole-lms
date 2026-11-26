@@ -219,7 +219,7 @@ export const apiSlice = createApi({
       },
       providesTags: (_result, _error, arg) => {
         const id = typeof arg === "object" && arg !== null ? (arg.pathwayId || arg.id) : arg;
-        return [{ type: "Pathway", id: `${id}-CONTENT` }];
+        return ["Pathway", { type: "Pathway", id: `${id}-CONTENT` }];
       },
     }),
     getLessonContent: builder.query({
@@ -229,6 +229,14 @@ export const apiSlice = createApi({
     getMyEnrollments: builder.query({
       query: () => "/api/lms/enrollments",
       providesTags: [{ type: "Enrollment", id: "LIST" }],
+    }),
+    recordModuleVisit: builder.mutation({
+      query: (body) => ({
+        url: "/api/lms/module-visit",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["DashboardSummary"],
     }),
 
     // ─── Student Progress, Submissions & Activities ──────────────────────────────
@@ -380,7 +388,7 @@ export const apiSlice = createApi({
         const patchResult = dispatch(
           apiSlice.util.updateQueryData("getAdminCourseModules", courseId, (draft) => {
             if (Array.isArray(draft) && !draft.some((m: any) => (m.moduleId || m.id) === moduleId)) {
-              draft.push({ moduleId, position, title: "New Module", status: "DRAFT" });
+              draft.push({ moduleId, position, title: "New Module", status: "PUBLISHED" });
             }
           })
         );
@@ -530,8 +538,9 @@ export const apiSlice = createApi({
         "Pathway",
         "Lesson",
         "DashboardSummary",
+        "Activities",
       ],
-      async onQueryStarted({ moduleId, title, slug, status, content, videoUrl, durationMinutes }, { dispatch, queryFulfilled }) {
+      async onQueryStarted({ moduleId, title, slug, content, videoUrl, durationMinutes }, { dispatch, queryFulfilled }) {
         const tempId = `temp_${Date.now()}`;
         const patchResult = dispatch(
           apiSlice.util.updateQueryData("getAdminModuleLessons", moduleId, (draft) => {
@@ -543,7 +552,7 @@ export const apiSlice = createApi({
                 position: maxPos + 1,
                 title,
                 slug,
-                status: status || "DRAFT",
+                status: "PUBLISHED",
                 content,
                 videoUrl,
                 durationMinutes,
@@ -590,7 +599,7 @@ export const apiSlice = createApi({
         const patchResult = dispatch(
           apiSlice.util.updateQueryData("getAdminModuleLessons", moduleId, (draft) => {
             if (Array.isArray(draft) && !draft.some((l: any) => (l.lessonId || l.id) === lessonId)) {
-              draft.push({ lessonId, position, title: "New Lesson", status: "DRAFT" });
+              draft.push({ lessonId, position, title: "New Lesson", status: "PUBLISHED" });
             }
           })
         );
@@ -716,6 +725,7 @@ export const apiSlice = createApi({
         { type: "Lesson", id },
         "Pathway",
         "DashboardSummary",
+        "Activities",
       ],
     }),
 
@@ -747,6 +757,13 @@ export const apiSlice = createApi({
     getSubmissionsAudit: builder.query({
       query: (params) => ({
         url: "/api/lms/submissions/audit",
+        params,
+      }),
+      providesTags: ["Submissions"],
+    }),
+    getAdminSubmissions: builder.query({
+      query: (params) => ({
+        url: "/api/admin/submissions",
         params,
       }),
       providesTags: ["Submissions"],
@@ -899,6 +916,7 @@ export const {
 
   // Student LMS Progress & Submissions hooks
   useGetDashboardSummaryQuery,
+  useRecordModuleVisitMutation,
   useGetStudentProgressQuery,
   useMarkLessonProgressMutation,
   useGetStudentSubmissionsQuery,
@@ -913,6 +931,7 @@ export const {
   useGetStudentMentorQuery,
   useGetMentorCockpitQuery,
   useGetSubmissionsAuditQuery,
+  useGetAdminSubmissionsQuery,
   useGetAdminMentorsQuery,
   useAssignMentorMutation,
   useUnassignMentorMutation,

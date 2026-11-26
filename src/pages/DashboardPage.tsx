@@ -21,6 +21,11 @@ import {
   Lock,
 } from "lucide-react";
 import { formatIstDisplay } from "../utils/timezone";
+import {
+  allowDevCurriculumFallback,
+  filterVisibleModules,
+  isStudentVisible,
+} from "../utils/curriculumVisibility";
 import { getCurriculum } from "../constants/curriculumData";
 import {
   useGetMyPathwaysQuery,
@@ -28,6 +33,7 @@ import {
   useGetMeQuery,
 } from "../store/apiSlice";
 import { cleanLessonTitle } from "../utils/formatContent";
+import { formatWeekDurationLabel } from "../utils/courseFlow";
 import {
   getCourseFlowStats,
   formatWeekTitle,
@@ -147,11 +153,7 @@ export default function DashboardPage() {
   const refetchActivities = refetchSummary;
   const refetchCalendar = refetchSummary;
 
-  const allowCurriculumFallback =
-    typeof window !== "undefined" &&
-    (import.meta.env.VITE_ALLOW_CURRICULUM_FALLBACK === "true" ||
-      import.meta.env.DEV ||
-      window.location.hostname.includes("stg"));
+  const allowCurriculumFallback = allowDevCurriculumFallback();
 
   const canonical = useMemo(
     () => getCurriculum(currentProgramId),
@@ -160,19 +162,16 @@ export default function DashboardPage() {
 
   // Shared Course Flow computation (Single source of truth)
   const modules = useMemo(() => {
-    const allModules = pathwayContent?.courses?.flatMap((c: any) => c.modules || []) || [];
-    const rawModules = allModules
-      .filter((m: any) => m && m.status === "PUBLISHED" && m.isActive !== false && !m.title?.toLowerCase().includes("intro to ai"))
-      .map((m: any) => ({
-        ...m,
-        lessons: (m.lessons || []).filter((l: any) => l && l.status === "PUBLISHED" && l.isActive !== false),
-      }));
+    const rawModules = filterVisibleModules(pathwayContent?.courses || [], currentProgramId).map((m: any) => ({
+      ...m,
+      lessons: (m.lessons || []).filter(isStudentVisible),
+    }));
     if (rawModules.length > 0) return rawModules;
     if (allowCurriculumFallback && canonical.modules && canonical.modules.length > 0) {
       return canonical.modules;
     }
     return [];
-  }, [pathwayContent, allowCurriculumFallback, canonical]);
+  }, [pathwayContent, currentProgramId, allowCurriculumFallback, canonical]);
 
   const completedIdsArray: string[] = useMemo(() => {
     return Array.from(new Set((progressData?.completedLessonIds || []) as string[]));
@@ -182,17 +181,34 @@ export default function DashboardPage() {
     return getCourseFlowStats(modules, completedIdsArray, submissionsData || []);
   }, [modules, completedIdsArray, submissionsData]);
 
-  // Target the first incomplete module across the course
+  // Target module: prefer server-resolved last-opened module (if active & unlocked),
+  // then first incomplete unlocked module, then first module.
   const firstIncompleteWeek = useMemo(() => {
-    return courseFlow.weekStats.find((ws) => !ws.isCompleted);
+    return courseFlow.weekStats.find((ws) => !ws.isCompleted && !ws.isLocked)
+      || courseFlow.weekStats.find((ws) => !ws.isCompleted);
   }, [courseFlow.weekStats]);
 
-  const targetWeek = firstIncompleteWeek || courseFlow.weekStats[0];
+  const targetWeek = useMemo(() => {
+    const serverModId = summaryData?.targetModuleId;
+    if (serverModId) {
+      const fromServer = courseFlow.weekStats.find(
+        (ws) => ws.module?.id === serverModId && !ws.isLocked
+      );
+      if (fromServer) return fromServer;
+    }
+    return firstIncompleteWeek || courseFlow.weekStats[0] || null;
+  }, [summaryData?.targetModuleId, courseFlow.weekStats, firstIncompleteWeek]);
+
+  const hasModuleHistory = Boolean(summaryData?.hasModuleHistory);
   const isTargetWeekLocked = targetWeek ? targetWeek.isLocked : false;
   const targetWeekNum = targetWeek ? targetWeek.weekNumber : 1;
-  const targetWeekTitle = targetWeek ? targetWeek.formattedTitle : "Module 1";
+  const targetWeekTitle = targetWeek ? targetWeek.formattedTitle : "Course Overview";
   const targetWeekProgressPercent = targetWeek ? targetWeek.progressPercent : 0;
-  const totalWeeksCount = courseFlow.weekStats.length || modules.length || 12;
+  const targetModuleId = targetWeek?.module?.id ? String(targetWeek.module.id) : "";
+  const targetModuleUrl = targetModuleId
+    ? `/learn/${currentProgramId}/module/${targetModuleId}`
+    : `/learn/${currentProgramId}`;
+  const hasAnyModules = courseFlow.weekStats.length > 0;
 
   // Candidate for "Resume last lesson"
   const resumeCandidate = courseFlow.nextIncompleteItem;
@@ -206,7 +222,7 @@ export default function DashboardPage() {
     );
     if (!belongsToCourse) return false;
     if (resumeCandidate.isLocked || resumeWeek.isLocked) return false;
-    if ((resumeCandidate as any).status === "ARCHIVED" || (resumeCandidate as any).isActive === false) return false;
+    if (!isStudentVisible(resumeCandidate)) return false;
     return true;
   }, [resumeCandidate, resumeWeek, courseFlow.completedActivities, targetWeekProgressPercent, modules]);
 
@@ -500,7 +516,7 @@ export default function DashboardPage() {
                 <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 shrink-0 font-mono">
                   {isTargetWeekLocked && targetWeek?.module?.unlockAt
                     ? `Locked · Unlocks on ${formatIstDisplay(targetWeek.module.unlockAt)}`
-                    : `Week ${targetWeekNum} of ${totalWeeksCount} · ${targetWeekProgressPercent}% complete`}
+                    : `${formatWeekDurationLabel(targetWeekNum, pathwayContent?.courses?.[0] || pathwayContent?.pathway)} · ${targetWeekProgressPercent}% complete`}
                 </span>
               </div>
               <h2 className="text-xs sm:text-sm font-semibold text-zinc-500 dark:text-zinc-400 truncate">
@@ -528,9 +544,21 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Primary Action Button: Target first incomplete, unlocked week module */}
+            {/* Primary Action Button: Target last-opened / first incomplete unlocked module */}
             <div className="space-y-2">
-              {isTargetWeekLocked ? (
+              {!hasAnyModules ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    startTransition(() => {
+                      navigate(`/learn/${currentProgramId}`);
+                    });
+                  }}
+                  className="w-full min-h-[44px] py-3 px-5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <span>Content coming soon</span>
+                </button>
+              ) : isTargetWeekLocked ? (
                 <button
                   type="button"
                   disabled
@@ -542,20 +570,20 @@ export default function DashboardPage() {
               ) : (
                 <button
                   type="button"
-                  onMouseEnter={() => prefetchByPath(`/learn/${currentProgramId}/module/${targetWeek?.module?.id || ""}`)}
-                  onTouchStart={() => prefetchByPath(`/learn/${currentProgramId}/module/${targetWeek?.module?.id || ""}`)}
-                  onFocus={() => prefetchByPath(`/learn/${currentProgramId}/module/${targetWeek?.module?.id || ""}`)}
+                  onMouseEnter={() => prefetchByPath(targetModuleUrl)}
+                  onTouchStart={() => prefetchByPath(targetModuleUrl)}
+                  onFocus={() => prefetchByPath(targetModuleUrl)}
                   onClick={() => {
                     startTransition(() => {
-                      navigate(`/learn/${currentProgramId}/module/${targetWeek?.module?.id || ""}`);
+                      navigate(targetModuleUrl);
                     });
                   }}
                   className="w-full min-h-[44px] py-3 px-5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
                 >
                   <span>
-                    {targetWeekProgressPercent > 0
-                      ? `Continue Week ${targetWeekNum}`
-                      : `Start Week ${targetWeekNum}`}
+                    {!hasModuleHistory && targetWeekNum === 1 && targetWeekProgressPercent === 0
+                      ? "Start Week 1"
+                      : `Continue Week ${targetWeekNum}`}
                   </span>
                   <Play className="w-4 h-4 fill-current" />
                 </button>

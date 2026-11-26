@@ -56,9 +56,11 @@ export default function LearnerDrawer({ isOpen, onClose }: LearnerDrawerProps) {
     skip: !isAuthenticated,
   });
 
-  const unreadCount =
-    (activitiesData?.missed?.length || 0) +
-    (activitiesData?.upcoming?.filter((u: any) => u.isToday || u.isUrgent)?.length || 0);
+  const unreadCount = new Set([
+    ...(activitiesData?.newItems || []).map((i: any) => i.lessonId || i.id),
+    ...(activitiesData?.missed || []).map((i: any) => i.lessonId || i.id),
+    ...(activitiesData?.upcoming?.filter((u: any) => u.isToday || u.isUrgent) || []).map((i: any) => i.lessonId || i.id),
+  ]).size;
 
   const enrolledCourses = useMemo(() => {
     return myPathways

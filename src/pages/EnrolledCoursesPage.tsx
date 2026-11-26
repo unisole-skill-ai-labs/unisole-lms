@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { BookOpen, CheckCircle2, Compass, Play, Layers, Calendar, ArrowRight } from "lucide-react";
+import { BookOpen, CheckCircle2, Compass, Play, Layers, Calendar } from "lucide-react";
 import {
   useGetMyPathwaysQuery,
   useGetPathwayContentQuery,
@@ -17,8 +17,10 @@ import {
   formatExpiryDate,
   getCourseFlowStats,
   formatWeekTitle,
+  formatWeekDurationLabel,
 } from "../utils/courseFlow";
 import { cleanLessonTitle } from "../utils/formatContent";
+import { filterVisibleModules, isStudentVisible } from "../utils/curriculumVisibility";
 
 interface CourseCardProps {
   item: any;
@@ -33,6 +35,7 @@ function CourseCard({ item, submissionsData }: CourseCardProps) {
     { pathwayId, summary: true },
     {
       skip: !pathwayId,
+      refetchOnMountOrArgChange: true,
     }
   );
   const { data: progressData } = useGetStudentProgressQuery(pathwayId, {
@@ -40,8 +43,11 @@ function CourseCard({ item, submissionsData }: CourseCardProps) {
   });
 
   const modules = useMemo(() => {
-    return pathwayContent?.courses?.[0]?.modules || [];
-  }, [pathwayContent]);
+    return filterVisibleModules(pathwayContent?.courses || [], pathwayId).map((m: any) => ({
+      ...m,
+      lessons: (m.lessons || []).filter(isStudentVisible),
+    }));
+  }, [pathwayContent, pathwayId]);
 
   const completedIdsArray: string[] = useMemo(() => {
     return Array.from(new Set((progressData?.completedLessonIds || []) as string[]));
@@ -53,7 +59,6 @@ function CourseCard({ item, submissionsData }: CourseCardProps) {
 
   const progressPercent = courseFlow.progressPercent || 0;
   const currentWeekNum = (courseFlow.currentWeekIndex || 0) + 1;
-  const totalWeeksCount = courseFlow.weekStats.length || modules.length || 12;
 
   // Next incomplete activity info
   const nextItem = courseFlow.nextIncompleteItem;
@@ -115,11 +120,11 @@ function CourseCard({ item, submissionsData }: CourseCardProps) {
           </p>
         </div>
 
-        {/* Progress Bar & Line: "Week 1 of 12 · 2% complete" (A1) */}
+        {/* Progress Bar & Line: "Week 1 · 15-month program · 2% complete" */}
         <div className="space-y-1.5 pt-1">
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold text-zinc-700 dark:text-zinc-300">
-              Week {currentWeekNum} of {totalWeeksCount}
+              {formatWeekDurationLabel(currentWeekNum, pathwayContent?.courses?.[0] || pathway)}
             </span>
             <span className="font-extrabold text-blue-600 dark:text-blue-400">
               {progressPercent}% complete
@@ -135,16 +140,7 @@ function CourseCard({ item, submissionsData }: CourseCardProps) {
       </div>
 
       {/* Card Action Footer */}
-      <div className="mt-5 pt-3.5 border-t border-zinc-100 dark:border-zinc-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-        <Link
-          to={`/learn/${pathwayId}`}
-          {...getPrefetchHandlers(`/learn/${pathwayId}`)}
-          className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 flex items-center justify-center sm:justify-start gap-1 py-1 min-h-[44px]"
-        >
-          <span>Curriculum Overview</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
-
+      <div className="mt-5 pt-3.5 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-end">
         <Link to={nextHref} {...getPrefetchHandlers(nextHref)} className="w-full sm:w-auto">
           <Button
             size="sm"
