@@ -602,6 +602,7 @@ export default function LmsPlayerPage() {
   const [quizAnswers, setQuizAnswers] = useState<Record<string, number>>({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<number | null>(null);
+  const [quizError, setQuizError] = useState<string | null>(null);
 
   // Lesson Type Resolution Flags
   const isHlsVideo =
@@ -657,6 +658,7 @@ export default function LmsPlayerPage() {
     setQuizAnswers({});
     setQuizSubmitted(false);
     setQuizScore(null);
+    setQuizError(null);
     setAssignmentSubmitted(false);
   }, [selectedLesson?.id]);
 
@@ -850,6 +852,15 @@ export default function LmsPlayerPage() {
   const handleQuizSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedLesson.questions || selectedLesson.questions.length === 0) return;
+
+    const allAnswered = selectedLesson.questions.every(
+      (q) => quizAnswers[q.id] !== undefined
+    );
+    if (!allAnswered) {
+      setQuizError("Please select an answer for each question before submitting.");
+      return;
+    }
+    setQuizError(null);
 
     let correct = 0;
     selectedLesson.questions.forEach((q) => {
@@ -2450,8 +2461,10 @@ export default function LmsPlayerPage() {
                   <button
                     type="button"
                     onClick={() => {
+                      setQuizAnswers({});
                       setQuizSubmitted(false);
                       setQuizScore(null);
+                      setQuizError(null);
                     }}
                     className="text-xs font-bold text-emerald-700 dark:text-emerald-300 underline hover:text-emerald-900 dark:hover:text-emerald-100 cursor-pointer"
                   >
@@ -2493,6 +2506,7 @@ export default function LmsPlayerPage() {
                                 checked={isSelected}
                                 onChange={() => {
                                   if (!quizSubmitted) {
+                                    setQuizError(null);
                                     setQuizAnswers((prev) => ({ ...prev, [q.id]: optIdx }));
                                   }
                                 }}
@@ -2521,10 +2535,21 @@ export default function LmsPlayerPage() {
                   );
                 })}
 
+                {quizError && (
+                  <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                    {quizError}
+                  </p>
+                )}
+
                 {!quizSubmitted && (
                   <button
                     type="submit"
-                    className="w-full sm:w-auto bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs py-3 px-8 rounded-xl shadow-md transition-all cursor-pointer"
+                    disabled={
+                      !(selectedLesson.questions || []).every(
+                        (q) => quizAnswers[q.id] !== undefined
+                      )
+                    }
+                    className="w-full sm:w-auto bg-sky-500 hover:bg-sky-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-bold text-xs py-3 px-8 rounded-xl shadow-md transition-all cursor-pointer"
                   >
                     Submit Quiz Answers
                   </button>

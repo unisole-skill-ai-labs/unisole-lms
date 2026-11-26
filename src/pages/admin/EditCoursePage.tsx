@@ -894,7 +894,7 @@ export default function EditCoursePage() {
         break;
 
       case "TEST_VIVA":
-        title = customTitle || "Video Viva Demonstration";
+        title = customTitle || "Assignments";
         payloadContent = {
           type: "VIDEO_TEST",
           category: "TEST",
@@ -1324,7 +1324,7 @@ export default function EditCoursePage() {
                           <span>{practiceType === "MCQ" ? "Practice Quiz (MCQ)" : "Practice Lab"}</span>
                         </>
                       )}
-                      {curriculumMode === "TEST" && (
+                      {curriculumMode === "TEST" && testType !== "VIDEO_TEST" && (
                         <>
                           <Award className="w-3.5 h-3.5 stroke-[2.5]" />
                           <span>
@@ -1332,10 +1332,14 @@ export default function EditCoursePage() {
                               ? "Evaluated Coding Test"
                               : testType === "PROJECT"
                               ? "Capstone Project"
-                              : testType === "VIDEO_TEST"
-                              ? "Video Assessment"
                               : "Subjective Test"}
                           </span>
+                        </>
+                      )}
+                      {curriculumMode === "TEST" && testType === "VIDEO_TEST" && (
+                        <>
+                          <Award className="w-3.5 h-3.5 stroke-[2.5]" />
+                          <span>Assignments</span>
                         </>
                       )}
                       {curriculumMode === "FOLDER" && (
@@ -2183,69 +2187,18 @@ export default function EditCoursePage() {
                 </div>
               )}
 
-              {/* ──────────────── MODE: TEST (VIDEO VIVA TEST) ──────────────── */}
+              {/* ──────────────── MODE: TEST (ASSIGNMENTS) ──────────────── */}
               {curriculumMode === "TEST" && testType === "VIDEO_TEST" && (
                 <div className="space-y-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-purple-50/40 dark:bg-[#0B1120]">
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                        Video Viva / Presentation Test
-                      </h4>
-                      <p className="text-[11px] text-slate-400">
-                        Students record a live video walkthrough or screen share explaining their architecture.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="text-[11px] text-slate-500">Max:</span>
-                        <input
-                          type="number"
-                          min={30}
-                          max={600}
-                          step={30}
-                          value={videoDurationLimitSec}
-                          onChange={(e) => setVideoDurationLimitSec(Number(e.target.value))}
-                          className="w-16 px-2 py-1 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#070A11] text-center font-bold"
-                        />
-                        <span className="text-xs text-slate-400">sec</span>
-                      </div>
-                      <div className="flex items-center gap-1 font-mono">
-                        <input
-                          type="number"
-                          min={10}
-                          max={500}
-                          value={maxPoints}
-                          onChange={(e) => setMaxPoints(Number(e.target.value))}
-                          className="w-16 px-2 py-1 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#070A11] text-center font-bold"
-                        />
-                        <span className="text-xs text-slate-400 font-sans">pts</span>
-                      </div>
-                    </div>
-                  </div>
-
                   <div className="space-y-1.5">
                     <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                      Viva Walkthrough Prompt & Topics
+                      Assignment Instructions
                     </label>
                     <textarea
                       rows={6}
                       value={videoPrompt}
                       onChange={(e) => setVideoPrompt(e.target.value)}
-                      placeholder="Prompt students to record their camera and explain their codebase trade-offs..."
-                      className="w-full p-4 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                      Viva Evaluation Rubrics & Criteria
-                    </label>
-                    <textarea
-                      rows={5}
-                      value={subjectiveRubric}
-                      onChange={(e) => setSubjectiveRubric(e.target.value)}
-                      placeholder="1. Technical depth and clarity of communication&#10;2. Architecture walkthrough reasoning&#10;3. Demonstration of working deliverables"
+                      placeholder="Enter assignment instructions and deliverables..."
                       className="w-full p-4 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
                     />
                   </div>
@@ -2933,7 +2886,7 @@ function ChapterSection({
     }
     if (text.includes("viva") || text.includes("video")) {
       return {
-        label: "Viva",
+        label: "Assignments",
         bg: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20",
         isFolder: false,
       };
@@ -2988,7 +2941,7 @@ function ChapterSection({
         <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
           Lesson & Practice
         </span>
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-2 gap-1.5">
           <button
             type="button"
             data-testid="add-type-VIDEO"
@@ -3024,24 +2977,6 @@ function ChapterSection({
               MCQ Quiz
             </span>
           </button>
-
-          <button
-            type="button"
-            data-testid="add-type-LAB"
-            onClick={() => {
-              setShowAddMenu(false);
-              setActiveFolderAddMenuId(null);
-              onAddLessonWithType("PRACTICE_PROJECT", undefined, targetFolderId);
-            }}
-            className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200/70 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500/50 hover:bg-emerald-50/50 dark:hover:bg-emerald-500/10 text-center transition-all group cursor-pointer"
-          >
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
-              <Code className="w-4 h-4 stroke-[2.3]" />
-            </div>
-            <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 truncate w-full">
-              Practice Lab
-            </span>
-          </button>
         </div>
       </div>
 
@@ -3050,10 +2985,10 @@ function ChapterSection({
         <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
           Evaluated Tests
         </span>
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-2 gap-1.5">
           <button
             type="button"
-            data-testid="add-type-VIDEO"
+            data-testid="add-type-CODING"
             onClick={() => {
               setShowAddMenu(false);
               setActiveFolderAddMenuId(null);
@@ -3071,7 +3006,7 @@ function ChapterSection({
 
           <button
             type="button"
-            data-testid="add-type-VIDEO"
+            data-testid="add-type-ASSIGNMENTS"
             onClick={() => {
               setShowAddMenu(false);
               setActiveFolderAddMenuId(null);
@@ -3083,43 +3018,7 @@ function ChapterSection({
               <Video className="w-4 h-4 stroke-[2.3]" />
             </div>
             <span className="text-[10px] font-bold text-slate-800 dark:text-slate-200 group-hover:text-purple-600 dark:group-hover:text-purple-400 truncate w-full">
-              Video Viva
-            </span>
-          </button>
-
-          <button
-            type="button"
-            data-testid="add-type-SUBJECTIVE"
-            onClick={() => {
-              setShowAddMenu(false);
-              setActiveFolderAddMenuId(null);
-              onAddLessonWithType("TEST_SUBJECTIVE", undefined, targetFolderId);
-            }}
-            className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200/70 dark:border-slate-800 hover:border-rose-400 dark:hover:border-rose-500/50 hover:bg-rose-50/50 dark:hover:bg-rose-500/10 text-center transition-all group cursor-pointer"
-          >
-            <div className="w-7 h-7 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
-              <BookOpen className="w-4 h-4 stroke-[2.3]" />
-            </div>
-            <span className="text-[10px] font-bold text-slate-800 dark:text-slate-200 group-hover:text-rose-600 dark:group-hover:text-rose-400 truncate w-full">
-              Subjective
-            </span>
-          </button>
-
-          <button
-            type="button"
-            data-testid="add-type-PROJECT"
-            onClick={() => {
-              setShowAddMenu(false);
-              setActiveFolderAddMenuId(null);
-              onAddLessonWithType("TEST_PROJECT", undefined, targetFolderId);
-            }}
-            className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200/70 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500/50 hover:bg-amber-50/50 dark:hover:bg-amber-500/10 text-center transition-all group cursor-pointer"
-          >
-            <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
-              <Award className="w-4 h-4 stroke-[2.3]" />
-            </div>
-            <span className="text-[10px] font-bold text-slate-800 dark:text-slate-200 group-hover:text-amber-600 dark:group-hover:text-amber-400 truncate w-full">
-              Capstone
+              Assignments
             </span>
           </button>
         </div>

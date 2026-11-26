@@ -248,85 +248,6 @@ export default function ProfilePage() {
                 Edit
               </button>
             </div>
-
-            {/* Timezone Row */}
-            <div className="flex items-center justify-between py-0.5">
-              <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                <Globe className="w-4 h-4 text-zinc-700 dark:text-zinc-300 shrink-0 stroke-[1.8]" />
-                <span className="text-zinc-800 dark:text-zinc-200 truncate font-normal">
-                  {timezone}
-                </span>
-              </div>
-              <button
-                onClick={() => openEdit("timezone")}
-                className="min-h-[44px] min-w-[44px] flex items-center justify-end text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline shrink-0 cursor-pointer"
-              >
-                Edit
-              </button>
-            </div>
-          </div>
-
-          {/* Reset Password Action */}
-          <div className="pt-2">
-            <button
-              onClick={() => setActiveModal("resetPassword")}
-              className="min-h-[44px] flex items-center text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline cursor-pointer"
-            >
-              Reset Password
-            </button>
-          </div>
-        </div>
-
-        {/* Section Divider */}
-        <hr className="border-zinc-200/80 dark:border-zinc-800/80 my-4" />
-
-        {/* Professional Details Section */}
-        <div className="space-y-3">
-          <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
-            Professional Details
-          </h2>
-
-          <div className="flex items-center gap-2.5">
-            {/* LinkedIn Logo SVG */}
-            <svg
-              className="w-5 h-5 text-blue-600 shrink-0"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
-              <rect x="2" y="9" width="4" height="12" />
-              <circle cx="4" cy="4" r="2" />
-            </svg>
-
-            {linkedin ? (
-              <div className="flex items-center gap-2 min-w-0">
-                <a
-                  href={linkedin}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline truncate"
-                >
-                  {linkedin}
-                </a>
-                <button
-                  onClick={() => openEdit("linkedin")}
-                  className="text-xs font-semibold text-blue-600 hover:underline cursor-pointer"
-                >
-                  Edit
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => openEdit("linkedin")}
-                className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline cursor-pointer"
-              >
-                Add LinkedIn
-              </button>
-            )}
           </div>
         </div>
 
@@ -410,53 +331,6 @@ export default function ProfilePage() {
                 </Button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Reset Password Modal */}
-      {activeModal === "resetPassword" && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs "
-          onClick={(e) => e.target === e.currentTarget && setActiveModal(null)}
-        >
-          <div className="bg-white dark:bg-[#121622] w-full max-w-sm rounded-3xl shadow-2xl border border-zinc-200/90 dark:border-zinc-800 p-6 space-y-4 ">
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
-              <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
-                Reset Password
-              </h3>
-              <button
-                onClick={() => setActiveModal(null)}
-                className="p-1 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {resetSuccess ? (
-              <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/30 flex items-center gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <p className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">
-                  Password reset link sent to {email}.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                  We will send a password reset verification link to your registered email address:{" "}
-                  <strong className="text-zinc-800 dark:text-zinc-200">{email}</strong>.
-                </p>
-
-                <div className="flex items-center justify-end gap-2 pt-2">
-                  <Button variant="ghost" size="sm" onClick={() => setActiveModal(null)}>
-                    Cancel
-                  </Button>
-                  <Button variant="primary" size="sm" onClick={handleTriggerReset}>
-                    Send Reset Link
-                  </Button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}

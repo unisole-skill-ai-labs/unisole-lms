@@ -1,22 +1,22 @@
 import { LessonItem, ModuleSection } from "../constants/curriculumData";
 import { cleanLessonTitle } from "./formatContent";
 
-export const DEFAULT_PROGRAM_DURATION = "15 months";
+export const DEFAULT_PROGRAM_DURATION = "15 weeks";
 
 export function getProgramDurationLabel(courseOrPathway?: any): string {
   const raw = courseOrPathway?.metadata?.duration;
-  if (typeof raw === "string" && raw.trim() && !/12\s*week/i.test(raw)) {
+  if (typeof raw === "string" && raw.trim() && !/12\s*week|15\s*month/i.test(raw)) {
     return raw.trim();
   }
   return DEFAULT_PROGRAM_DURATION;
 }
 
-export function formatWeekDurationLabel(weekNumber: number, courseOrPathway?: any): string {
+export function formatWeekDurationLabel(_weekNumber: number, courseOrPathway?: any): string {
   const duration = getProgramDurationLabel(courseOrPathway);
-  if (duration.toLowerCase() === "15 months") {
-    return `Week ${weekNumber} · 15-month program`;
+  if (/15\s*week/i.test(duration)) {
+    return "15 week program";
   }
-  return `Week ${weekNumber} · ${duration}`;
+  return duration;
 }
 
 export type ItemStatus = "COMPLETED" | "IN_PROGRESS" | "NOT_STARTED";

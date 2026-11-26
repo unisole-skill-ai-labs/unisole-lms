@@ -210,6 +210,48 @@ export default function DashboardPage() {
     : `/learn/${currentProgramId}`;
   const hasAnyModules = courseFlow.weekStats.length > 0;
 
+  // Most recent real student activity for the module card
+  const recentActivityLabel = useMemo(() => {
+    const allItems = modules.flatMap((m: any) => m.items || []);
+    const itemById = new Map<string, any>();
+    for (const it of allItems) {
+      if (it?.id) itemById.set(it.id, it);
+    }
+
+    const candidates: Array<{ lessonId: string; ts: number; source: "submission" | "progress" }> = [];
+    const progList = Array.isArray(progressData?.completedLessons)
+      ? progressData.completedLessons
+      : Array.isArray(progressData)
+        ? progressData
+        : [];
+    for (const p of progList) {
+      if (typeof p === "string") {
+        candidates.push({ lessonId: p, ts: 0, source: "progress" });
+      } else if (p?.lessonId) {
+        const ts = new Date(p.completedAt || p.updatedAt || p.createdAt || 0).getTime() || 0;
+        candidates.push({ lessonId: p.lessonId, ts, source: "progress" });
+      }
+    }
+    const subList = Array.isArray(submissionsData) ? submissionsData : [];
+    for (const s of subList) {
+      const lid = s?.lessonId || s?.assignmentId;
+      if (lid) {
+        const ts = new Date(s.submittedAt || s.updatedAt || s.createdAt || 0).getTime() || 0;
+        candidates.push({ lessonId: lid, ts, source: "submission" });
+      }
+    }
+
+    candidates.sort((a, b) => b.ts - a.ts);
+    const latest = candidates.find((c) => itemById.has(c.lessonId));
+    if (!latest) return "Not started";
+    const item = itemById.get(latest.lessonId);
+    const title = cleanLessonTitle(item.title || "");
+    if (item.type === "quiz") return `Attempted quiz: ${title}`;
+    if (item.type === "video" || item.category === "LECTURE") return `Watched lecture: ${title}`;
+    if (item.type === "assignment" || item.category === "TEST") return `Submitted assignment: ${title}`;
+    return `Completed: ${title}`;
+  }, [modules, progressData, submissionsData]);
+
   // Candidate for "Resume last lesson"
   const resumeCandidate = courseFlow.nextIncompleteItem;
   const resumeWeek = courseFlow.nextIncompleteWeek;
@@ -529,7 +571,7 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 truncate">
-                  {cleanLessonTitle(resumeCandidate?.title || targetWeek?.metaSummary || "Module Activities")}
+                  {recentActivityLabel}
                 </h3>
               )}
             </div>

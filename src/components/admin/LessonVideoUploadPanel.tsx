@@ -5,22 +5,14 @@ import {
   Loader2,
   Terminal,
   Link as LinkIcon,
-  Upload,
   FolderUp,
   X,
-  RotateCcw,
-  ShieldCheck,
   AlertTriangle,
 } from "lucide-react";
 import {
   API_BASE_URL,
-  useCheckVideoSetupMutation,
-  useCompleteSimpleVideoUploadMutation,
   useCreateLessonVideoCliTokenMutation,
-  useFailSimpleVideoUploadMutation,
   useGetLessonVideoStatusQuery,
-  useGetVideoSetupStatusQuery,
-  useInitSimpleVideoUploadMutation,
   useSwitchLessonVideoToLinkMutation,
 } from "../../store/apiSlice";
 
@@ -33,7 +25,7 @@ interface LessonVideoUploadPanelProps {
   onDurationChange: (mins: number) => void;
 }
 
-type VideoMode = "LINK" | "MP4" | "HLS";
+type VideoMode = "LINK" | "HLS";
 
 interface HlsFileEntry {
   relPath: string;
@@ -235,14 +227,8 @@ export default function LessonVideoUploadPanel({
   const [cliCommand, setCliCommand] = useState("");
   const [copied, setCopied] = useState(false);
 
-  // MP4 upload state
-  const xhrRef = useRef<XMLHttpRequest | null>(null);
-  const [selectedMp4, setSelectedMp4] = useState<File | null>(null);
-  const [mp4Progress, setMp4Progress] = useState(0);
-  const [isUploadingMp4, setIsUploadingMp4] = useState(false);
-  const [mp4Error, setMp4Error] = useState<string | null>(null);
-
   // HLS folder upload state
+  const xhrRef = useRef<XMLHttpRequest | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
   const hlsAbortRef = useRef(false);
   const [hlsFiles, setHlsFiles] = useState<HlsFileEntry[]>([]);
@@ -258,7 +244,6 @@ export default function LessonVideoUploadPanel({
   const [isVerifyingHls, setIsVerifyingHls] = useState(false);
   const [isDraggingFolder, setIsDraggingFolder] = useState(false);
 
-  const { data: setupStatus } = useGetVideoSetupStatusQuery(undefined);
   const {
     data: statusData,
     error: statusError,
@@ -269,29 +254,16 @@ export default function LessonVideoUploadPanel({
 
   const [createCliToken, { isLoading: isGenerating }] = useCreateLessonVideoCliTokenMutation();
   const [switchToLink, { isLoading: isSwitching }] = useSwitchLessonVideoToLinkMutation();
-  const [initSimpleUpload] = useInitSimpleVideoUploadMutation();
-  const [completeSimpleUpload] = useCompleteSimpleVideoUploadMutation();
-  const [failSimpleUpload] = useFailSimpleVideoUploadMutation();
-  const [checkVideoSetup, { data: setupResult, isLoading: isCheckingSetup }] =
-    useCheckVideoSetupMutation();
 
-  const maxSizeMb: number = statusData?.maxSizeMb || setupStatus?.maxSizeMb || 500;
+  const maxSizeMb: number = statusData?.maxSizeMb || 500;
   const maxSizeBytes = maxSizeMb * 1024 * 1024;
-  const isStorageNotConfigured =
-    (setupStatus && setupStatus.nodeEnv === "production" && !setupStatus.azureConfigured) ||
-    (statusError as any)?.status === 503;
+  const isStorageNotConfigured = (statusError as any)?.status === 503;
 
-  const initialMode: VideoMode =
-    statusData?.videoProvider === "AZURE_MP4"
-      ? "MP4"
-      : statusData?.videoProvider === "AZURE_HLS"
-        ? "HLS"
-        : "LINK";
+  const initialMode: VideoMode = statusData?.videoProvider === "AZURE_HLS" ? "HLS" : "LINK";
   const [mode, setMode] = useState<VideoMode>(initialMode);
 
   useEffect(() => {
-    if (statusData?.videoProvider === "AZURE_MP4") setMode("MP4");
-    else if (statusData?.videoProvider === "AZURE_HLS") setMode("HLS");
+    if (statusData?.videoProvider === "AZURE_HLS") setMode("HLS");
     else setMode("LINK");
   }, [lessonId, statusData?.videoProvider]);
 
@@ -301,78 +273,16 @@ export default function LessonVideoUploadPanel({
       next === "LINK" &&
       isLessonSaved &&
       (statusData?.videoProvider === "AZURE_HLS" ||
-        statusData?.videoProvider === "AZURE_MP4" ||
         (statusData?.videoStatus && statusData.videoStatus !== "NONE"))
     ) {
       try {
         await switchToLink(lessonId).unwrap();
         setCliCommand("");
-        setMp4Error(null);
         setHlsValidationError(null);
         refetch();
       } catch {
         // Ignore if already in link mode
       }
-    }
-  };
-
-  const handleSimpleUpload = async (file: File) => {
-    setMp4Error(null);
-    if (!/\.mp4$/i.test(file.name)) {
-      setMp4Error("Only .mp4 files are supported.");
-      return;
-    }
-    if (file.type && file.type !== "video/mp4") {
-      setMp4Error("Invalid file type. Please select an MP4 (video/mp4) file.");
-      return;
-    }
-    if (file.size <= 0 || file.size > maxSizeBytes) {
-      setMp4Error(`File size must be under ${maxSizeMb} MB.`);
-      return;
-    }
-
-    setSelectedMp4(file);
-    setIsUploadingMp4(true);
-    setMp4Progress(0);
-
-    try {
-      const initRes = await initSimpleUpload({
-        lessonId,
-        fileName: file.name,
-        contentType: "video/mp4",
-        sizeBytes: file.size,
-      }).unwrap();
-
-      await uploadBlobWithXhr(
-        initRes.uploadUrl,
-        file,
-        "video/mp4",
-        (loaded) => setMp4Progress(Math.round((loaded / file.size) * 100)),
-        (xhr) => {
-          xhrRef.current = xhr;
-        }
-      );
-
-      await completeSimpleUpload({
-        lessonId,
-        blobPath: initRes.blobPath,
-        durationMinutes: durationMinutes > 0 ? durationMinutes : undefined,
-      }).unwrap();
-
-      setMp4Progress(100);
-      setIsUploadingMp4(false);
-      refetch();
-    } catch (err: any) {
-      const msg =
-        err?.status === 503
-          ? "Video storage is not set up yet. Ask the developer to configure Azure."
-          : err?.data?.error || err?.message || "Upload failed";
-      setMp4Error(msg);
-      setIsUploadingMp4(false);
-      failSimpleUpload({ lessonId, error: msg }).catch(() => {});
-      refetch();
-    } finally {
-      xhrRef.current = null;
     }
   };
 
@@ -516,83 +426,38 @@ export default function LessonVideoUploadPanel({
 
   const statusKey = statusData?.videoStatus || "NONE";
   const badge = STATUS_STYLES[statusKey] || STATUS_STYLES.NONE;
-  const uploadDisabled = !isLessonSaved || isStorageNotConfigured || isUploadingMp4 || isUploadingHls;
+  const uploadDisabled = !isLessonSaved || isStorageNotConfigured || isUploadingHls;
 
   return (
     <div className="space-y-3 pt-2">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => handleModeSwitch("LINK")}
-            disabled={isSwitching || isUploadingMp4 || isUploadingHls}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
-              mode === "LINK"
-                ? "bg-sky-500/15 border-sky-500/40 text-sky-600 dark:text-sky-300"
-                : "bg-slate-50 dark:bg-[#070A11] border-slate-200 dark:border-slate-800 text-slate-500"
-            }`}
-          >
-            <LinkIcon className="w-3.5 h-3.5" />
-            Paste link
-          </button>
-          <button
-            type="button"
-            onClick={() => handleModeSwitch("MP4")}
-            disabled={isSwitching || isUploadingMp4 || isUploadingHls}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
-              mode === "MP4"
-                ? "bg-sky-500/15 border-sky-500/40 text-sky-600 dark:text-sky-300"
-                : "bg-slate-50 dark:bg-[#070A11] border-slate-200 dark:border-slate-800 text-slate-500"
-            }`}
-          >
-            <Upload className="w-3.5 h-3.5" />
-            Upload video (.mp4)
-          </button>
-          <button
-            type="button"
-            onClick={() => handleModeSwitch("HLS")}
-            disabled={isSwitching || isUploadingMp4 || isUploadingHls}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
-              mode === "HLS"
-                ? "bg-sky-500/15 border-sky-500/40 text-sky-600 dark:text-sky-300"
-                : "bg-slate-50 dark:bg-[#070A11] border-slate-200 dark:border-slate-800 text-slate-500"
-            }`}
-          >
-            <FolderUp className="w-3.5 h-3.5" />
-            Upload encoded HLS folder
-          </button>
-        </div>
-
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={() => checkVideoSetup(undefined)}
-          disabled={isCheckingSetup}
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px] font-semibold text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 cursor-pointer"
+          onClick={() => handleModeSwitch("LINK")}
+          disabled={isSwitching || isUploadingHls}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
+            mode === "LINK"
+              ? "bg-sky-500/15 border-sky-500/40 text-sky-600 dark:text-sky-300"
+              : "bg-slate-50 dark:bg-[#070A11] border-slate-200 dark:border-slate-800 text-slate-500"
+          }`}
         >
-          {isCheckingSetup ? (
-            <Loader2 className="w-3 h-3 animate-spin" />
-          ) : (
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-          )}
-          Check Video Setup
+          <LinkIcon className="w-3.5 h-3.5" />
+          Paste link
+        </button>
+        <button
+          type="button"
+          onClick={() => handleModeSwitch("HLS")}
+          disabled={isSwitching || isUploadingHls}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
+            mode === "HLS"
+              ? "bg-sky-500/15 border-sky-500/40 text-sky-600 dark:text-sky-300"
+              : "bg-slate-50 dark:bg-[#070A11] border-slate-200 dark:border-slate-800 text-slate-500"
+          }`}
+        >
+          <FolderUp className="w-3.5 h-3.5" />
+          Upload encoded HLS folder
         </button>
       </div>
-
-      {setupResult && (
-        <div className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] text-[11px] space-y-1">
-          <div className="flex flex-wrap items-center gap-3 font-semibold">
-            <span>Storage: {setupResult.storageMode}</span>
-            <span>Upload mode: {setupResult.uploadMode}</span>
-            <span className={setupResult.connectivity?.ok ? "text-emerald-600" : "text-amber-600"}>
-              Connectivity: {setupResult.connectivity?.ok ? "OK" : "Not ready"}
-            </span>
-            <span className={setupResult.corsCheck?.ok ? "text-emerald-600" : "text-amber-600"}>
-              CORS: {setupResult.corsCheck?.ok ? "OK" : "Not verified"}
-            </span>
-          </div>
-          <p className="text-slate-500 dark:text-slate-400">{setupResult.connectivity?.message}</p>
-        </div>
-      )}
 
       {mode === "LINK" && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -632,7 +497,7 @@ export default function LessonVideoUploadPanel({
               <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${badge.cls}`}>
                 {badge.label}
               </span>
-              {(isUploadingMp4 || isUploadingHls || isVerifyingHls) && (
+              {(isUploadingHls || isVerifyingHls) && (
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500" />
               )}
             </div>
@@ -654,58 +519,6 @@ export default function LessonVideoUploadPanel({
             <div className="flex items-center gap-2 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-300 text-xs font-semibold">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               Video storage is not set up yet. Ask the developer to configure Azure.
-            </div>
-          )}
-
-          {mode === "MP4" && (
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  type="file"
-                  accept="video/mp4,.mp4"
-                  disabled={uploadDisabled}
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleSimpleUpload(f);
-                  }}
-                  className="text-xs text-slate-500 disabled:opacity-50 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-500/15 file:text-sky-600 dark:file:text-sky-300 cursor-pointer"
-                />
-                {isUploadingMp4 && (
-                  <button
-                    type="button"
-                    onClick={handleCancelAll}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-500/15 text-rose-600 text-xs font-semibold cursor-pointer"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                    Cancel
-                  </button>
-                )}
-                {!isUploadingMp4 && mp4Error && selectedMp4 && (
-                  <button
-                    type="button"
-                    onClick={() => handleSimpleUpload(selectedMp4)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-600 text-xs font-semibold cursor-pointer"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    Retry
-                  </button>
-                )}
-              </div>
-              <p className="text-[10px] text-slate-400">
-                Direct MP4 upload to Azure Blob Storage (max {maxSizeMb} MB).
-              </p>
-              {(isUploadingMp4 || mp4Progress > 0) && (
-                <div className="space-y-1">
-                  <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                    <div
-                      className="h-full bg-sky-500 transition-all duration-200"
-                      style={{ width: `${mp4Progress}%` }}
-                    />
-                  </div>
-                  <p className="text-[10px] font-mono text-slate-500">{mp4Progress}%</p>
-                </div>
-              )}
-              {mp4Error && <p className="text-xs text-rose-500 font-medium">{mp4Error}</p>}
             </div>
           )}
 

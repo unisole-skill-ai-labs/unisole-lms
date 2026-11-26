@@ -165,7 +165,7 @@ export default function AdminCoursesPage() {
     id: "cs-agentic",
     title: "AI Agent Engineering",
     slug: "cs-agentic",
-    shortDescription: "12-Week AI Agent Engineering Certificate Program (Weeks 1 - 12)",
+    shortDescription: "15-Week AI Agent Engineering Certificate Program (Weeks 1 - 15)",
     description:
       "Design and deploy autonomous AI agents with reasoning loops, dynamic tool calling, stateful graphs in LangGraph, multi-agent swarms with CrewAI, and Model Context Protocol (MCP).",
     pricePaise: 299900,

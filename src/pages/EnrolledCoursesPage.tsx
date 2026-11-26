@@ -222,25 +222,6 @@ export default function EnrolledCoursesPage() {
             Courses and curriculums you are actively enrolled in
           </p>
         </div>
-
-        {/* Filter chips when 2+ courses exist (A2) */}
-        {totalEnrolled >= 2 && (
-          <div className="flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800/80 p-1 rounded-xl">
-            {(["all", "in_progress", "completed"] as const).map((filter) => (
-              <button
-                key={filter}
-                onClick={() => setFilterState(filter)}
-                className={`min-h-[44px] flex items-center justify-center px-3.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                  filterState === filter
-                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-xs"
-                    : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
-                }`}
-              >
-                {filter === "all" ? "All" : filter === "in_progress" ? "In Progress" : "Completed"}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Enrolled Courses Grid or Skeletons */}
