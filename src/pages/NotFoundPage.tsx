@@ -19,12 +19,12 @@ export default function NotFoundPage() {
         <div className="pt-2 flex items-center justify-center gap-3">
           <Link to="/">
             <Button variant="primary" size="sm" icon={Home}>
-              Back to Dashboard
+              Go to Dashboard
             </Button>
           </Link>
           <Link to="/enrolled">
             <Button variant="outline" size="sm" icon={Compass}>
-              My Learning
+              Go to Courses
             </Button>
           </Link>
         </div>

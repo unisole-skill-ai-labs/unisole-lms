@@ -216,7 +216,15 @@ export default function App() {
           path="calendar"
           element={
             <ProtectedRoute>
-              <CalendarPage />
+              <NotFoundPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="calendar/*"
+          element={
+            <ProtectedRoute>
+              <NotFoundPage />
             </ProtectedRoute>
           }
         />
