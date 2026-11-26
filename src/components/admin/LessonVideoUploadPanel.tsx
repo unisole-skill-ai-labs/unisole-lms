@@ -259,15 +259,25 @@ export default function LessonVideoUploadPanel({
   const maxSizeBytes = maxSizeMb * 1024 * 1024;
   const isStorageNotConfigured = (statusError as any)?.status === 503;
 
-  const initialMode: VideoMode = statusData?.videoProvider === "AZURE_HLS" ? "HLS" : "LINK";
+  const manualModeLessonRef = useRef<string | null>(null);
+  const hasExistingLink =
+    statusData?.videoProvider !== "AZURE_HLS" && Boolean(videoUrl && videoUrl.trim());
+  const initialMode: VideoMode = hasExistingLink ? "LINK" : "HLS";
   const [mode, setMode] = useState<VideoMode>(initialMode);
 
   useEffect(() => {
-    if (statusData?.videoProvider === "AZURE_HLS") setMode("HLS");
-    else setMode("LINK");
-  }, [lessonId, statusData?.videoProvider]);
+    if (manualModeLessonRef.current === lessonId) return;
+    if (statusData?.videoProvider === "AZURE_HLS") {
+      setMode("HLS");
+    } else if (videoUrl && videoUrl.trim()) {
+      setMode("LINK");
+    } else {
+      setMode("HLS");
+    }
+  }, [lessonId, statusData?.videoProvider, videoUrl]);
 
   const handleModeSwitch = async (next: VideoMode) => {
+    manualModeLessonRef.current = lessonId;
     setMode(next);
     if (
       next === "LINK" &&
@@ -433,19 +443,6 @@ export default function LessonVideoUploadPanel({
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={() => handleModeSwitch("LINK")}
-          disabled={isSwitching || isUploadingHls}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
-            mode === "LINK"
-              ? "bg-sky-500/15 border-sky-500/40 text-sky-600 dark:text-sky-300"
-              : "bg-slate-50 dark:bg-[#070A11] border-slate-200 dark:border-slate-800 text-slate-500"
-          }`}
-        >
-          <LinkIcon className="w-3.5 h-3.5" />
-          Paste link
-        </button>
-        <button
-          type="button"
           onClick={() => handleModeSwitch("HLS")}
           disabled={isSwitching || isUploadingHls}
           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
@@ -456,6 +453,19 @@ export default function LessonVideoUploadPanel({
         >
           <FolderUp className="w-3.5 h-3.5" />
           Upload encoded HLS folder
+        </button>
+        <button
+          type="button"
+          onClick={() => handleModeSwitch("LINK")}
+          disabled={isSwitching || isUploadingHls}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
+            mode === "LINK"
+              ? "bg-sky-500/15 border-sky-500/40 text-sky-600 dark:text-sky-300"
+              : "bg-slate-50 dark:bg-[#070A11] border-slate-200 dark:border-slate-800 text-slate-500"
+          }`}
+        >
+          <LinkIcon className="w-3.5 h-3.5" />
+          Paste link
         </button>
       </div>
 

@@ -29,7 +29,7 @@ import {
   PlayCircle,
   FileQuestion,
   Award,
-  Video,
+  ClipboardList,
   BookOpen,
   Clock,
   Users,
@@ -291,7 +291,7 @@ export default function EditCoursePage() {
       return;
     }
     const dataToUse = activeLessonId.startsWith("unsaved_") ? pendingLesson : activeLessonData;
-    if (dataToUse && lastPopulatedKeyRef.current !== activeLessonId) {
+    if (dataToUse && dataToUse.id === activeLessonId && lastPopulatedKeyRef.current !== activeLessonId) {
       lastPopulatedKeyRef.current = activeLessonId;
       if (activeLessonId.startsWith("unsaved_")) {
         needsBaselineSyncRef.current = null;
@@ -349,9 +349,9 @@ export default function EditCoursePage() {
           setCodeLanguage(parsed.codeLanguage || "typescript");
           setCodeSnippet(parsed.codeSnippet || "");
 
-          if (parsed.quiz) {
-            setPassingScore(parsed.quiz.passingScorePercent || 70);
-            setQuestions(parsed.quiz.questions || []);
+          if (parsed.quiz || Array.isArray(parsed.questions)) {
+            setPassingScore(parsed.quiz?.passingScorePercent || 70);
+            setQuestions(parsed.quiz?.questions || parsed.questions || []);
           }
           if (parsed.assignment) {
             setAssignmentInstructions(parsed.assignment.instructions || "");
@@ -1338,7 +1338,7 @@ export default function EditCoursePage() {
                       )}
                       {curriculumMode === "TEST" && testType === "VIDEO_TEST" && (
                         <>
-                          <Award className="w-3.5 h-3.5 stroke-[2.5]" />
+                          <ClipboardList className="w-3.5 h-3.5 stroke-[2.5]" />
                           <span>Assignments</span>
                         </>
                       )}
@@ -1398,15 +1398,14 @@ export default function EditCoursePage() {
                   />
                 </div>
 
-                {/* Video Link / Local Encoder Upload & Estimated Duration (for Lectures & Video Tests) */}
-                {(curriculumMode === "LECTURE" || (curriculumMode === "TEST" && testType === "VIDEO_TEST")) && (
+                {/* Video Link / Local Encoder Upload & Estimated Duration (for Lectures; Assignments have it at the bottom above schedule) */}
+                {curriculumMode === "LECTURE" && (
                   (import.meta.env.VITE_ENABLE_VIDEO_UPLOAD === "true" ||
                     (typeof window !== "undefined" &&
                       (window.location.hostname.includes("stg") ||
                         window.location.hostname === "localhost" ||
                         window.location.hostname === "127.0.0.1"))) &&
-                  activeLessonId &&
-                  curriculumMode === "LECTURE" ? (
+                  activeLessonId ? (
                     <Suspense fallback={<div className="text-xs text-slate-400 pt-2">Loading video controls...</div>}>
                       <LessonVideoUploadPanel
                         lessonId={activeLessonId}
@@ -1447,115 +1446,6 @@ export default function EditCoursePage() {
                     </div>
                   )
                 )}
-
-                {/* Activity Availability & Timed Unlock Schedule */}
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800/60">
-                  <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-[#070A11]/60 border border-slate-200/80 dark:border-slate-800/80 space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center">
-                          {lessonUnlockAt ? <Lock className="w-3.5 h-3.5 text-amber-500" /> : <Unlock className="w-3.5 h-3.5 text-emerald-500" />}
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 flex-wrap">
-                            <span>Availability & Time Lock Schedule</span>
-                            {lessonUnlockAt ? (
-                              (() => {
-                                const unlockIso = fromIstDatetimeLocal(lessonUnlockAt);
-                                const isLocked = unlockIso && new Date(unlockIso).getTime() > Date.now();
-                                return isLocked ? (
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                                    Scheduled: Locked until {formatIstDisplay(unlockIso)}
-                                  </span>
-                                ) : (
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                    Live & Unlocked (since {formatIstDisplay(unlockIso)})
-                                  </span>
-                                );
-                              })()
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                Always Unlocked
-                              </span>
-                            )}
-                          </h4>
-                          <p className="text-[11px] text-slate-400">
-                            Set an unlock date/time in Indian Standard Time (IST). Learners see this activity locked until the scheduled time passes, then it automatically unlocks.
-                          </p>
-                        </div>
-                      </div>
-                      {(lessonUnlockAt || lessonLockAt) && canManageCurriculum && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setLessonUnlockAt("");
-                            setLessonLockAt("");
-                          }}
-                          className="text-[11px] font-semibold text-rose-500 hover:text-rose-600 self-start sm:self-auto cursor-pointer"
-                        >
-                          Clear Schedule
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                            Unlock Date & Time (IST)
-                          </label>
-                          {lessonUnlockAt && (
-                            <span className="text-[10px] text-sky-500 font-medium">
-                              {formatIstDisplay(fromIstDatetimeLocal(lessonUnlockAt))}
-                            </span>
-                          )}
-                        </div>
-                        <input
-                          type="datetime-local"
-                          disabled={!canManageCurriculum}
-                          value={lessonUnlockAt}
-                          onChange={(e) => setLessonUnlockAt(e.target.value)}
-                          className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
-                        />
-                      </div>
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                            Auto-Lock Date & Time (IST, Optional)
-                          </label>
-                          {lessonLockAt && (
-                            <span className="text-[10px] text-sky-500 font-medium">
-                              {formatIstDisplay(fromIstDatetimeLocal(lessonLockAt))}
-                            </span>
-                          )}
-                        </div>
-                        <input
-                          type="datetime-local"
-                          disabled={!canManageCurriculum}
-                          value={lessonLockAt}
-                          onChange={(e) => setLessonLockAt(e.target.value)}
-                          className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
-                        />
-                      </div>
-                      {(() => {
-                        const dateError = validateScheduleDates(
-                          fromIstDatetimeLocal(lessonUnlockAt),
-                          fromIstDatetimeLocal(lessonLockAt)
-                        );
-                        if (dateError) {
-                          return (
-                            <div className="sm:col-span-2 text-[11px] font-semibold text-rose-500 flex items-center gap-1.5 pt-0.5">
-                              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                              <span>{dateError}</span>
-                            </div>
-                          );
-                        }
-                        return null;
-                      })()}
-                    </div>
-                  </div>
-                </div>
-              </div>
 
               {/* ──────────────── MODE: FOLDER (RESOURCES CONTAINER) ──────────────── */}
               {curriculumMode === "FOLDER" && (
@@ -1915,20 +1805,6 @@ export default function EditCoursePage() {
                             );
                           })}
                         </div>
-
-                        {/* Explanation */}
-                        <div>
-                          <label className="block text-[11px] font-semibold text-slate-400 mb-1">
-                            Explanation (Optional: shown after answering)
-                          </label>
-                          <textarea
-                            rows={2}
-                            value={q.explanation || ""}
-                            onChange={(e) => updateQuestionExplanation(qIdx, e.target.value)}
-                            placeholder="Why is this option correct?"
-                            className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
-                          />
-                        </div>
                       </div>
                     ))}
 
@@ -2202,6 +2078,35 @@ export default function EditCoursePage() {
                       className="w-full p-4 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
                     />
                   </div>
+
+                  {/* Assignment Video URL & Duration (directly above Availability & Time Lock) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                        Video URL (Optional: YouTube, Vimeo, or MP4 link)
+                      </label>
+                      <input
+                        type="url"
+                        value={videoUrl}
+                        onChange={(e) => setVideoUrl(e.target.value)}
+                        placeholder="https://youtu.be/..."
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 font-mono"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-1">Paste a video link</p>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                        Duration (Minutes)
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={durationMinutes}
+                        onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/40 font-mono"
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -2294,6 +2199,115 @@ export default function EditCoursePage() {
                   </div>
                 </div>
               )}
+
+              {/* Activity Availability & Timed Unlock Schedule (bottom of every activity form) */}
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800/60" data-testid="availability-schedule-section">
+                <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-[#070A11]/60 border border-slate-200/80 dark:border-slate-800/80 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center">
+                        {lessonUnlockAt ? <Lock className="w-3.5 h-3.5 text-amber-500" /> : <Unlock className="w-3.5 h-3.5 text-emerald-500" />}
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 flex-wrap">
+                          <span>Availability & Time Lock Schedule</span>
+                          {lessonUnlockAt ? (
+                            (() => {
+                              const unlockIso = fromIstDatetimeLocal(lessonUnlockAt);
+                              const isLocked = unlockIso && new Date(unlockIso).getTime() > Date.now();
+                              return isLocked ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                  Scheduled: Locked until {formatIstDisplay(unlockIso)}
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                  Live & Unlocked (since {formatIstDisplay(unlockIso)})
+                                </span>
+                              );
+                            })()
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                              Always Unlocked
+                            </span>
+                          )}
+                        </h4>
+                        <p className="text-[11px] text-slate-400">
+                          Set an unlock date/time in Indian Standard Time (IST). Learners see this activity locked until the scheduled time passes, then it automatically unlocks.
+                        </p>
+                      </div>
+                    </div>
+                    {(lessonUnlockAt || lessonLockAt) && canManageCurriculum && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLessonUnlockAt("");
+                          setLessonLockAt("");
+                        }}
+                        className="text-[11px] font-semibold text-rose-500 hover:text-rose-600 self-start sm:self-auto cursor-pointer"
+                      >
+                        Clear Schedule
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                          Unlock Date & Time (IST)
+                        </label>
+                        {lessonUnlockAt && (
+                          <span className="text-[10px] text-sky-500 font-medium">
+                            {formatIstDisplay(fromIstDatetimeLocal(lessonUnlockAt))}
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="datetime-local"
+                        disabled={!canManageCurriculum}
+                        value={lessonUnlockAt}
+                        onChange={(e) => setLessonUnlockAt(e.target.value)}
+                        className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                          Auto-Lock Date & Time (IST, Optional)
+                        </label>
+                        {lessonLockAt && (
+                          <span className="text-[10px] text-sky-500 font-medium">
+                            {formatIstDisplay(fromIstDatetimeLocal(lessonLockAt))}
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="datetime-local"
+                        disabled={!canManageCurriculum}
+                        value={lessonLockAt}
+                        onChange={(e) => setLessonLockAt(e.target.value)}
+                        className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
+                      />
+                    </div>
+                    {(() => {
+                      const dateError = validateScheduleDates(
+                        fromIstDatetimeLocal(lessonUnlockAt),
+                        fromIstDatetimeLocal(lessonLockAt)
+                      );
+                      if (dateError) {
+                        return (
+                          <div className="sm:col-span-2 text-[11px] font-semibold text-rose-500 flex items-center gap-1.5 pt-0.5">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{dateError}</span>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                </div>
+              </div>
+              </div>
             </div>
           )}
         </div>
@@ -2936,92 +2950,78 @@ function ChapterSection({
         </button>
       </div>
 
-      {/* LECTURE & PRACTICE */}
-      <div className="space-y-1">
-        <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-          Lesson & Practice
-        </span>
-        <div className="grid grid-cols-2 gap-1.5">
-          <button
-            type="button"
-            data-testid="add-type-VIDEO"
-            onClick={() => {
-              setShowAddMenu(false);
-              setActiveFolderAddMenuId(null);
-              onAddLessonWithType("LECTURE_VIDEO", undefined, targetFolderId);
-            }}
-            className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200/70 dark:border-slate-800 hover:border-sky-400 dark:hover:border-sky-500/50 hover:bg-sky-50/50 dark:hover:bg-sky-500/10 text-center transition-all group cursor-pointer"
-          >
-            <div className="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
-              <PlayCircle className="w-4 h-4 stroke-[2.3]" />
-            </div>
-            <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-sky-400 truncate w-full">
-              Video Lecture
-            </span>
-          </button>
+      <div className="grid grid-cols-2 gap-1.5" data-testid="activity-type-picker">
+        <button
+          type="button"
+          data-testid="add-type-VIDEO"
+          onClick={() => {
+            setShowAddMenu(false);
+            setActiveFolderAddMenuId(null);
+            onAddLessonWithType("LECTURE_VIDEO", undefined, targetFolderId);
+          }}
+          className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200/70 dark:border-slate-800 hover:border-sky-400 dark:hover:border-sky-500/50 hover:bg-sky-50/50 dark:hover:bg-sky-500/10 text-center transition-all group cursor-pointer"
+        >
+          <div className="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+            <PlayCircle className="w-4 h-4 stroke-[2.3]" />
+          </div>
+          <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-sky-400 truncate w-full">
+            Video Lecture
+          </span>
+        </button>
 
-          <button
-            type="button"
-            data-testid="add-type-MCQ"
-            onClick={() => {
-              setShowAddMenu(false);
-              setActiveFolderAddMenuId(null);
-              onAddLessonWithType("PRACTICE_MCQ", undefined, targetFolderId);
-            }}
-            className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200/70 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500/50 hover:bg-amber-50/50 dark:hover:bg-amber-500/10 text-center transition-all group cursor-pointer"
-          >
-            <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
-              <HelpCircle className="w-4 h-4 stroke-[2.3]" />
-            </div>
-            <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 group-hover:text-amber-600 dark:group-hover:text-amber-400 truncate w-full">
-              MCQ Quiz
-            </span>
-          </button>
-        </div>
-      </div>
+        <button
+          type="button"
+          data-testid="add-type-ASSIGNMENTS"
+          onClick={() => {
+            setShowAddMenu(false);
+            setActiveFolderAddMenuId(null);
+            onAddLessonWithType("TEST_VIVA", undefined, targetFolderId);
+          }}
+          className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200/70 dark:border-slate-800 hover:border-purple-400 dark:hover:border-purple-500/50 hover:bg-purple-50/50 dark:hover:bg-purple-500/10 text-center transition-all group cursor-pointer"
+        >
+          <div className="w-7 h-7 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+            <ClipboardList className="w-4 h-4 stroke-[2.3]" />
+          </div>
+          <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 group-hover:text-purple-600 dark:group-hover:text-purple-400 truncate w-full">
+            Assignments
+          </span>
+        </button>
 
-      {/* EVALUATED ASSESSMENTS & TESTS */}
-      <div className="space-y-1">
-        <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-          Evaluated Tests
-        </span>
-        <div className="grid grid-cols-2 gap-1.5">
-          <button
-            type="button"
-            data-testid="add-type-CODING"
-            onClick={() => {
-              setShowAddMenu(false);
-              setActiveFolderAddMenuId(null);
-              onAddLessonWithType("TEST_CODING", undefined, targetFolderId);
-            }}
-            className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200/70 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-500/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10 text-center transition-all group cursor-pointer"
-          >
-            <div className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
-              <Code2 className="w-4 h-4 stroke-[2.3]" />
-            </div>
-            <span className="text-[10px] font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 truncate w-full">
-              Coding
-            </span>
-          </button>
+        <button
+          type="button"
+          data-testid="add-type-MCQ"
+          onClick={() => {
+            setShowAddMenu(false);
+            setActiveFolderAddMenuId(null);
+            onAddLessonWithType("PRACTICE_MCQ", undefined, targetFolderId);
+          }}
+          className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200/70 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500/50 hover:bg-amber-50/50 dark:hover:bg-amber-500/10 text-center transition-all group cursor-pointer"
+        >
+          <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+            <HelpCircle className="w-4 h-4 stroke-[2.3]" />
+          </div>
+          <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 group-hover:text-amber-600 dark:group-hover:text-amber-400 truncate w-full">
+            MCQ Quiz
+          </span>
+        </button>
 
-          <button
-            type="button"
-            data-testid="add-type-ASSIGNMENTS"
-            onClick={() => {
-              setShowAddMenu(false);
-              setActiveFolderAddMenuId(null);
-              onAddLessonWithType("TEST_VIVA", undefined, targetFolderId);
-            }}
-            className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200/70 dark:border-slate-800 hover:border-purple-400 dark:hover:border-purple-500/50 hover:bg-purple-50/50 dark:hover:bg-purple-500/10 text-center transition-all group cursor-pointer"
-          >
-            <div className="w-7 h-7 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
-              <Video className="w-4 h-4 stroke-[2.3]" />
-            </div>
-            <span className="text-[10px] font-bold text-slate-800 dark:text-slate-200 group-hover:text-purple-600 dark:group-hover:text-purple-400 truncate w-full">
-              Assignments
-            </span>
-          </button>
-        </div>
+        <button
+          type="button"
+          data-testid="add-type-CODING"
+          onClick={() => {
+            setShowAddMenu(false);
+            setActiveFolderAddMenuId(null);
+            onAddLessonWithType("TEST_CODING", undefined, targetFolderId);
+          }}
+          className="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 dark:bg-[#0B1120] border border-slate-200/70 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-500/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10 text-center transition-all group cursor-pointer"
+        >
+          <div className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+            <Code2 className="w-4 h-4 stroke-[2.3]" />
+          </div>
+          <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 truncate w-full">
+            Coding
+          </span>
+        </button>
       </div>
 
       {/* FOLDER & CUSTOM OPTIONS */}

@@ -745,13 +745,8 @@ export default function CalendarPage() {
             <CalendarIcon className="w-6 h-6 text-sky-500" />
             <span>Master Academic Calendar</span>
           </h1>
-          {/* C6: Display Timezone Clearly */}
           <div className="flex items-center gap-2 mt-1">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800/80">
-              <Globe className="w-3 h-3 text-sky-500" />
-              <span>All times in {TIMEZONE_LABEL}</span>
-            </span>
-            <span className="text-xs text-slate-400 hidden sm:inline">
+            <span className="text-xs text-slate-400">
               Track live classes, quizzes, deadlines, and mentor 1-on-1s.
             </span>
           </div>
@@ -1583,8 +1578,7 @@ export default function CalendarPage() {
                       hour: "numeric",
                       minute: "2-digit",
                       timeZone: TIMEZONE_IANA,
-                    })}{" "}
-                    ({TIMEZONE_LABEL})
+                    })}
                   </span>
                 </div>
 

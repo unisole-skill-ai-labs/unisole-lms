@@ -5,6 +5,7 @@ import {
   PlayCircle,
   FileQuestion,
   Code2,
+  ClipboardList,
   Video as VideoIcon,
   CheckCircle2,
   Clock,
@@ -145,7 +146,12 @@ export default function ModulePage() {
               !isVideo &&
               !isQuiz &&
               !isCoding &&
-              (cType === "ASSIGNMENT" || l.id?.includes("_assign"));
+              (cType === "ASSIGNMENT" ||
+                cType === "VIDEO_TEST" ||
+                cType === "SUBJECTIVE_TEST" ||
+                testType === "VIDEO_TEST" ||
+                testType === "SUBJECTIVE_TEST" ||
+                l.id?.includes("_assign"));
 
             const isLessonLocked = !!(
               isModLocked ||
@@ -416,8 +422,11 @@ export default function ModulePage() {
                 } else if (lesson.type === "quiz") {
                   IconComponent = FileQuestion;
                   iconColor = "text-purple-500";
-                } else if (lesson.type === "coding_test" || lesson.type === "assignment") {
+                } else if (lesson.type === "coding_test") {
                   IconComponent = Code2;
+                  iconColor = "text-amber-500";
+                } else if (lesson.type === "assignment") {
+                  IconComponent = ClipboardList;
                   iconColor = "text-amber-500";
                 } else if (lesson.type === "live") {
                   IconComponent = VideoIcon;
