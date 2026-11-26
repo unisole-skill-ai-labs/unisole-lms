@@ -307,13 +307,16 @@ export default function LmsPlayerPage() {
               parsedContent?.quiz?.questions ||
               parsedContent?.questions;
 
-            // Instructions / Description
+            // Instructions / Description (avoid leaking raw JSON content string)
             const parsedInstructions =
               l.instructions ||
+              parsedContent?.videoTest?.prompt ||
+              parsedContent?.subjectiveTest?.prompt ||
               parsedContent?.assignment?.instructions ||
               parsedContent?.instructions ||
               l.description ||
-              l.content;
+              parsedContent?.contentMarkdown ||
+              (typeof l.content === "string" && !l.content.trim().startsWith("{") ? l.content : "");
 
             const codingConfig = l.codingTest || parsedContent?.codingTest;
             const subjectiveConfig = l.subjectiveTest || parsedContent?.subjectiveTest;
@@ -667,6 +670,8 @@ export default function LmsPlayerPage() {
   const [assignmentRepoUrl, setAssignmentRepoUrl] = useState("");
   const [assignmentNotes, setAssignmentNotes] = useState("");
   const [assignmentSubmitted, setAssignmentSubmitted] = useState(false);
+  const [assignmentError, setAssignmentError] = useState<string | null>(null);
+  const [assignmentSubmitting, setAssignmentSubmitting] = useState(false);
 
   // Existing submission check from backend API
   useEffect(() => {
@@ -912,30 +917,50 @@ export default function LmsPlayerPage() {
   // Handle Assignment Submission
   const handleAssignmentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!assignmentRepoUrl.trim()) return;
+    if (assignmentSubmitting) return;
+    setAssignmentError(null);
+    const trimmed = assignmentRepoUrl.trim();
+    if (!trimmed) {
+      setAssignmentError("Please enter a submission URL.");
+      return;
+    }
+    try {
+      const parsed = new URL(trimmed);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        setAssignmentError("URL must start with http:// or https://");
+        return;
+      }
+    } catch {
+      setAssignmentError("Please enter a valid http:// or https:// URL.");
+      return;
+    }
 
+    setAssignmentSubmitting(true);
     try {
       await submitAssignmentApi({
         lessonId: selectedLesson.id,
         pathwayId,
         type: "assignment",
         title: selectedLesson.title,
-        submissionUrl: assignmentRepoUrl.trim(),
-        submissionText: assignmentNotes.trim(),
+        submissionUrl: trimmed,
+        submissionText: assignmentNotes.trim() || trimmed,
         status: "SUBMITTED",
       }).unwrap();
     } catch {
       // Fallback
+    } finally {
+      setAssignmentSubmitting(false);
     }
 
     saveSubmission({
       assignmentId: selectedLesson.id,
       courseTitle: courseTitle,
       lessonTitle: selectedLesson.title,
-      submissionUrl: assignmentRepoUrl.trim(),
-      submissionText: assignmentNotes.trim(),
+      submissionUrl: trimmed,
+      submissionText: assignmentNotes.trim() || trimmed,
     });
 
+    setAssignmentRepoUrl(trimmed);
     setAssignmentSubmitted(true);
     markLessonComplete(selectedLesson.id);
   };
@@ -1894,19 +1919,16 @@ export default function LmsPlayerPage() {
 
   const handleSubjectiveVideoSubmit = async (data: { text?: string; videoUrl?: string }) => {
     markLessonComplete(selectedLesson.id);
-    try {
-      await submitAssessmentTaskApi({
-        assignmentId: selectedLesson.id,
-        lessonId: selectedLesson.id,
-        pathwayId,
-        type: data.videoUrl ? "video_test" : "subjective_test",
-        title: selectedLesson.title,
-        videoUrl: data.videoUrl,
-        submissionText: data.text,
-      }).unwrap();
-    } catch {
-      // Non-critical fallback
-    }
+    await submitAssessmentTaskApi({
+      assignmentId: selectedLesson.id,
+      lessonId: selectedLesson.id,
+      pathwayId,
+      type: data.videoUrl ? "video_test" : "subjective_test",
+      title: selectedLesson.title,
+      submissionUrl: data.videoUrl,
+      videoUrl: data.videoUrl,
+      submissionText: data.text || data.videoUrl,
+    }).unwrap();
   };
 
   return (
@@ -2153,17 +2175,16 @@ export default function LmsPlayerPage() {
               </button>
               <SubjectiveVideoTestRunner
                 type={
-                  (selectedLesson as any)?.type === "video_test" ||
-                  (selectedLesson as any)?.category === "TEST"
+                  (selectedLesson as any)?.type === "video_test"
                     ? "VIDEO_TEST"
-                    : "SUBJECTIVE_TEST"
+                    : (selectedLesson as any)?.type === "subjective_test"
+                      ? "SUBJECTIVE_TEST"
+                      : (selectedLesson as any)?.category === "TEST"
+                        ? "VIDEO_TEST"
+                        : "SUBJECTIVE_TEST"
                 }
                 title={cleanLessonTitle(selectedLesson.title)}
-                description={
-                  selectedLesson.description ||
-                  selectedLesson.instructions ||
-                  "Provide your architectural rationale or link your video walkthrough viva demonstration."
-                }
+                description={selectedLesson.instructions || selectedLesson.description || ""}
                 config={(selectedLesson as any).config}
                 isCompleted={completedLessonIds.includes(selectedLesson.id)}
                 onSubmit={handleSubjectiveVideoSubmit}
@@ -2300,7 +2321,7 @@ export default function LmsPlayerPage() {
                 </div>
 
                 {/* Video Player: HLS (Azure) or Embedded YouTube/Vimeo */}
-                <div className="flex-1 w-full h-full relative">
+                <div className="flex-1 min-h-0 w-full relative overflow-hidden">
                   {isHlsVideo ? (
                     <Suspense
                       fallback={
@@ -2577,9 +2598,14 @@ export default function LmsPlayerPage() {
                 <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                   {cleanLessonTitle(selectedLesson.title)}
                 </h1>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Submit your repository or project link below for mentor review.
-                </p>
+                {(selectedLesson.instructions || selectedLesson.description) && (
+                  <div
+                    className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-2 prose prose-slate dark:prose-invert max-w-none"
+                    dangerouslySetInnerHTML={{
+                      __html: renderMarkdownToHtml(selectedLesson.instructions || selectedLesson.description || ""),
+                    }}
+                  />
+                )}
               </div>
 
               {assignmentSubmitted ? (
@@ -2601,10 +2627,10 @@ export default function LmsPlayerPage() {
                   </p>
                 </div>
               ) : (
-                <form onSubmit={handleAssignmentSubmit} className="space-y-4 pt-2">
+                <form onSubmit={handleAssignmentSubmit} noValidate className="space-y-4 pt-2">
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      GitHub Repository or Project Link *
+                      Paste your submission URL
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
@@ -2612,20 +2638,29 @@ export default function LmsPlayerPage() {
                       </div>
                       <input
                         type="url"
-                        required
+                        disabled={assignmentSubmitting}
                         value={assignmentRepoUrl}
-                        onChange={(e) => setAssignmentRepoUrl(e.target.value)}
-                        placeholder="https://github.com/your-username/repo-name"
+                        onChange={(e) => {
+                          setAssignmentRepoUrl(e.target.value);
+                          if (assignmentError) setAssignmentError(null);
+                        }}
+                        placeholder="https://..."
                         className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-sky-500/30 bg-white dark:bg-[#070A11] text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
                       />
                     </div>
+                    {assignmentError && (
+                      <p role="alert" className="text-xs font-semibold text-rose-500 dark:text-rose-400">
+                        {assignmentError}
+                      </p>
+                    )}
                   </div>
 
                   <button
                     type="submit"
-                    className="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs py-3 px-8 rounded-xl shadow-md transition-all cursor-pointer"
+                    disabled={assignmentSubmitting}
+                    className="bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-slate-950 font-bold text-xs py-3 px-8 rounded-xl shadow-md transition-all cursor-pointer"
                   >
-                    Submit
+                    {assignmentSubmitting ? "Submitting..." : "Submit"}
                   </button>
                 </form>
               )}
