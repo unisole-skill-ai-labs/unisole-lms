@@ -64,7 +64,34 @@ test.describe("Part 1 Hotfix: ModulePage hooks & direct/refresh loads", () => {
     await page.reload({ waitUntil: "networkidle" });
     await expect(page.getByText(/15-month program/i).first()).toBeVisible();
 
+    // Direct load & hard refresh of Enrolled Courses page
+    await page.goto(`${LMS_URL}/enrolled`, { waitUntil: "networkidle" });
+    await expect(page.getByRole("heading", { name: /AI Agent Engineering/i }).first()).toBeVisible();
+    await page.reload({ waitUntil: "networkidle" });
+    await expect(page.getByRole("heading", { name: /AI Agent Engineering/i }).first()).toBeVisible();
+
+    // Browser back / forward after reload
+    await page.goto(`${LMS_URL}/learn/cs-agentic/module/mod_agent_w1`, {
+      waitUntil: "networkidle",
+    });
+    await page.reload({ waitUntil: "networkidle" });
+    await expect(page.getByText(/What is an AI Agent/i).first()).toBeVisible();
+    await page.goBack({ waitUntil: "networkidle" });
+    await expect(page).toHaveURL(/\/enrolled/);
+    await page.goForward({ waitUntil: "networkidle" });
+    await expect(page).toHaveURL(/\/learn\/cs-agentic\/module\/mod_agent_w1/);
+
     expect(errors).toEqual([]);
+  });
+
+  test("3. Stale lazy chunk shows 'Unable to load page content' (chunk-only message)", async ({
+    page,
+  }) => {
+    await loginAs(page, ENROLLED_STUDENT);
+    await page.route("**/assets/ProfilePage-*.js", (route) => route.abort("failed"));
+    await page.goto(`${LMS_URL}/profile`, { waitUntil: "domcontentloaded" });
+    await expect(page.getByText("Unable to load page content")).toBeVisible();
+    await expect(page.getByText("Something went wrong on this page")).toHaveCount(0);
   });
 
   test("2. Locked module, 404 module id, and non-enrolled student render cleanly with zero React hook errors", async ({

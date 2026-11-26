@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { setCredentials, logout } from "./authSlice";
 
-const API_BASE_URL = (
+export const API_BASE_URL = (
   import.meta.env.VITE_API_URL ||
   import.meta.env.VITE_API_BASE_URL ||
   (typeof window !== "undefined"
@@ -911,6 +911,9 @@ export const apiSlice = createApi({
         body: { error },
       }),
     }),
+    getVideoSetupStatus: builder.query({
+      query: () => `/api/admin/videos/setup-check`,
+    }),
     checkVideoSetup: builder.mutation({
       query: () => ({
         url: `/api/admin/videos/setup-check?probe=1`,
@@ -1017,6 +1020,7 @@ export const {
   useInitSimpleVideoUploadMutation,
   useCompleteSimpleVideoUploadMutation,
   useFailSimpleVideoUploadMutation,
+  useGetVideoSetupStatusQuery,
   useCheckVideoSetupMutation,
   useSwitchLessonVideoToLinkMutation,
   useGetLessonVideoAccessMutation,

@@ -39,12 +39,6 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
           return;
         }
 
-        // Native HLS (iOS Safari / macOS Safari)
-        if (videoEl.canPlayType("application/vnd.apple.mpegurl")) {
-          videoEl.src = manifestUrl;
-          return;
-        }
-
         // Dynamic import keeps hls.js out of the initial LMS bundle
         const { default: Hls } = await import("hls.js");
         if (cancelled) return;
@@ -61,6 +55,9 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
               setErrorMsg("Unable to load video stream. Please try refreshing.");
             }
           });
+        } else if (videoEl.canPlayType("application/vnd.apple.mpegurl")) {
+          // Native HLS fallback (iOS Safari)
+          videoEl.src = manifestUrl;
         } else {
           setErrorMsg("Your browser does not support adaptive HLS playback.");
         }

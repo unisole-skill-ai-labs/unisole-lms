@@ -248,7 +248,10 @@ export default function LmsPlayerPage() {
             const isExplicitPractice = !isFolder && !isLive && (curMode === "PRACTICE" || parsedContent?.category === "PRACTICE");
 
             const realVideoUrl = (l.videoUrl?.trim() || parsedContent?.videoUrl?.trim() || "");
-            const hasRealVideo = !!(realVideoUrl && !realVideoUrl.includes("dQw4w9WgXcQ"));
+            const hasUploadedAzureVideo =
+              ["AZURE_HLS", "AZURE_MP4"].includes(l.videoProvider) && l.videoStatus === "READY";
+            const hasRealVideo =
+              hasUploadedAzureVideo || !!(realVideoUrl && !realVideoUrl.includes("dQw4w9WgXcQ"));
 
             const isCoding =
               !isFolder &&

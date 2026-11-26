@@ -1396,10 +1396,17 @@ export default function EditCoursePage() {
 
                 {/* Video Link / Local Encoder Upload & Estimated Duration (for Lectures & Video Tests) */}
                 {(curriculumMode === "LECTURE" || (curriculumMode === "TEST" && testType === "VIDEO_TEST")) && (
-                  import.meta.env.VITE_ENABLE_VIDEO_UPLOAD === "true" && activeLessonId && curriculumMode === "LECTURE" ? (
+                  (import.meta.env.VITE_ENABLE_VIDEO_UPLOAD === "true" ||
+                    (typeof window !== "undefined" &&
+                      (window.location.hostname.includes("stg") ||
+                        window.location.hostname === "localhost" ||
+                        window.location.hostname === "127.0.0.1"))) &&
+                  activeLessonId &&
+                  curriculumMode === "LECTURE" ? (
                     <Suspense fallback={<div className="text-xs text-slate-400 pt-2">Loading video controls...</div>}>
                       <LessonVideoUploadPanel
                         lessonId={activeLessonId}
+                        isLessonSaved={!activeLessonId.startsWith("unsaved_") && !hasUnsavedChanges}
                         videoUrl={videoUrl}
                         onVideoUrlChange={setVideoUrl}
                         durationMinutes={durationMinutes}
