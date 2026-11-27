@@ -947,6 +947,12 @@ export const apiSlice = createApi({
         method: "POST",
       }),
     }),
+    replaceLessonVideo: builder.mutation({
+      query: (lessonId: string) => ({
+        url: `/api/admin/lessons/${lessonId}/video/replace`,
+        method: "POST",
+      }),
+    }),
     getLessonVideoAccess: builder.mutation({
       query: (lessonId: string) => ({
         url: `/api/lms/lessons/${lessonId}/video-access`,
@@ -1047,5 +1053,6 @@ export const {
   useGetVideoSetupStatusQuery,
   useCheckVideoSetupMutation,
   useSwitchLessonVideoToLinkMutation,
+  useReplaceLessonVideoMutation,
   useGetLessonVideoAccessMutation,
 } = apiSlice;

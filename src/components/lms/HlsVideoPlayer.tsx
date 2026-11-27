@@ -40,7 +40,10 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const [getVideoAccess, { isLoading }] = useGetLessonVideoAccessMutation();
+  const getVideoAccessRef = useRef(getVideoAccess);
+  getVideoAccessRef.current = getVideoAccess;
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   const [qualityOptions, setQualityOptions] = useState<QualityOption[]>([]);
@@ -76,7 +79,7 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
       refreshTimer = window.setTimeout(async () => {
         if (cancelled) return;
         try {
-          const refreshed = await getVideoAccess(lessonId).unwrap();
+          const refreshed = await getVideoAccessRef.current(lessonId).unwrap();
           if (cancelled) return;
           const videoEl = videoRef.current;
           if (!videoEl) return;
@@ -104,12 +107,13 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
 
     async function loadStream() {
       setErrorMsg(null);
+      setErrorDetails(null);
       setQualityOptions([]);
       setPlayingHeight(null);
       setMenuOpen(false);
 
       try {
-        const res = await getVideoAccess(lessonId).unwrap();
+        const res = await getVideoAccessRef.current(lessonId).unwrap();
         if (cancelled) return;
         const videoEl = videoRef.current;
         if (!videoEl) {
@@ -139,6 +143,16 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
           hlsInstance = new Hls({
             enableWorker: true,
             lowLatencyMode: false,
+            startPosition: -1,
+            maxBufferLength: 30,
+            maxMaxBufferLength: 60,
+            backBufferLength: 30,
+            fragLoadingTimeOut: 20000,
+            fragLoadingMaxRetry: 4,
+            fragLoadingRetryDelay: 1000,
+            levelLoadingMaxRetry: 4,
+            maxBufferHole: 0.5,
+            nudgeMaxRetry: 5,
           });
           hlsRef.current = hlsInstance;
 
@@ -192,14 +206,22 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
           hlsInstance.attachMedia(videoEl);
           let networkRetries = 0;
           let mediaRetries = 0;
+          let swappedCodec = false;
           let authRefreshed = false;
           hlsInstance.on(Hls.Events.ERROR, async (_event: any, data: any) => {
-            if (!data?.fatal || cancelled) return;
+            if (cancelled) return;
+            const safeFragPath = data?.frag?.url ? String(data.frag.url).split("?")[0].split("/").slice(-2).join("/") : undefined;
+            const summary = `${data?.type || "ERR"}/${data?.details || "unknown"}${data?.response?.code ? ` (HTTP ${data.response.code})` : ""}${safeFragPath ? ` [${safeFragPath}]` : ""}`;
+            if (!data?.fatal) {
+              console.warn("[HLS non-fatal]", { lessonId, details: data?.details, frag: safeFragPath });
+              return;
+            }
+            console.error("[HLS fatal]", { lessonId, type: data?.type, details: data?.details, code: data?.response?.code, frag: safeFragPath });
             const httpStatus = data?.response?.code;
             if ((httpStatus === 401 || httpStatus === 403) && !authRefreshed) {
               authRefreshed = true;
               try {
-                const refreshed = await getVideoAccess(lessonId).unwrap();
+                const refreshed = await getVideoAccessRef.current(lessonId).unwrap();
                 if (!cancelled && refreshed?.manifestUrl) {
                   const resumeTime = videoEl.currentTime || 0;
                   hlsInstance.loadSource(refreshed.manifestUrl);
@@ -211,17 +233,33 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
                 // fall through to error state
               }
             }
-            if (data.type === Hls.ErrorTypes.NETWORK_ERROR && networkRetries < 2) {
+            if (data.type === Hls.ErrorTypes.NETWORK_ERROR && networkRetries < 3) {
               networkRetries += 1;
-              hlsInstance.startLoad();
+              const backoff = 500 * networkRetries;
+              window.setTimeout(() => {
+                if (!cancelled && hlsRef.current) hlsRef.current.startLoad();
+              }, backoff);
               return;
             }
-            if (data.type === Hls.ErrorTypes.MEDIA_ERROR && mediaRetries < 2) {
-              mediaRetries += 1;
-              hlsInstance.recoverMediaError();
-              return;
+            if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+              if (mediaRetries < 1) {
+                mediaRetries += 1;
+                hlsInstance.recoverMediaError();
+                return;
+              }
+              if (!swappedCodec) {
+                swappedCodec = true;
+                hlsInstance.swapAudioCodec();
+                hlsInstance.recoverMediaError();
+                return;
+              }
             }
-            setErrorMsg("Unable to load video stream. Please try again.");
+            setErrorDetails(summary);
+            setErrorMsg(
+              httpStatus === 404
+                ? "Video segment not found. This video may need to be re-uploaded."
+                : "Playback was interrupted while loading the video stream."
+            );
           });
         } else if (videoEl.canPlayType("application/vnd.apple.mpegurl")) {
           // Native HLS fallback (iOS Safari manages ABR natively)
@@ -247,7 +285,7 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
         hlsInstance.destroy();
       }
     };
-  }, [lessonId, getVideoAccess, reloadKey]);
+  }, [lessonId, reloadKey]);
 
   const handleSelectQuality = (choice: "auto" | number, levelIndex: number) => {
     setSelectedQuality(choice);
@@ -266,17 +304,31 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
   };
 
   if (errorMsg) {
+    const mailtoSubject = encodeURIComponent(`Video playback issue (lesson ${lessonId})`);
+    const mailtoBody = encodeURIComponent(`Lesson ID: ${lessonId}\nError: ${errorDetails || errorMsg}`);
     return (
       <div className="w-full h-full flex flex-col items-center justify-center bg-slate-950 text-slate-300 p-6 text-center gap-3">
         <AlertCircle className="w-7 h-7 text-rose-400" />
         <p className="text-sm font-medium">{errorMsg}</p>
-        <button
-          type="button"
-          onClick={() => setReloadKey((k) => k + 1)}
-          className="px-4 py-2 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold cursor-pointer"
-        >
-          Retry
-        </button>
+        {errorDetails && (
+          <p className="text-[11px] font-mono text-slate-400">{errorDetails}</p>
+        )}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            data-testid="hls-retry-btn"
+            onClick={() => setReloadKey((k) => k + 1)}
+            className="px-4 py-2 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold cursor-pointer"
+          >
+            Retry
+          </button>
+          <a
+            href={`mailto:support@unisole.org?subject=${mailtoSubject}&body=${mailtoBody}`}
+            className="px-3 py-2 rounded-lg border border-slate-700 hover:bg-slate-900 text-slate-300 text-xs font-semibold"
+          >
+            Report problem
+          </a>
+        </div>
       </div>
     );
   }

@@ -14,6 +14,7 @@ import {
   API_BASE_URL,
   useCreateLessonVideoCliTokenMutation,
   useGetLessonVideoStatusQuery,
+  useReplaceLessonVideoMutation,
   useSwitchLessonVideoToLinkMutation,
 } from "../../store/apiSlice";
 
@@ -259,6 +260,8 @@ export default function LessonVideoUploadPanel({
 
   const [createCliToken, { isLoading: isGenerating }] = useCreateLessonVideoCliTokenMutation();
   const [switchToLink, { isLoading: isSwitching }] = useSwitchLessonVideoToLinkMutation();
+  const [replaceVideo, { isLoading: isReplacing }] = useReplaceLessonVideoMutation();
+  const [hlsWarning, setHlsWarning] = useState<string | null>(null);
 
   const maxSizeMb: number = statusData?.maxSizeMb || 500;
   const maxSizeBytes = maxSizeMb * 1024 * 1024;
@@ -319,13 +322,101 @@ export default function LessonVideoUploadPanel({
     }
   };
 
-  const handleFolderSelection = (raw: Array<{ relPath: string; file: File }>) => {
+  const handleReplaceVideo = async () => {
+    if (!isLessonSaved || isReplacing || isUploadingHls) return;
+    if (!window.confirm("Replace the current HLS video? Student progress will be preserved.")) return;
+    try {
+      await replaceVideo(lessonId).unwrap();
+      setCliCommand("");
+      setHlsValidationError(null);
+      setHlsWarning(null);
+      setHlsFiles([]);
+      setHlsTotalBytes(0);
+      setHlsUploadedBytes({});
+      setHlsSession(null);
+      setMode("HLS");
+      onModeChange?.("HLS");
+      refetch();
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleFolderSelection = async (raw: Array<{ relPath: string; file: File }>) => {
     const validated = normalizeAndValidateHlsFiles(raw, maxSizeBytes);
     setHlsFiles(validated.files);
     setHlsTotalBytes(validated.totalBytes);
     setHlsUploadedBytes({});
     setHlsSession(null);
-    setHlsValidationError(validated.error);
+    setHlsWarning(null);
+    if (validated.error) {
+      setHlsValidationError(validated.error);
+      return;
+    }
+    try {
+      const byPath = new Map(validated.files.map((f) => [f.relPath, f.file]));
+      const masterFile = byPath.get("master.m3u8");
+      if (!masterFile) {
+        setHlsValidationError("master.m3u8 not found.");
+        return;
+      }
+      const masterText = await masterFile.text();
+      const variantPaths = masterText
+        .split(/\r?\n/)
+        .map((l) => l.trim().replace(/\\/g, "/"))
+        .filter((l) => l && !l.startsWith("#"));
+      if (variantPaths.length === 0) {
+        setHlsValidationError("master.m3u8 contains no variant streams. Re-encode with: node tools/video-cli/encode-hls.mjs <video.mp4>");
+        return;
+      }
+
+      const durations: number[] = [];
+      for (const vp of variantPaths) {
+        const vFile = byPath.get(vp);
+        if (!vFile || vFile.size === 0) {
+          setHlsValidationError(`Referenced playlist missing or empty: ${vp}. Re-encode with: node tools/video-cli/encode-hls.mjs <video.mp4>`);
+          return;
+        }
+        const vText = await vFile.text();
+        if (!vText.includes("#EXT-X-ENDLIST")) {
+          setHlsValidationError(`${vp} is missing #EXT-X-ENDLIST (incomplete encode). Re-encode with: node tools/video-cli/encode-hls.mjs <video.mp4>`);
+          return;
+        }
+        const vDir = vp.split("/")[0];
+        let totalDur = 0;
+        const lines = vText.split(/\r?\n/);
+        for (const rawLine of lines) {
+          const line = rawLine.trim();
+          if (!line) continue;
+          if (line.startsWith("#EXTINF:")) {
+            const d = Number(line.slice("#EXTINF:".length).split(",")[0]);
+            if (!Number.isFinite(d) || d <= 0) {
+              setHlsValidationError(`${vp} has invalid #EXTINF duration. Re-encode with: node tools/video-cli/encode-hls.mjs <video.mp4>`);
+              return;
+            }
+            totalDur += d;
+          } else if (!line.startsWith("#")) {
+            const segRel = `${vDir}/${line.replace(/\\/g, "/")}`;
+            const segFile = byPath.get(segRel);
+            if (!segFile || segFile.size === 0) {
+              setHlsValidationError(`Segment missing or empty: ${segRel}. Re-encode with: node tools/video-cli/encode-hls.mjs <video.mp4>`);
+              return;
+            }
+          }
+        }
+        durations.push(totalDur);
+      }
+
+      if (durations.length > 1) {
+        const diff = Math.max(...durations) - Math.min(...durations);
+        if (diff > 1.0) {
+          setHlsWarning(`Rendition durations differ by ${diff.toFixed(1)}s. Seeking may drift slightly between quality levels.`);
+        }
+      }
+      setHlsValidationError(null);
+    } catch (err: any) {
+      setHlsValidationError(err?.message || "Failed to validate HLS playlists.");
+    }
   };
 
   const handleUploadHlsFolder = async () => {
@@ -519,21 +610,36 @@ export default function LessonVideoUploadPanel({
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500" />
               )}
             </div>
-            {statusData?.videoHlsPath && statusKey === "READY" && (
+            {(statusKey === "READY" || statusKey === "FAILED") && (
               <div className="flex items-center gap-2">
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate max-w-xs">
-                  {statusData.videoHlsPath}
-                </span>
+                {statusData?.videoHlsPath && (
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate max-w-xs">
+                    {statusData.videoHlsPath}
+                  </span>
+                )}
                 <button
                   type="button"
-                  onClick={handleRemoveVideo}
-                  disabled={isSwitching || isUploadingHls}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-[11px] font-semibold cursor-pointer disabled:opacity-50"
-                  title="Remove uploaded HLS video"
+                  data-testid="replace-video-btn"
+                  onClick={handleReplaceVideo}
+                  disabled={isReplacing || isUploadingHls}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 text-[11px] font-semibold cursor-pointer disabled:opacity-50"
+                  title="Replace HLS video (keeps student progress)"
                 >
-                  <Trash2 className="w-3 h-3" />
-                  Remove video
+                  <FolderUp className="w-3 h-3" />
+                  Replace video
                 </button>
+                {statusKey === "READY" && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveVideo}
+                    disabled={isSwitching || isUploadingHls}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-[11px] font-semibold cursor-pointer disabled:opacity-50"
+                    title="Remove uploaded HLS video"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    Remove video
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -602,7 +708,10 @@ export default function LessonVideoUploadPanel({
               </div>
 
               {hlsValidationError && (
-                <p className="text-xs text-rose-500 font-semibold">{hlsValidationError}</p>
+                <p data-testid="hls-validation-error" className="text-xs text-rose-500 font-semibold">{hlsValidationError}</p>
+              )}
+              {hlsWarning && (
+                <p data-testid="hls-validation-warning" className="text-xs text-amber-600 dark:text-amber-400 font-semibold">{hlsWarning}</p>
               )}
 
               {hlsFiles.length > 0 && (
