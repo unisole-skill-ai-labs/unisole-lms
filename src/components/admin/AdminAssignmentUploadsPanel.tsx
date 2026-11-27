@@ -11,6 +11,7 @@ import {
   Search,
 } from "lucide-react";
 import { API_BASE_URL } from "../../store/apiSlice";
+import PdfViewer from "../lms/PdfViewer";
 import { renderAutoLinkifiedText } from "../lms/AssignmentSubmissionPanel";
 
 interface AdminUploadFile {
@@ -228,7 +229,7 @@ export default function AdminAssignmentUploadsPanel() {
             <video src={preview.blobUrl} controls className="w-full max-h-[380px] rounded-lg bg-black" />
           )}
           {preview.blobUrl && preview.mime === "application/pdf" && (
-            <iframe src={preview.blobUrl} title={preview.name} className="w-full h-[420px] rounded-lg bg-white" />
+            <PdfViewer blobUrl={preview.blobUrl} fileName={preview.name} />
           )}
           {preview.textContent !== undefined && (
             <pre className="p-3 rounded-lg bg-slate-50 dark:bg-[#070A11] text-xs font-mono whitespace-pre-wrap max-h-[360px] overflow-auto">

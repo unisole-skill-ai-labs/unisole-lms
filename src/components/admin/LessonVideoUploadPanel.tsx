@@ -474,7 +474,7 @@ export default function LessonVideoUploadPanel({
           }`}
         >
           <FolderUp className="w-3.5 h-3.5" />
-          Upload encoded HLS folder
+          Upload HLS folder
         </button>
         <button
           type="button"
@@ -574,14 +574,15 @@ export default function LessonVideoUploadPanel({
                 }`}
               >
                 <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-                  Drag and drop your encoded HLS folder here, or select a folder
-                </p>
-                <p className="text-[10px] text-slate-400">
-                  Requires <code className="font-mono">master.m3u8</code> + rendition folders (
-                  <code className="font-mono">360p</code>, <code className="font-mono">480p</code>,{" "}
-                  <code className="font-mono">720p</code>, <code className="font-mono">1080p</code>) with{" "}
-                  <code className="font-mono">index.m3u8</code> and <code className="font-mono">seg_N.ts</code>. Max{" "}
-                  {maxSizeMb} MB.
+                  Drag and drop{" "}
+                  <button
+                    type="button"
+                    disabled={uploadDisabled}
+                    onClick={() => folderInputRef.current?.click()}
+                    className="text-sky-600 dark:text-sky-400 hover:underline font-semibold cursor-pointer disabled:opacity-50"
+                  >
+                    or browse
+                  </button>
                 </p>
                 <input
                   ref={folderInputRef}
@@ -596,7 +597,7 @@ export default function LessonVideoUploadPanel({
                     }));
                     handleFolderSelection(list);
                   }}
-                  className="text-xs text-slate-500 disabled:opacity-50 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-500/15 file:text-sky-600 dark:file:text-sky-300 cursor-pointer"
+                  className="hidden"
                 />
               </div>
 

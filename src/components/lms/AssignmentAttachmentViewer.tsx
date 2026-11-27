@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { FileText, Loader2, AlertCircle } from "lucide-react";
 import { API_BASE_URL } from "../../store/apiSlice";
 import { renderMarkdownToHtml } from "../../utils/formatContent";
+import PdfViewer from "./PdfViewer";
 
 export interface StudentAttachmentMeta {
   originalName: string;
@@ -82,44 +83,48 @@ export default function AssignmentAttachmentViewer({
         <span className="truncate">{attachment.originalName}</span>
       </div>
 
-      {loading && (
-        <div className="flex items-center gap-2 text-xs text-slate-500 py-4">
-          <Loader2 className="w-4 h-4 animate-spin text-sky-500" />
-          <span>Loading attachment...</span>
+      {isPdf ? (
+        <div data-testid="assignment-pdf-viewer">
+          <PdfViewer
+            blobUrl={pdfBlobUrl}
+            fileName={attachment.originalName}
+            isLoadingExternal={loading}
+            externalError={error}
+          />
         </div>
-      )}
+      ) : (
+        <>
+          {loading && (
+            <div className="flex items-center gap-2 text-xs text-slate-500 py-4">
+              <Loader2 className="w-4 h-4 animate-spin text-sky-500" />
+              <span>Loading attachment...</span>
+            </div>
+          )}
 
-      {error && (
-        <div className="flex items-center gap-2 text-xs text-rose-500 font-semibold py-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
+          {error && (
+            <div className="flex items-center gap-2 text-xs text-rose-500 font-semibold py-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
-      {!loading && !error && isPdf && pdfBlobUrl && (
-        <iframe
-          data-testid="assignment-pdf-viewer"
-          src={pdfBlobUrl}
-          title={attachment.originalName}
-          className="w-full h-[520px] rounded-xl border border-slate-200 dark:border-slate-800 bg-white"
-        />
-      )}
+          {!loading && !error && isMarkdown && textContent !== null && (
+            <div
+              data-testid="assignment-md-viewer"
+              className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] prose prose-sm prose-slate dark:prose-invert max-w-none"
+              dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(textContent) }}
+            />
+          )}
 
-      {!loading && !error && !isPdf && isMarkdown && textContent !== null && (
-        <div
-          data-testid="assignment-md-viewer"
-          className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] prose prose-sm prose-slate dark:prose-invert max-w-none"
-          dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(textContent) }}
-        />
-      )}
-
-      {!loading && !error && !isPdf && !isMarkdown && textContent !== null && (
-        <pre
-          data-testid="assignment-txt-viewer"
-          className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] text-xs font-mono text-slate-800 dark:text-slate-200 whitespace-pre-wrap overflow-x-auto max-h-[480px]"
-        >
-          {textContent}
-        </pre>
+          {!loading && !error && !isMarkdown && textContent !== null && (
+            <pre
+              data-testid="assignment-txt-viewer"
+              className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] text-xs font-mono text-slate-800 dark:text-slate-200 whitespace-pre-wrap overflow-x-auto max-h-[480px]"
+            >
+              {textContent}
+            </pre>
+          )}
+        </>
       )}
     </div>
   );

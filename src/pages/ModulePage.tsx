@@ -19,6 +19,7 @@ import {
   useGetPathwayContentQuery,
   useGetStudentProgressQuery,
   useGetStudentSubmissionsQuery,
+  useMarkLessonProgressMutation,
   useRecordModuleVisitMutation,
 } from "../store/apiSlice";
 import { getCurriculum } from "../constants/curriculumData";
@@ -55,6 +56,8 @@ export default function ModulePage() {
     skip: !pathwayId,
   });
   const [recordModuleVisit] = useRecordModuleVisitMutation();
+  const [markLessonProgress] = useMarkLessonProgressMutation();
+  const [toggleHints, setToggleHints] = React.useState<Record<string, string>>({});
   const recordedVisitRef = React.useRef<string>("");
 
   const allowCurriculumFallback = allowDevCurriculumFallback();
@@ -463,14 +466,51 @@ export default function ModulePage() {
                   >
                     {/* Left: Index + Status Icon + Title + Meta */}
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      {/* Status indicator */}
+                      {/* Status indicator / manual completion toggle (40px touch target) */}
                       <div className="shrink-0 flex items-center justify-center">
-                        {isCompleted ? (
-                          <CheckCircle2 className="w-5 h-5 text-emerald-500 fill-emerald-500/10" />
-                        ) : isLocked ? (
-                          <Lock className="w-4 h-4 text-zinc-400" />
+                        {isLocked ? (
+                          <div className="w-10 h-10 flex items-center justify-center">
+                            <Lock className="w-4 h-4 text-zinc-400" />
+                          </div>
                         ) : (
-                          <div className="w-5 h-5 rounded-full border-2 border-zinc-300 dark:border-zinc-700" />
+                          <button
+                            type="button"
+                            data-testid={`toggle-complete-${lesson.id}`}
+                            aria-pressed={isCompleted}
+                            aria-label={
+                              isCompleted
+                                ? `Mark ${cleanLessonTitle(lesson.title)} incomplete`
+                                : `Mark ${cleanLessonTitle(lesson.title)} complete`
+                            }
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              try {
+                                await markLessonProgress({
+                                  lessonId: lesson.id,
+                                  pathwayId,
+                                  isCompleted: !isCompleted,
+                                }).unwrap();
+                              } catch (err: any) {
+                                const msg = err?.data?.error || err?.data?.message || "Submit to complete";
+                                setToggleHints((prev) => ({ ...prev, [lesson.id]: msg }));
+                                setTimeout(() => {
+                                  setToggleHints((prev) => {
+                                    const copy = { ...prev };
+                                    delete copy[lesson.id];
+                                    return copy;
+                                  });
+                                }, 3000);
+                              }
+                            }}
+                            className="w-10 h-10 -ml-1 rounded-full flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800/70 transition-colors cursor-pointer"
+                            title={isCompleted ? "Completed (click to untick)" : "Mark complete"}
+                          >
+                            {isCompleted ? (
+                              <CheckCircle2 className="w-5 h-5 text-emerald-500 fill-emerald-500/10" />
+                            ) : (
+                              <div className="w-5 h-5 rounded-full border-2 border-zinc-300 dark:border-zinc-700" />
+                            )}
+                          </button>
                         )}
                       </div>
 
@@ -487,6 +527,14 @@ export default function ModulePage() {
                           >
                             {cleanLessonTitle(lesson.title)}
                           </h3>
+                          {toggleHints[lesson.id] && (
+                            <span
+                              data-testid={`complete-hint-${lesson.id}`}
+                              className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md shrink-0"
+                            >
+                              {toggleHints[lesson.id]}
+                            </span>
+                          )}
                         </div>
                         {lesson.unlockAt && isLocked && (
                           <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 font-medium">

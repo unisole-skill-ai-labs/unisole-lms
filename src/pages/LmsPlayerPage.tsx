@@ -74,6 +74,7 @@ import NotFoundPage from "./NotFoundPage";
 import CodingTestRunner from "../components/lms/CodingTestRunner";
 import SubjectiveVideoTestRunner from "../components/lms/SubjectiveVideoTestRunner";
 import AssignmentAttachmentViewer from "../components/lms/AssignmentAttachmentViewer";
+import LectureResourcesViewer from "../components/lms/LectureResourcesViewer";
 import AssignmentSubmissionPanel from "../components/lms/AssignmentSubmissionPanel";
 import Button from "../components/ui/Button";
 import {
@@ -387,6 +388,8 @@ export default function LmsPlayerPage() {
               questions: parsedQuestions,
               instructions: parsedInstructions,
               attachments: parsedContent?.attachments || l.attachments || [],
+              lessonResources: Array.isArray(l.lessonResources) ? l.lessonResources : [],
+              externalLink: parsedContent?.externalLink || null,
               assignmentAttachment: l.assignmentAttachment || null,
               maxScore,
               liveDate: l.liveDate || parsedContent?.liveDate,
@@ -1905,7 +1908,6 @@ export default function LmsPlayerPage() {
   }
 
   const handleAssessmentCodeSubmit = async (code: string, _testSummary: any) => {
-    markLessonComplete(selectedLesson.id);
     try {
       await submitAssessmentTaskApi({
         assignmentId: selectedLesson.id,
@@ -1918,10 +1920,10 @@ export default function LmsPlayerPage() {
     } catch {
       // Non-critical fallback
     }
+    await markLessonComplete(selectedLesson.id);
   };
 
   const handleSubjectiveVideoSubmit = async (data: { text?: string; videoUrl?: string }) => {
-    markLessonComplete(selectedLesson.id);
     await submitAssessmentTaskApi({
       assignmentId: selectedLesson.id,
       lessonId: selectedLesson.id,
@@ -1932,6 +1934,7 @@ export default function LmsPlayerPage() {
       videoUrl: data.videoUrl,
       submissionText: data.text || data.videoUrl,
     }).unwrap();
+    await markLessonComplete(selectedLesson.id);
   };
 
   return (
@@ -2164,7 +2167,7 @@ export default function LmsPlayerPage() {
         {/* SUBJECTIVE OR VIDEO TEST RUNNER */}
         {isSubjectiveOrVideoTest && (
           <div className="bg-slate-50/70 dark:bg-[#0B1120] border-b border-slate-200/80 dark:border-sky-500/20 py-8">
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 space-y-4">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-4">
               <button
                 onClick={handleBackToModule}
                 aria-label={moduleBackLabel}
@@ -2199,7 +2202,10 @@ export default function LmsPlayerPage() {
                 submissionSlot={
                   ((selectedLesson as any)?.type === "video_test" ||
                     (selectedLesson as any)?.category === "TEST") ? (
-                    <AssignmentSubmissionPanel assignmentId={selectedLesson.id} />
+                    <AssignmentSubmissionPanel
+                      assignmentId={selectedLesson.id}
+                      onSubmitted={() => markLessonComplete(selectedLesson.id)}
+                    />
                   ) : null
                 }
               />
@@ -2303,64 +2309,129 @@ export default function LmsPlayerPage() {
 
         {/* VIDEO PLAYER VIEW */}
         {isVideo && hasRealVideo && (
-          <div className="bg-slate-900 dark:bg-black w-full">
-            <div className="max-w-4xl mx-auto sm:px-4 sm:pt-4">
-              <div className="relative bg-slate-950 dark:bg-[#0B1120] border border-slate-800 dark:border-sky-500/20 w-full aspect-video sm:max-h-[480px] lg:max-h-[520px] sm:rounded-2xl overflow-hidden shadow-2xl flex flex-col">
-                {/* Top Video Header Overlay */}
-                <div className="p-3 sm:p-4 flex items-center justify-between text-white bg-black/60 backdrop-blur-xs z-10 shrink-0">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <button
-                      onClick={handleBackToModule}
-                      aria-label={moduleBackLabel}
-                      className="p-1.5 rounded-lg text-white/90 hover:text-white hover:bg-white/20 transition-colors cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
-                    >
-                      <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
-                    </button>
-                    <span className="text-xs sm:text-sm font-bold text-white truncate">
-                      {cleanLessonTitle(selectedLesson?.title || "")}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => markLessonComplete(selectedLesson.id)}
-                      className="text-xs font-bold px-3 py-2 min-h-[44px] rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
-                    >
-                      <Check className="w-3.5 h-3.5 stroke-[3]" />
-                      <span>{completedLessonIds.includes(selectedLesson.id) ? "Completed" : "Mark Complete"}</span>
-                    </button>
-                    <div className="text-[10px] font-black tracking-wider bg-sky-500/20 text-sky-400 border border-sky-500/40 px-2 py-1 rounded">
-                      UNISOLE
+          <div className="w-full">
+            <div className="bg-slate-900 dark:bg-black w-full">
+              <div className="max-w-6xl mx-auto sm:px-6 sm:pt-4 pb-4">
+                <div
+                  data-testid="lecture-video-container"
+                  className="relative bg-slate-950 dark:bg-[#0B1120] border border-slate-800 dark:border-sky-500/20 w-full aspect-video sm:rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+                >
+                  {/* Top Video Header Overlay */}
+                  <div className="p-3 sm:p-4 flex items-center justify-between text-white bg-black/60 backdrop-blur-xs z-10 shrink-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <button
+                        onClick={handleBackToModule}
+                        aria-label={moduleBackLabel}
+                        className="p-1.5 rounded-lg text-white/90 hover:text-white hover:bg-white/20 transition-colors cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
+                      >
+                        <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
+                      </button>
+                      <span className="text-xs sm:text-sm font-bold text-white truncate">
+                        {cleanLessonTitle(selectedLesson?.title || "")}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => markLessonComplete(selectedLesson.id)}
+                        className="text-xs font-bold px-3 py-2 min-h-[44px] rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+                      >
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        <span>{completedLessonIds.includes(selectedLesson.id) ? "Completed" : "Mark Complete"}</span>
+                      </button>
+                      <div className="text-[10px] font-black tracking-wider bg-sky-500/20 text-sky-400 border border-sky-500/40 px-2 py-1 rounded">
+                        UNISOLE
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Video Player: HLS (Azure) or Embedded YouTube/Vimeo */}
-                <div className="flex-1 min-h-0 w-full relative overflow-hidden">
-                  {isHlsVideo ? (
-                    <Suspense
-                      fallback={
-                        <div className="w-full h-full flex items-center justify-center bg-black text-slate-400 text-xs">
-                          Loading video player...
-                        </div>
-                      }
-                    >
-                      <HlsVideoPlayer
-                        lessonId={selectedLesson.id}
+                  {/* Video Player: HLS (Azure) or Embedded YouTube/Vimeo */}
+                  <div className="flex-1 min-h-0 w-full relative overflow-hidden">
+                    {isHlsVideo ? (
+                      <Suspense
+                        fallback={
+                          <div className="w-full h-full flex items-center justify-center bg-black text-slate-400 text-xs">
+                            Loading video player...
+                          </div>
+                        }
+                      >
+                        <HlsVideoPlayer
+                          lessonId={selectedLesson.id}
+                          title={selectedLesson?.title || "Curriculum Video"}
+                        />
+                      </Suspense>
+                    ) : (
+                      <iframe
+                        src={getEmbedVideoUrl(selectedLesson?.videoUrl)}
                         title={selectedLesson?.title || "Curriculum Video"}
+                        className="w-full h-full border-0 absolute inset-0"
+                        loading="lazy"
+                        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
                       />
-                    </Suspense>
-                  ) : (
-                    <iframe
-                      src={getEmbedVideoUrl(selectedLesson?.videoUrl)}
-                      title={selectedLesson?.title || "Curriculum Video"}
-                      className="w-full h-full border-0 absolute inset-0"
-                      loading="lazy"
-                      allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                    />
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
+            </div>
+
+            {/* Below Video: Title -> Optional Link -> Resources (Part 6 & Part 7) */}
+            <div
+              data-testid="lecture-below-video"
+              className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-5"
+            >
+              <h1
+                data-testid="lecture-title-below-video"
+                className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white"
+              >
+                {cleanLessonTitle(selectedLesson?.title || "")}
+              </h1>
+
+              {(selectedLesson as any)?.externalLink?.url &&
+                /^https?:\/\//i.test((selectedLesson as any).externalLink.url) && (
+                  <div data-testid="lecture-external-link">
+                    <a
+                      href={(selectedLesson as any).externalLink.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-600 dark:text-sky-400 text-xs sm:text-sm font-semibold transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4 shrink-0" />
+                      <span>
+                        {(selectedLesson as any).externalLink.label ||
+                          (selectedLesson as any).externalLink.url}
+                      </span>
+                    </a>
+                  </div>
+                )}
+
+              {(selectedLesson as any)?.lessonResources?.length > 0 && (
+                <LectureResourcesViewer
+                  lessonId={selectedLesson.id}
+                  resources={(selectedLesson as any).lessonResources}
+                />
+              )}
+
+              {selectedLesson.attachments && selectedLesson.attachments.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    Additional Links ({selectedLesson.attachments.length})
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {selectedLesson.attachments.map((att: any) => (
+                      <a
+                        key={att.id || att.url}
+                        href={att.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] hover:border-sky-400 text-xs font-bold text-slate-800 dark:text-slate-200"
+                      >
+                        <span className="truncate">{att.name || "Resource"}</span>
+                        <ExternalLink className="w-4 h-4 text-slate-400 shrink-0" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -2391,6 +2462,31 @@ export default function LmsPlayerPage() {
                   {cleanLessonTitle(selectedLesson.title)}
                 </h1>
               </div>
+
+              {(selectedLesson as any)?.externalLink?.url &&
+                /^https?:\/\//i.test((selectedLesson as any).externalLink.url) && (
+                  <div data-testid="lecture-external-link">
+                    <a
+                      href={(selectedLesson as any).externalLink.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-600 dark:text-sky-400 text-xs sm:text-sm font-semibold transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4 shrink-0" />
+                      <span>
+                        {(selectedLesson as any).externalLink.label ||
+                          (selectedLesson as any).externalLink.url}
+                      </span>
+                    </a>
+                  </div>
+                )}
+
+              {(selectedLesson as any)?.lessonResources?.length > 0 && (
+                <LectureResourcesViewer
+                  lessonId={selectedLesson.id}
+                  resources={(selectedLesson as any).lessonResources}
+                />
+              )}
 
               {selectedLesson.description || selectedLesson.instructions ? (
                 <div className="p-6 rounded-2xl bg-slate-50/60 dark:bg-[#070A11] border border-slate-200/80 dark:border-slate-800/80 prose prose-slate dark:prose-invert max-w-none text-sm leading-relaxed">

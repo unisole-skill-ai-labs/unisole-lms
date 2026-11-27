@@ -16,6 +16,7 @@ import {
   Upload,
 } from "lucide-react";
 import { API_BASE_URL } from "../../store/apiSlice";
+import PdfViewer from "./PdfViewer";
 
 interface SubmissionFileMeta {
   index: number;
@@ -349,15 +350,8 @@ export default function AssignmentSubmissionPanel({
 
   return (
     <div data-testid="assignment-submission-panel" className="space-y-4 pt-2">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span
-          data-testid="submission-attempt-badge"
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold"
-        >
-          Attempt {submission ? attemptCount : 1} of {maxAttempts}
-        </span>
-
-        {submission && (
+      {submission && (
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <span
             data-testid="submission-review-status"
             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold ${
@@ -378,8 +372,8 @@ export default function AssignmentSubmissionPanel({
               </>
             )}
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* View-only state after submission */}
       {submission && !isEditing && (
@@ -515,11 +509,7 @@ export default function AssignmentSubmissionPanel({
                 />
               )}
               {previewFile.blobUrl && previewFile.mime === "application/pdf" && (
-                <iframe
-                  src={previewFile.blobUrl}
-                  title={previewFile.name}
-                  className="w-full h-[420px] rounded-lg border border-slate-200 dark:border-slate-800 bg-white"
-                />
+                <PdfViewer blobUrl={previewFile.blobUrl} fileName={previewFile.name} />
               )}
               {previewFile.textContent !== undefined && (
                 <pre className="p-3 rounded-lg bg-slate-50 dark:bg-[#070A11] text-xs font-mono whitespace-pre-wrap overflow-x-auto max-h-[360px]">
@@ -535,7 +525,7 @@ export default function AssignmentSubmissionPanel({
                 data-testid="attempts-exhausted-msg"
                 className="text-xs font-semibold text-slate-500"
               >
-                Maximum 3 submission attempts reached (read-only).
+                Submissions are closed.
               </span>
             ) : (
               <button
