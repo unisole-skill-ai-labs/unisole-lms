@@ -63,6 +63,44 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
   useEffect(() => {
     let hlsInstance: any = null;
     let cancelled = false;
+    let refreshTimer: number | null = null;
+
+    const scheduleTokenRefresh = (ttlSeconds?: number) => {
+      if (refreshTimer !== null) {
+        window.clearTimeout(refreshTimer);
+        refreshTimer = null;
+      }
+      const ttl = Number(ttlSeconds || 0);
+      if (!ttl || ttl <= 0) return;
+      const delayMs = Math.max(10_000, Math.floor(ttl * 0.8 * 1000));
+      refreshTimer = window.setTimeout(async () => {
+        if (cancelled) return;
+        try {
+          const refreshed = await getVideoAccess(lessonId).unwrap();
+          if (cancelled) return;
+          const videoEl = videoRef.current;
+          if (!videoEl) return;
+          const resumeTime = videoEl.currentTime || 0;
+          const wasPlaying = !videoEl.paused;
+          if (refreshed?.provider === "AZURE_MP4" && refreshed?.videoUrl) {
+            videoEl.src = refreshed.videoUrl;
+            videoEl.currentTime = resumeTime;
+            if (wasPlaying) videoEl.play().catch(() => {});
+          } else if (refreshed?.manifestUrl && hlsInstance) {
+            hlsInstance.loadSource(refreshed.manifestUrl);
+            hlsInstance.once?.("hlsManifestParsed", () => {
+              if (!cancelled && videoRef.current) {
+                videoRef.current.currentTime = resumeTime;
+                if (wasPlaying) videoRef.current.play().catch(() => {});
+              }
+            });
+          }
+          scheduleTokenRefresh(refreshed?.ttlSeconds);
+        } catch {
+          // Will retry via HLS error handler if current token actually expires
+        }
+      }, delayMs);
+    };
 
     async function loadStream() {
       setErrorMsg(null);
@@ -82,6 +120,7 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
         // Direct MP4 playback via short-lived Azure Read SAS URL (no quality menu)
         if (res?.provider === "AZURE_MP4" && res?.videoUrl) {
           videoEl.src = res.videoUrl;
+          scheduleTokenRefresh(res?.ttlSeconds);
           return;
         }
 
@@ -90,6 +129,7 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
           setErrorMsg("Video stream is unavailable.");
           return;
         }
+        scheduleTokenRefresh(res?.ttlSeconds);
 
         // Dynamic import keeps hls.js out of the initial LMS bundle
         const { default: Hls } = await import("hls.js");
@@ -152,8 +192,25 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
           hlsInstance.attachMedia(videoEl);
           let networkRetries = 0;
           let mediaRetries = 0;
-          hlsInstance.on(Hls.Events.ERROR, (_event: any, data: any) => {
+          let authRefreshed = false;
+          hlsInstance.on(Hls.Events.ERROR, async (_event: any, data: any) => {
             if (!data?.fatal || cancelled) return;
+            const httpStatus = data?.response?.code;
+            if ((httpStatus === 401 || httpStatus === 403) && !authRefreshed) {
+              authRefreshed = true;
+              try {
+                const refreshed = await getVideoAccess(lessonId).unwrap();
+                if (!cancelled && refreshed?.manifestUrl) {
+                  const resumeTime = videoEl.currentTime || 0;
+                  hlsInstance.loadSource(refreshed.manifestUrl);
+                  videoEl.currentTime = resumeTime;
+                  scheduleTokenRefresh(refreshed?.ttlSeconds);
+                  return;
+                }
+              } catch {
+                // fall through to error state
+              }
+            }
             if (data.type === Hls.ErrorTypes.NETWORK_ERROR && networkRetries < 2) {
               networkRetries += 1;
               hlsInstance.startLoad();
@@ -182,6 +239,9 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
     loadStream();
     return () => {
       cancelled = true;
+      if (refreshTimer !== null) {
+        window.clearTimeout(refreshTimer);
+      }
       hlsRef.current = null;
       if (hlsInstance) {
         hlsInstance.destroy();

@@ -17,6 +17,7 @@ interface PdfViewerProps {
   fileName?: string;
   onDownload?: () => void;
   onRetry?: () => void;
+  onClose?: () => void;
   isLoadingExternal?: boolean;
   externalError?: string | null;
 }
@@ -56,52 +57,65 @@ function PdfPageCanvas({ pdfDoc, pageNumber, scale, containerWidth }: PdfPageCan
     const renderKey = `${pageNumber}:${scale}:${Math.round(containerWidth)}`;
     if (renderedKey === renderKey) return;
 
-    (async () => {
-      try {
-        const page = await pdfDoc.getPage(pageNumber);
-        if (cancelled) return;
-        const baseViewport = page.getViewport({ scale: 1 });
-        const targetBaseWidth = Math.max(260, (containerWidth || 720) - 32);
-        const responsiveScale = (targetBaseWidth / baseViewport.width) * scale;
-        const viewport = page.getViewport({ scale: responsiveScale });
-        const outputScale = window.devicePixelRatio || 1;
+    const timer = window.setTimeout(() => {
+      (async () => {
+        try {
+          const page = await pdfDoc.getPage(pageNumber);
+          if (cancelled) return;
+          const baseViewport = page.getViewport({ scale: 1 });
+          const targetBaseWidth = Math.max(260, (containerWidth || 720) - 32);
+          const responsiveScale = (targetBaseWidth / baseViewport.width) * scale;
+          const viewport = page.getViewport({ scale: responsiveScale });
 
-        const canvas = canvasRef.current;
-        if (!canvas || cancelled) return;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-
-        if (renderTaskRef.current) {
-          try {
-            renderTaskRef.current.cancel();
-          } catch {
-            // ignore cancellation errors
+          const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+          const isPhone = typeof window !== "undefined" && window.innerWidth < 640;
+          let factor = isPhone ? Math.min(Math.max(dpr, 2), 2.5) : Math.max(dpr, 2);
+          const MAX_CANVAS_PIXELS = 16_000_000;
+          const estPixels = viewport.width * viewport.height * factor * factor;
+          if (estPixels > MAX_CANVAS_PIXELS) {
+            factor = Math.max(1, Math.sqrt(MAX_CANVAS_PIXELS / (viewport.width * viewport.height)));
           }
+
+          const canvas = canvasRef.current;
+          if (!canvas || cancelled) return;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return;
+
+          if (renderTaskRef.current) {
+            try {
+              renderTaskRef.current.cancel();
+            } catch {
+              // ignore cancellation errors
+            }
+          }
+
+          const backingWidth = Math.max(1, Math.round(viewport.width * factor));
+          const backingHeight = Math.max(1, Math.round(viewport.height * factor));
+          canvas.width = backingWidth;
+          canvas.height = backingHeight;
+          canvas.style.width = `${backingWidth / factor}px`;
+          canvas.style.height = `${backingHeight / factor}px`;
+          canvas.dataset.renderFactor = String(factor);
+
+          const transform = factor !== 1 ? [factor, 0, 0, factor, 0, 0] : undefined;
+
+          const renderTask = page.render({
+            canvasContext: ctx,
+            transform,
+            viewport,
+          });
+          renderTaskRef.current = renderTask;
+          await renderTask.promise;
+          if (!cancelled) setRenderedKey(renderKey);
+        } catch {
+          // Ignore cancelled/disposed render tasks
         }
-
-        canvas.width = Math.floor(viewport.width * outputScale);
-        canvas.height = Math.floor(viewport.height * outputScale);
-        canvas.style.width = `${Math.floor(viewport.width)}px`;
-        canvas.style.height = `${Math.floor(viewport.height)}px`;
-
-        const transform =
-          outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : undefined;
-
-        const renderTask = page.render({
-          canvasContext: ctx,
-          transform,
-          viewport,
-        });
-        renderTaskRef.current = renderTask;
-        await renderTask.promise;
-        if (!cancelled) setRenderedKey(renderKey);
-      } catch {
-        // Ignore cancelled/disposed render tasks
-      }
-    })();
+      })();
+    }, renderedKey ? 120 : 0);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
       if (renderTaskRef.current) {
         try {
           renderTaskRef.current.cancel();
@@ -118,10 +132,12 @@ function PdfPageCanvas({ pdfDoc, pageNumber, scale, containerWidth }: PdfPageCan
       data-pdf-page={pageNumber}
       className="flex justify-center py-2"
     >
-      <canvas
-        ref={canvasRef}
-        className="bg-white shadow-md rounded border border-slate-200 dark:border-slate-700 block"
-      />
+      <div className="bg-white shadow-md rounded border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <canvas
+          ref={canvasRef}
+          className="bg-white block"
+        />
+      </div>
     </div>
   );
 }
@@ -131,6 +147,7 @@ export default function PdfViewer({
   fileName = "document.pdf",
   onDownload,
   onRetry,
+  onClose,
   isLoadingExternal = false,
   externalError = null,
 }: PdfViewerProps) {
@@ -370,6 +387,17 @@ export default function PdfViewer({
                   <span className="hidden sm:inline">Fullscreen</span>
                 </>
               )}
+            </button>
+          )}
+
+          {onClose && (
+            <button
+              type="button"
+              data-testid="pdf-close"
+              onClick={onClose}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold cursor-pointer"
+            >
+              Close
             </button>
           )}
         </div>

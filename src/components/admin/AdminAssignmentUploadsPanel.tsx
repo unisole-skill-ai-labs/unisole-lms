@@ -214,29 +214,34 @@ export default function AdminAssignmentUploadsPanel() {
       </div>
 
       {preview && (
-        <div className="p-4 rounded-2xl border border-sky-500/30 bg-white dark:bg-[#0B1120] space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold">{preview.name}</span>
-            <button
-              type="button"
-              onClick={() => setPreview(null)}
-              className="text-xs text-slate-400 hover:text-slate-600 cursor-pointer"
-            >
-              Close preview
-            </button>
+        preview.blobUrl && preview.mime === "application/pdf" ? (
+          <PdfViewer
+            blobUrl={preview.blobUrl}
+            fileName={preview.name}
+            onClose={() => setPreview(null)}
+          />
+        ) : (
+          <div className="p-4 rounded-2xl border border-sky-500/30 bg-white dark:bg-[#0B1120] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold">{preview.name}</span>
+              <button
+                type="button"
+                onClick={() => setPreview(null)}
+                className="text-xs text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                Close preview
+              </button>
+            </div>
+            {preview.blobUrl && preview.mime.startsWith("video/") && (
+              <video src={preview.blobUrl} controls className="w-full max-h-[380px] rounded-lg bg-black" />
+            )}
+            {preview.textContent !== undefined && (
+              <pre className="p-3 rounded-lg bg-slate-50 dark:bg-[#070A11] text-xs font-mono whitespace-pre-wrap max-h-[360px] overflow-auto">
+                {preview.textContent}
+              </pre>
+            )}
           </div>
-          {preview.blobUrl && preview.mime.startsWith("video/") && (
-            <video src={preview.blobUrl} controls className="w-full max-h-[380px] rounded-lg bg-black" />
-          )}
-          {preview.blobUrl && preview.mime === "application/pdf" && (
-            <PdfViewer blobUrl={preview.blobUrl} fileName={preview.name} />
-          )}
-          {preview.textContent !== undefined && (
-            <pre className="p-3 rounded-lg bg-slate-50 dark:bg-[#070A11] text-xs font-mono whitespace-pre-wrap max-h-[360px] overflow-auto">
-              {preview.textContent}
-            </pre>
-          )}
-        </div>
+        )
       )}
 
       {loading ? (
