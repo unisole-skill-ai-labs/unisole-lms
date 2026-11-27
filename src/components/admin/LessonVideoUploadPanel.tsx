@@ -8,6 +8,7 @@ import {
   FolderUp,
   X,
   AlertTriangle,
+  Trash2,
 } from "lucide-react";
 import {
   API_BASE_URL,
@@ -21,8 +22,10 @@ interface LessonVideoUploadPanelProps {
   isLessonSaved?: boolean;
   videoUrl: string;
   onVideoUrlChange: (url: string) => void;
-  durationMinutes: number;
-  onDurationChange: (mins: number) => void;
+  durationMinutes?: number;
+  onDurationChange?: (mins: number) => void;
+  onModeChange?: (mode: VideoMode) => void;
+  onProviderStatusChange?: (provider: string | null, status: string | null) => void;
 }
 
 type VideoMode = "LINK" | "HLS";
@@ -223,6 +226,8 @@ export default function LessonVideoUploadPanel({
   onVideoUrlChange,
   durationMinutes,
   onDurationChange,
+  onModeChange,
+  onProviderStatusChange,
 }: LessonVideoUploadPanelProps) {
   const [cliCommand, setCliCommand] = useState("");
   const [copied, setCopied] = useState(false);
@@ -266,33 +271,51 @@ export default function LessonVideoUploadPanel({
   const [mode, setMode] = useState<VideoMode>(initialMode);
 
   useEffect(() => {
-    if (manualModeLessonRef.current === lessonId) return;
-    if (statusData?.videoProvider === "AZURE_HLS") {
-      setMode("HLS");
-    } else if (videoUrl && videoUrl.trim()) {
-      setMode("LINK");
-    } else {
-      setMode("HLS");
-    }
-  }, [lessonId, statusData?.videoProvider, videoUrl]);
+    setHlsFiles([]);
+    setHlsTotalBytes(0);
+    setHlsUploadedBytes({});
+    setHlsValidationError(null);
+    setHlsSession(null);
+    setCliCommand("");
+    setCopied(false);
+  }, [lessonId]);
 
-  const handleModeSwitch = async (next: VideoMode) => {
+  useEffect(() => {
+    onProviderStatusChange?.(statusData?.videoProvider || null, statusData?.videoStatus || null);
+  }, [statusData?.videoProvider, statusData?.videoStatus, onProviderStatusChange]);
+
+  useEffect(() => {
+    if (manualModeLessonRef.current === lessonId) return;
+    let nextMode: VideoMode = "HLS";
+    if (statusData?.videoProvider === "AZURE_HLS") {
+      nextMode = "HLS";
+    } else if (videoUrl && videoUrl.trim()) {
+      nextMode = "LINK";
+    }
+    setMode(nextMode);
+    onModeChange?.(nextMode);
+  }, [lessonId, statusData?.videoProvider, videoUrl, onModeChange]);
+
+  const handleModeSwitch = (next: VideoMode) => {
     manualModeLessonRef.current = lessonId;
     setMode(next);
-    if (
-      next === "LINK" &&
-      isLessonSaved &&
-      (statusData?.videoProvider === "AZURE_HLS" ||
-        (statusData?.videoStatus && statusData.videoStatus !== "NONE"))
-    ) {
-      try {
-        await switchToLink(lessonId).unwrap();
-        setCliCommand("");
-        setHlsValidationError(null);
-        refetch();
-      } catch {
-        // Ignore if already in link mode
-      }
+    onModeChange?.(next);
+  };
+
+  const handleRemoveVideo = async () => {
+    if (!isLessonSaved || isSwitching || isUploadingHls) return;
+    if (!window.confirm("Remove the uploaded HLS video from this lesson?")) return;
+    try {
+      await switchToLink(lessonId).unwrap();
+      setCliCommand("");
+      setHlsValidationError(null);
+      setHlsFiles([]);
+      setHlsTotalBytes(0);
+      setHlsUploadedBytes({});
+      setHlsSession(null);
+      refetch();
+    } catch {
+      // Ignore if already cleared
     }
   };
 
@@ -396,7 +419,6 @@ export default function LessonVideoUploadPanel({
         },
         body: JSON.stringify({
           hlsPath: hlsSession.hlsPath,
-          durationMinutes: durationMinutes > 0 ? durationMinutes : undefined,
         }),
       });
       const data = await res.json();
@@ -452,7 +474,7 @@ export default function LessonVideoUploadPanel({
           }`}
         >
           <FolderUp className="w-3.5 h-3.5" />
-          Upload encoded HLS folder
+          Upload HLS folder
         </button>
         <button
           type="button"
@@ -470,32 +492,18 @@ export default function LessonVideoUploadPanel({
       </div>
 
       {mode === "LINK" && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="sm:col-span-2">
-            <label className="block text-[11px] font-semibold text-slate-400 mb-1">
-              Video URL (Optional: YouTube, Vimeo, or MP4 link)
-            </label>
-            <input
-              type="url"
-              value={videoUrl}
-              onChange={(e) => onVideoUrlChange(e.target.value)}
-              placeholder="https://youtu.be/..."
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 font-mono"
-            />
-            <p className="text-[10px] text-slate-400 mt-1">Paste a video link</p>
-          </div>
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-400 mb-1">
-              Duration (Minutes)
-            </label>
-            <input
-              type="number"
-              min={1}
-              value={durationMinutes}
-              onChange={(e) => onDurationChange(Number(e.target.value))}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/40 font-mono"
-            />
-          </div>
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+            Video URL (Optional: YouTube, Vimeo, or MP4 link)
+          </label>
+          <input
+            type="url"
+            value={videoUrl}
+            onChange={(e) => onVideoUrlChange(e.target.value)}
+            placeholder="https://youtu.be/..."
+            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 font-mono"
+          />
+          <p className="text-[10px] text-slate-400 mt-1">Paste a video link</p>
         </div>
       )}
 
@@ -512,9 +520,21 @@ export default function LessonVideoUploadPanel({
               )}
             </div>
             {statusData?.videoHlsPath && statusKey === "READY" && (
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate max-w-xs">
-                {statusData.videoHlsPath}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate max-w-xs">
+                  {statusData.videoHlsPath}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRemoveVideo}
+                  disabled={isSwitching || isUploadingHls}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-[11px] font-semibold cursor-pointer disabled:opacity-50"
+                  title="Remove uploaded HLS video"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  Remove video
+                </button>
+              </div>
             )}
           </div>
 
@@ -554,14 +574,15 @@ export default function LessonVideoUploadPanel({
                 }`}
               >
                 <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-                  Drag and drop your encoded HLS folder here, or select a folder
-                </p>
-                <p className="text-[10px] text-slate-400">
-                  Requires <code className="font-mono">master.m3u8</code> + rendition folders (
-                  <code className="font-mono">360p</code>, <code className="font-mono">480p</code>,{" "}
-                  <code className="font-mono">720p</code>, <code className="font-mono">1080p</code>) with{" "}
-                  <code className="font-mono">index.m3u8</code> and <code className="font-mono">seg_N.ts</code>. Max{" "}
-                  {maxSizeMb} MB.
+                  Drag and drop{" "}
+                  <button
+                    type="button"
+                    disabled={uploadDisabled}
+                    onClick={() => folderInputRef.current?.click()}
+                    className="text-sky-600 dark:text-sky-400 hover:underline font-semibold cursor-pointer disabled:opacity-50"
+                  >
+                    or browse
+                  </button>
                 </p>
                 <input
                   ref={folderInputRef}
@@ -576,7 +597,7 @@ export default function LessonVideoUploadPanel({
                     }));
                     handleFolderSelection(list);
                   }}
-                  className="text-xs text-slate-500 disabled:opacity-50 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-500/15 file:text-sky-600 dark:file:text-sky-300 cursor-pointer"
+                  className="hidden"
                 />
               </div>
 

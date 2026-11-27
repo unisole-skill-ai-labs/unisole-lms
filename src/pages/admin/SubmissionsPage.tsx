@@ -26,6 +26,7 @@ import {
   useGradeSubmissionMutation,
 } from "../../store/apiSlice";
 import MentorCockpitView from "../../components/lms/MentorCockpitView";
+import AdminAssignmentUploadsPanel from "../../components/admin/AdminAssignmentUploadsPanel";
 
 interface SubmissionsPageProps {
   initialMode?: "dashboard" | "student";
@@ -85,8 +86,8 @@ export default function SubmissionsPage({ initialMode }: SubmissionsPageProps = 
 
   // URL-backed navigation & filters (supports refresh + browser back/forward)
   const rawTab = searchParams.get("tab");
-  const activeTab: "assignments" | "quizzes" | "all" =
-    rawTab === "quizzes" || rawTab === "all" ? rawTab : "assignments";
+  const activeTab: "assignments" | "quizzes" | "all" | "uploads" =
+    rawTab === "quizzes" || rawTab === "all" || rawTab === "uploads" ? rawTab : "assignments";
   const openActivityId = searchParams.get("activityId") || "";
 
   // Level 1 filters
@@ -391,11 +392,29 @@ export default function SubmissionsPage({ initialMode }: SubmissionsPageProps = 
           >
             All submissions
           </button>
+          <button
+            type="button"
+            data-testid="tab-assignment-uploads"
+            onClick={() =>
+              updateParams(
+                { tab: "uploads" },
+                ["activityId", "detailTab", "status", "dSearch", "dSort", "dPage", "page", "pendingOnly"]
+              )
+            }
+            className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+              activeTab === "uploads"
+                ? "bg-white dark:bg-sky-500/20 text-sky-600 dark:text-sky-300 font-bold shadow-2xs"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white"
+            }`}
+          >
+            Assignment Uploads
+          </button>
         </div>
       </div>
 
-      {/* TAB: ALL SUBMISSIONS (Existing flat list, unchanged) */}
-      {activeTab === "all" ? (
+      {activeTab === "uploads" ? (
+        <AdminAssignmentUploadsPanel />
+      ) : activeTab === "all" ? (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="relative flex-1 max-w-md">

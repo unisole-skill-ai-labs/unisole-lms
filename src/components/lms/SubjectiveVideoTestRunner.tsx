@@ -9,6 +9,8 @@ interface SubjectiveVideoTestRunnerProps {
   config?: any;
   onSubmit: (data: { text?: string; videoUrl?: string }) => Promise<void> | void;
   isCompleted?: boolean;
+  attachment?: React.ReactNode;
+  submissionSlot?: React.ReactNode;
 }
 
 function validateHttpUrl(raw: string): { ok: true; url: string } | { ok: false; error: string } {
@@ -33,8 +35,11 @@ export default function SubjectiveVideoTestRunner({
   description,
   onSubmit,
   isCompleted,
+  attachment,
+  submissionSlot,
 }: SubjectiveVideoTestRunnerProps) {
   const isVideo = type === "VIDEO_TEST";
+  const [mobileTab, setMobileTab] = useState<"assignment" | "submit">("assignment");
   const [responseContent, setResponseContent] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [submitted, setSubmitted] = useState(isCompleted || false);
@@ -85,15 +90,15 @@ export default function SubjectiveVideoTestRunner({
   };
 
   return (
-    <div className="bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 space-y-6 shadow-xs">
+    <div className="bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-6 space-y-5 shadow-xs">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div className="space-y-2">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
             {title}
           </h2>
           {description && (
             <div
-              className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed prose prose-slate dark:prose-invert"
+              className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-3xl leading-relaxed prose prose-slate dark:prose-invert"
               dangerouslySetInnerHTML={{ __html: renderMarkdownToHtml(description) }}
             />
           )}
@@ -107,8 +112,66 @@ export default function SubjectiveVideoTestRunner({
         )}
       </div>
 
-      {/* Submission Form */}
-      <form onSubmit={handleSubmit} noValidate className="space-y-4">
+      {/* How to submit strip */}
+      <div
+        data-testid="how-to-submit-strip"
+        className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-3.5 py-2.5 rounded-xl bg-sky-500/10 border border-sky-500/20 text-xs text-slate-700 dark:text-slate-200"
+      >
+        <span className="font-bold text-sky-600 dark:text-sky-400">How to submit:</span>
+        <span>1) Read the assignment</span>
+        <span>2) Add your explanation, files or links</span>
+        <span>3) Submit</span>
+      </div>
+
+      {submissionSlot ? (
+        <>
+          {/* Mobile tabs so Submit your work is reachable in first viewport at 390x844 */}
+          <div className="flex lg:hidden items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+            <button
+              type="button"
+              data-testid="tab-assignment"
+              onClick={() => setMobileTab("assignment")}
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                mobileTab === "assignment"
+                  ? "bg-sky-500 text-slate-950"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+              }`}
+            >
+              Assignment
+            </button>
+            <button
+              type="button"
+              data-testid="tab-submit"
+              onClick={() => setMobileTab("submit")}
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                mobileTab === "submit"
+                  ? "bg-sky-500 text-slate-950"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+              }`}
+            >
+              Submit your work
+            </button>
+          </div>
+
+          <div className={attachment ? "grid grid-cols-1 lg:grid-cols-12 gap-6 items-start" : "space-y-4"}>
+            {attachment && (
+              <div className={`${mobileTab === "assignment" ? "block" : "hidden lg:block"} lg:col-span-7`}>
+                {attachment}
+              </div>
+            )}
+            <div
+              className={`${mobileTab === "submit" || !attachment ? "block" : "hidden lg:block"} ${
+                attachment ? "lg:col-span-5 lg:sticky lg:top-20" : ""
+              }`}
+            >
+              {submissionSlot}
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          {attachment}
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
         {isVideo ? (
           <div className="space-y-2">
             <label
@@ -178,6 +241,8 @@ export default function SubjectiveVideoTestRunner({
           </button>
         </div>
       </form>
+      </>
+      )}
     </div>
   );
 }

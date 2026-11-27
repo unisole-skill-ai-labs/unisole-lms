@@ -142,12 +142,6 @@ export default function CurriculumSidebar({
                                         <Play className={`w-3 h-3 shrink-0 ${isActive ? "text-white" : "text-indigo-500"}`} />
                                         <span className="truncate">{lesson.title}</span>
                                       </div>
-
-                                      {lesson.durationMinutes ? (
-                                        <span className={`text-[10px] shrink-0 font-mono ${isActive ? "text-indigo-200" : "text-zinc-400 dark:text-zinc-500"}`}>
-                                          {lesson.durationMinutes}m
-                                        </span>
-                                      ) : null}
                                     </button>
                                   );
                                 })

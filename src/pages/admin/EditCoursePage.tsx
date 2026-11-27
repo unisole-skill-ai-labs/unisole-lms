@@ -1,7 +1,9 @@
 import React, { Suspense, lazy, useState, useEffect, useRef, useMemo } from "react";
 
 const LessonVideoUploadPanel = lazy(() => import("../../components/admin/LessonVideoUploadPanel"));
-import { useParams, Link, Navigate } from "react-router-dom";
+const AssignmentAttachmentPanel = lazy(() => import("../../components/admin/AssignmentAttachmentPanel"));
+const LectureResourcesPanel = lazy(() => import("../../components/admin/LectureResourcesPanel"));
+import { useParams, Link, Navigate, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
   ArrowLeft,
@@ -68,6 +70,7 @@ import {
   useMoveAdminModuleLessonMutation,
   useGetAdminLessonByIdQuery,
   useUpdateAdminLessonMutation,
+  useSwitchLessonVideoToLinkMutation,
   useClearAdminCourseModulesMutation,
   useGetAdminStudentsQuery,
   useGetAdminMentorsQuery,
@@ -86,6 +89,7 @@ import {
 
 export default function EditCoursePage() {
   const { courseId = "" } = useParams();
+  const navigate = useNavigate();
 
   // Queries
   const { data: course, isLoading: isCourseLoading } = useGetAdminCourseByIdQuery(courseId, {
@@ -204,8 +208,13 @@ export default function EditCoursePage() {
   const [pendingNewLessons, setPendingNewLessons] = useState<any[]>([]);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [savedSnapshotJson, setSavedSnapshotJson] = useState<string>("");
+  const [initialNewSnapshotJson, setInitialNewSnapshotJson] = useState<string>("");
   const needsBaselineSyncRef = useRef<string | null>(null);
+  const needsNewBaselineSyncRef = useRef<string | null>(null);
   const lastPopulatedKeyRef = useRef<string | null>(null);
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [showLockControls, setShowLockControls] = useState(false);
 
   // Active Lesson Form State
   const [lessonTitle, setLessonTitle] = useState("");
@@ -217,8 +226,13 @@ export default function EditCoursePage() {
   const [lessonType, setLessonType] = useState<LessonType>("READING");
   const [contentMarkdown, setContentMarkdown] = useState("");
   const [contentHtml, setContentHtml] = useState("");
-  const [durationMinutes, setDurationMinutes] = useState(15);
+  const [durationMinutes, setDurationMinutes] = useState<number | undefined>(undefined);
   const [videoUrl, setVideoUrl] = useState("");
+  const [videoMode, setVideoMode] = useState<"HLS" | "LINK">("HLS");
+  const [savedVideoProvider, setSavedVideoProvider] = useState<string | null>(null);
+  const [externalLinkLabel, setExternalLinkLabel] = useState("");
+  const [externalLinkUrl, setExternalLinkUrl] = useState("");
+  const [switchToLinkMutation] = useSwitchLessonVideoToLinkMutation();
 
   // Code Block State
   const [codeLanguage, setCodeLanguage] = useState("typescript");
@@ -226,15 +240,7 @@ export default function EditCoursePage() {
 
   // Quiz State (Practice MCQ)
   const [passingScore, setPassingScore] = useState(70);
-  const [questions, setQuestions] = useState<QuizQuestion[]>([
-    {
-      id: "q-1",
-      question: "",
-      options: ["", "", "", ""],
-      correctOptionIndex: 0,
-      explanation: "",
-    },
-  ]);
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
 
   // Practice Project & Capstone Assignment State
   const [assignmentInstructions, setAssignmentInstructions] = useState("");
@@ -245,22 +251,15 @@ export default function EditCoursePage() {
   const [maxPoints, setMaxPoints] = useState(100);
 
   // Evaluated Coding Test State
-  const [codingStarterCode, setCodingStarterCode] = useState(
-    "import torch\n\ndef matrix_multiply(A: torch.Tensor, B: torch.Tensor) -> torch.Tensor:\n    # Implement your tensor matrix multiplication\n    pass\n"
-  );
+  const [codingStarterCode, setCodingStarterCode] = useState("");
   const [codingLanguage, setCodingLanguage] = useState("python");
   const [codingTestCases, setCodingTestCases] = useState<
     Array<{ input: string; expected: string; isHidden: boolean }>
-  >([
-    { input: "A = torch.tensor([[1, 2], [3, 4]]), B = torch.tensor([[5, 6], [7, 8]])", expected: "tensor([[19, 22], [43, 50]])", isHidden: false },
-    { input: "A = torch.eye(3), B = torch.eye(3)", expected: "tensor([[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]])", isHidden: true },
-  ]);
+  >([]);
 
   // Evaluated Subjective Test State
   const [subjectivePrompt, setSubjectivePrompt] = useState("");
-  const [subjectiveRubric, setSubjectiveRubric] = useState(
-    "1. Architectural rationale & trade-offs (10 pts)\n2. Production scalability & memory profiling (10 pts)\n3. Edge case resilience & latency benchmarks (10 pts)"
-  );
+  const [subjectiveRubric, setSubjectiveRubric] = useState("");
 
   // Evaluated Video Viva Test State
   const [videoPrompt, setVideoPrompt] = useState("");
@@ -293,22 +292,60 @@ export default function EditCoursePage() {
     const dataToUse = activeLessonId.startsWith("unsaved_") ? pendingLesson : activeLessonData;
     if (dataToUse && dataToUse.id === activeLessonId && lastPopulatedKeyRef.current !== activeLessonId) {
       lastPopulatedKeyRef.current = activeLessonId;
+      setTitleError(null);
+      setLinkError(null);
       if (activeLessonId.startsWith("unsaved_")) {
         needsBaselineSyncRef.current = null;
-        setSavedSnapshotJson("__UNSAVED_NEW__");
+        needsNewBaselineSyncRef.current = activeLessonId;
+        setSavedSnapshotJson("");
+        setInitialNewSnapshotJson("");
         setSaveStatus("idle");
       } else {
+        needsNewBaselineSyncRef.current = null;
         needsBaselineSyncRef.current = dataToUse.id;
       }
       setLessonTitle(dataToUse.title || "");
       setDurationMinutes(
         typeof dataToUse.durationMinutes === "number"
           ? dataToUse.durationMinutes
-          : parseInt(dataToUse.duration || "45", 10) || 45
+          : undefined
       );
       setVideoUrl(dataToUse.videoUrl || "");
-      setLessonUnlockAt(toIstDatetimeLocal(dataToUse.unlockAt));
-      setLessonLockAt(toIstDatetimeLocal(dataToUse.lockAt));
+      setVideoMode("HLS");
+      setSavedVideoProvider((dataToUse as any).videoProvider || null);
+      const nextUnlock = toIstDatetimeLocal(dataToUse.unlockAt);
+      const nextLock = toIstDatetimeLocal(dataToUse.lockAt);
+      setLessonUnlockAt(nextUnlock);
+      setLessonLockAt(nextLock);
+      setShowLockControls(Boolean(nextUnlock || nextLock));
+
+      // Reset lesson-specific fields to defaults so stale state from a previous lesson never leaks
+      setCurriculumMode("LECTURE");
+      setPracticeType("MCQ");
+      setTestType("CODING_TEST");
+      setLessonType("READING");
+      setContentMarkdown("");
+      setContentHtml("");
+      setCodeLanguage("typescript");
+      setCodeSnippet("");
+      setExternalLinkLabel("");
+      setExternalLinkUrl("");
+      setPassingScore(70);
+      setQuestions([]);
+      setAssignmentInstructions("");
+      setAllowedTypes(["URL", "GITHUB"]);
+      setMaxPoints(100);
+      setCodingStarterCode("");
+      setCodingLanguage("python");
+      setCodingTestCases([]);
+      setSubjectivePrompt("");
+      setSubjectiveRubric("");
+      setVideoPrompt("");
+      setVideoDurationLimitSec(180);
+      setAttachments([]);
+      setShowAddAttachment(false);
+      setNewAttachmentName("");
+      setNewAttachmentUrl("");
 
       // Try to parse structured content from lesson
       if (dataToUse?.content && dataToUse.content.startsWith("{")) {
@@ -376,6 +413,10 @@ export default function EditCoursePage() {
           if (parsed.attachments) {
             setAttachments(parsed.attachments);
           }
+          if (parsed.externalLink) {
+            setExternalLinkLabel(parsed.externalLink.label || "");
+            setExternalLinkUrl(parsed.externalLink.url || "");
+          }
         } catch {
           const raw = dataToUse.content || "";
           setContentMarkdown(raw);
@@ -429,7 +470,7 @@ export default function EditCoursePage() {
       passingScorePercent: passingScore,
       questions,
     } : undefined,
-    assignment: isPrac && practiceType === "PROJECT" ? {
+    assignment: ((isPrac && practiceType === "PROJECT") || (isTst && testType === "PROJECT")) ? {
       instructions: assignmentInstructions,
       allowedTypes,
       maxPoints,
@@ -450,6 +491,10 @@ export default function EditCoursePage() {
       maxDurationSec: videoDurationLimitSec,
       maxScore: maxPoints,
     } : undefined,
+    externalLink:
+      externalLinkUrl.trim() || externalLinkLabel.trim()
+        ? { label: externalLinkLabel.trim(), url: externalLinkUrl.trim() }
+        : undefined,
     attachments,
   };
 
@@ -461,18 +506,77 @@ export default function EditCoursePage() {
       setSavedSnapshotJson(currentFormJson);
       setSaveStatus("idle");
     }
+    if (needsNewBaselineSyncRef.current && needsNewBaselineSyncRef.current === activeLessonId) {
+      needsNewBaselineSyncRef.current = null;
+      setInitialNewSnapshotJson(currentFormJson);
+      setSaveStatus("idle");
+    }
   }, [currentFormJson, activeLessonId]);
+
+  const isUntouchedNewLesson = Boolean(
+    activeLessonId &&
+      activeLessonId.startsWith("unsaved_") &&
+      initialNewSnapshotJson !== "" &&
+      currentFormJson === initialNewSnapshotJson
+  );
 
   const hasUnsavedChanges = Boolean(
     activeLessonId &&
-      (activeLessonId.startsWith("unsaved_") ||
-        (savedSnapshotJson !== "" && currentFormJson !== savedSnapshotJson))
+      (activeLessonId.startsWith("unsaved_")
+        ? initialNewSnapshotJson !== "" && currentFormJson !== initialNewSnapshotJson
+        : savedSnapshotJson !== "" && currentFormJson !== savedSnapshotJson)
   );
 
-  // Manual Save handler (no autosave)
-  const handleManualSave = async () => {
-    if (!activeLessonId || saveStatus === "saving") return;
+  const validateHttpUrl = (raw: string): boolean => {
+    try {
+      const parsed = new URL(raw);
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch {
+      return false;
+    }
+  };
+
+  // Shared Save routine used by both Save button and auto-save on switch.
+  // Returns true if saved (or nothing needed saving), false if validation/API failed.
+  const saveCurrentLesson = async (): Promise<boolean> => {
+    if (!activeLessonId) return true;
+    if (saveStatus === "saving") return false;
+    if (!hasUnsavedChanges) return true;
+
+    setTitleError(null);
+    setLinkError(null);
+
+    const trimmedTitle = formData.title.trim().slice(0, 120);
+    if (!trimmedTitle) {
+      setTitleError("Activity title cannot be empty.");
+      setSaveStatus("error");
+      return false;
+    }
+
+    const trimmedLinkUrl = externalLinkUrl.trim();
+    if (trimmedLinkUrl && !validateHttpUrl(trimmedLinkUrl)) {
+      setLinkError("Link URL must start with http:// or https://");
+      setSaveStatus("error");
+      return false;
+    }
+
+    const dateError = validateScheduleDates(
+      fromIstDatetimeLocal(formData.unlockAt),
+      fromIstDatetimeLocal(formData.lockAt)
+    );
+    if (dateError) {
+      setSaveStatus("error");
+      showToast(dateError, "error");
+      return false;
+    }
+
+    if (trimmedTitle !== lessonTitle) {
+      setLessonTitle(trimmedTitle);
+    }
     setSaveStatus("saving");
+
+    const effectiveContentMarkdown =
+      isTst && testType === "VIDEO_TEST" ? videoPrompt : formData.contentMarkdown;
 
     const payloadContent = JSON.stringify({
       type: formData.type,
@@ -480,8 +584,8 @@ export default function EditCoursePage() {
       curriculumMode: formData.curriculumMode,
       practiceType: formData.practiceType,
       testType: formData.testType,
-      contentMarkdown: formData.contentMarkdown,
-      contentHtml: formData.contentHtml,
+      contentMarkdown: effectiveContentMarkdown,
+      contentHtml: isTst && testType === "VIDEO_TEST" ? "" : formData.contentHtml,
       codeLanguage: formData.codeLanguage,
       codeSnippet: formData.codeSnippet,
       quiz: formData.quiz,
@@ -489,21 +593,24 @@ export default function EditCoursePage() {
       codingTest: formData.codingTest,
       subjectiveTest: formData.subjectiveTest,
       videoTest: formData.videoTest,
+      externalLink: trimmedLinkUrl
+        ? { label: externalLinkLabel.trim() || trimmedLinkUrl, url: trimmedLinkUrl }
+        : undefined,
       attachments: formData.attachments,
     });
 
-    const descriptionText = formData.contentMarkdown
-      ? formData.contentMarkdown.replace(/<[^>]*>/g, "").slice(0, 200)
+    const descriptionText = effectiveContentMarkdown
+      ? effectiveContentMarkdown.replace(/<[^>]*>/g, "").slice(0, 200)
       : "";
 
     try {
       if (activeLessonId.startsWith("unsaved_")) {
         const pending = pendingNewLessons.find((l) => l.id === activeLessonId);
-        if (!pending) return;
+        if (!pending) return true;
 
         const created = await createAndAttachLesson({
           moduleId: pending.moduleId,
-          title: formData.title || pending.title,
+          title: trimmedTitle,
           slug: pending.slug,
           content: payloadContent,
           videoUrl: formData.videoUrl,
@@ -512,18 +619,31 @@ export default function EditCoursePage() {
           lockAt: fromIstDatetimeLocal(formData.lockAt),
         }).unwrap();
 
+        const realId = (created as any)?.id || (created as any)?.lessonId || activeLessonId;
         setPendingNewLessons((prev) => prev.filter((l) => l.id !== activeLessonId));
-        lastPopulatedKeyRef.current = created.id;
+        lastPopulatedKeyRef.current = realId;
+        needsBaselineSyncRef.current = realId;
         setSavedSnapshotJson(currentFormJson);
-        setActiveLessonId(created.id);
+        setInitialNewSnapshotJson("");
+        setActiveLessonId(realId);
         setSaveStatus("saved");
         refetchModules();
-        showToast(`Saved "${formData.title || pending.title}".`);
+        return true;
       } else {
+        if (
+          curriculumMode === "LECTURE" &&
+          videoMode === "LINK" &&
+          formData.videoUrl.trim() !== "" &&
+          savedVideoProvider === "AZURE_HLS"
+        ) {
+          await switchToLinkMutation(activeLessonId).unwrap();
+          setSavedVideoProvider("YOUTUBE");
+        }
+
         await updateLessonMutation({
           id: activeLessonId,
           body: {
-            title: formData.title,
+            title: trimmedTitle,
             durationMinutes: formData.durationMinutes,
             videoUrl: formData.videoUrl,
             unlockAt: fromIstDatetimeLocal(formData.unlockAt),
@@ -536,36 +656,31 @@ export default function EditCoursePage() {
         setSavedSnapshotJson(currentFormJson);
         setSaveStatus("saved");
         refetchModules();
-        showToast("Changes saved.");
+        return true;
       }
     } catch (err: any) {
       console.error("Save failed:", err);
       setSaveStatus("error");
       showToast(err?.data?.message || err?.data?.error || "Failed to save changes.", "error");
+      return false;
     }
   };
 
-  // Warn before navigating away with unsaved changes
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasUnsavedChanges || pendingNewLessons.length > 0) {
-        e.preventDefault();
-        e.returnValue = "";
-      }
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [hasUnsavedChanges, pendingNewLessons.length]);
+  // Manual Save handler
+  const handleManualSave = async () => {
+    const ok = await saveCurrentLesson();
+    if (ok && hasUnsavedChanges) {
+      showToast("Changes saved.");
+    }
+  };
 
-  const handleSelectLessonWithGuard = (lessonId: string) => {
+  const handleSelectLessonWithGuard = async (lessonId: string) => {
     if (lessonId === activeLessonId) return;
-    if (hasUnsavedChanges) {
-      if (!window.confirm("You have unsaved changes. Discard them and switch activities?")) {
-        return;
-      }
-      if (activeLessonId?.startsWith("unsaved_")) {
-        setPendingNewLessons((prev) => prev.filter((l) => l.id !== activeLessonId));
-      }
+    if (activeLessonId?.startsWith("unsaved_") && isUntouchedNewLesson) {
+      setPendingNewLessons((prev) => prev.filter((l) => l.id !== activeLessonId));
+    } else if (hasUnsavedChanges) {
+      const ok = await saveCurrentLesson();
+      if (!ok) return;
     }
     setSaveStatus("idle");
     setActiveLessonId(lessonId);
@@ -772,8 +887,8 @@ export default function EditCoursePage() {
     }
   };
 
-  // Add a new unsaved activity in client state only (persists only when Save is clicked)
-  const handleAddLessonWithType = (
+  // Add a new unsaved activity in client state only (persists on Save or auto-save on switch)
+  const handleAddLessonWithType = async (
     moduleId: string,
     lessonTypeKey:
       | "LECTURE_VIDEO"
@@ -788,85 +903,64 @@ export default function EditCoursePage() {
     customTitle?: string,
     targetFolderId?: string
   ) => {
-    if (hasUnsavedChanges) {
-      if (!window.confirm("You have unsaved changes. Discard them and create a new activity?")) {
-        return;
-      }
-      if (activeLessonId?.startsWith("unsaved_")) {
-        setPendingNewLessons((prev) => prev.filter((l) => l.id !== activeLessonId));
-      }
+    if (activeLessonId?.startsWith("unsaved_") && isUntouchedNewLesson) {
+      setPendingNewLessons((prev) => prev.filter((l) => l.id !== activeLessonId));
+    } else if (hasUnsavedChanges) {
+      const ok = await saveCurrentLesson();
+      if (!ok) return;
     }
 
     const nowTs = Date.now();
     const slug = `${course?.slug || "course"}-les-${nowTs}`;
-    let title = customTitle || "New Lesson";
+    const title = customTitle || "";
     let payloadContent: any = {};
-    let videoUrl: string | undefined = undefined;
+    const videoUrl = "";
 
     switch (lessonTypeKey) {
       case "FOLDER":
-        title = customTitle || "📁 Resources & Lab Files";
         payloadContent = {
           type: "FOLDER",
           category: "FOLDER",
           curriculumMode: "FOLDER",
-          contentMarkdown: "### 📁 Resources & Learning Assets\n\nDownload starter files, slides, and supplementary cheat sheets for this chapter.",
-          attachments: [
-            {
-              id: `att-${nowTs}`,
-              name: "Starter Code & Project Files",
-              url: "https://github.com",
-              size: "2.4 MB",
-            },
-          ],
+          contentMarkdown: "",
+          attachments: [],
         };
         break;
 
       case "LECTURE_VIDEO":
-        title = customTitle || "Lecture Video";
-        videoUrl = "";
         payloadContent = {
           type: "VIDEO",
           category: "LECTURE",
           curriculumMode: "LECTURE",
           videoUrl: "",
-          contentMarkdown: "Watch the lecture video end-to-end and prepare study notes.",
+          contentMarkdown: "",
+          attachments: [],
         };
         break;
 
       case "PRACTICE_MCQ":
-        title = customTitle || "Practice Quiz (MCQ)";
         payloadContent = {
           type: "QUIZ",
           category: "PRACTICE",
           curriculumMode: "PRACTICE",
           practiceType: "MCQ",
-          contentMarkdown: "Test your understanding with these practice multiple choice questions.",
+          contentMarkdown: "",
           quiz: {
             passingScorePercent: 70,
-            questions: [
-              {
-                id: `q-${nowTs}`,
-                question: "What is the primary objective of this module?",
-                options: ["Option A", "Option B", "Option C", "Option D"],
-                correctOptionIndex: 0,
-                explanation: "Option A is the correct answer based on lecture concepts.",
-              },
-            ],
+            questions: [],
           },
         };
         break;
 
       case "PRACTICE_PROJECT":
-        title = customTitle || "Hands-on Practice Lab";
         payloadContent = {
           type: "ASSIGNMENT",
           category: "PRACTICE",
           curriculumMode: "PRACTICE",
           practiceType: "PROJECT",
-          contentMarkdown: "Build the lab project locally and verify the test results.",
+          contentMarkdown: "",
           assignment: {
-            instructions: "Follow instructions to build the feature and submit your repository or notes.",
+            instructions: "",
             allowedTypes: ["URL", "GITHUB"],
             maxPoints: 100,
           },
@@ -874,35 +968,30 @@ export default function EditCoursePage() {
         break;
 
       case "TEST_CODING":
-        title = customTitle || "Coding Assessment Test";
         payloadContent = {
           type: "CODING_TEST",
           category: "TEST",
           curriculumMode: "TEST",
           testType: "CODING_TEST",
-          contentMarkdown: "Write optimal code solving the problem specification.",
+          contentMarkdown: "",
           codingTest: {
-            starterCode: "def solution():\n    # Implement solution here\n    pass\n",
+            starterCode: "",
             language: "python",
-            testCases: [
-              { id: "tc-1", input: "1, 2", expectedOutput: "3", isHidden: false },
-              { id: "tc-2", input: "5, 10", expectedOutput: "15", isHidden: true },
-            ],
+            testCases: [],
             maxScore: 100,
           },
         };
         break;
 
       case "TEST_VIVA":
-        title = customTitle || "Assignments";
         payloadContent = {
           type: "VIDEO_TEST",
           category: "TEST",
           curriculumMode: "TEST",
           testType: "VIDEO_TEST",
-          contentMarkdown: "Record a short video walkthrough explaining your architecture and codebase.",
+          contentMarkdown: "",
           videoTest: {
-            prompt: "Demonstrate working software and explain key design decisions.",
+            prompt: "",
             maxDurationSec: 180,
             maxScore: 100,
           },
@@ -910,31 +999,29 @@ export default function EditCoursePage() {
         break;
 
       case "TEST_SUBJECTIVE":
-        title = customTitle || "Subjective Architecture Test";
         payloadContent = {
           type: "SUBJECTIVE_TEST",
           category: "TEST",
           curriculumMode: "TEST",
           testType: "SUBJECTIVE_TEST",
-          contentMarkdown: "Answer the engineering rationale and system design questions below.",
+          contentMarkdown: "",
           subjectiveTest: {
-            prompt: "Explain system trade-offs and engineering design patterns.",
-            rubrics: "Technical accuracy (40 pts), Architecture depth (30 pts), Clarity (30 pts)",
+            prompt: "",
+            rubrics: "",
             maxScore: 100,
           },
         };
         break;
 
       case "TEST_PROJECT":
-        title = customTitle || "Capstone Evaluated Project";
         payloadContent = {
           type: "ASSIGNMENT",
           category: "TEST",
           curriculumMode: "TEST",
           testType: "PROJECT",
-          contentMarkdown: "Deploy your final project and submit for mentor evaluation.",
+          contentMarkdown: "",
           assignment: {
-            instructions: "Submit production GitHub repository and live deployment URL.",
+            instructions: "",
             allowedTypes: ["URL", "GITHUB"],
             maxPoints: 100,
           },
@@ -942,12 +1029,11 @@ export default function EditCoursePage() {
         break;
 
       default:
-        title = customTitle || "New Lesson";
         payloadContent = {
           type: "READING",
           category: "LECTURE",
           curriculumMode: "LECTURE",
-          contentMarkdown: "Write lesson reading notes here...",
+          contentMarkdown: "",
         };
         break;
     }
@@ -965,7 +1051,7 @@ export default function EditCoursePage() {
       slug,
       content: JSON.stringify(payloadContent),
       videoUrl: videoUrl || "",
-      durationMinutes: 15,
+      durationMinutes: undefined,
       position: 9999,
       isUnsavedNew: true,
     };
@@ -1073,10 +1159,14 @@ export default function EditCoursePage() {
         <div className="flex items-center gap-3">
           <Link
             to="/admin/courses"
-            onClick={(e) => {
-              if (hasUnsavedChanges || pendingNewLessons.length > 0) {
-                if (!window.confirm("You have unsaved changes. Discard them and leave?")) {
-                  e.preventDefault();
+            onClick={async (e) => {
+              if (activeLessonId?.startsWith("unsaved_") && isUntouchedNewLesson) {
+                setPendingNewLessons((prev) => prev.filter((l) => l.id !== activeLessonId));
+              } else if (hasUnsavedChanges) {
+                e.preventDefault();
+                const ok = await saveCurrentLesson();
+                if (ok) {
+                  navigate("/admin/courses");
                 }
               }
             }}
@@ -1259,6 +1349,12 @@ export default function EditCoursePage() {
                       onDragOver={(e) => handleChapterDragOver(e, idx)}
                       onDrop={(e) => handleChapterDrop(e, idx)}
                       onSelectLesson={handleSelectLessonWithGuard}
+                      onActiveLessonRenamed={(id, newTitle) => {
+                        if (activeLessonId === id) {
+                          setLessonTitle(newTitle);
+                          needsBaselineSyncRef.current = id;
+                        }
+                      }}
                       onDiscardPendingLesson={(tempId) => {
                         setPendingNewLessons((prev) => prev.filter((l) => l.id !== tempId));
                         if (activeLessonId === tempId) {
@@ -1300,57 +1396,7 @@ export default function EditCoursePage() {
             <div className="max-w-4xl mx-auto w-full bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-6 sm:p-8 shadow-2xs space-y-6">
               {/* Lesson Details Header */}
               <div className="space-y-4 pb-6 border-b border-slate-100 dark:border-slate-800/60">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  {/* Item Type Badge Indicator */}
-                  <div className="flex items-center gap-2">
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border shadow-2xs ${
-                      curriculumMode === "LECTURE"
-                        ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
-                        : curriculumMode === "PRACTICE"
-                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                        : curriculumMode === "TEST"
-                        ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
-                        : "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20"
-                    }`}>
-                      {curriculumMode === "LECTURE" && (
-                        <>
-                          <PlayCircle className="w-3.5 h-3.5 stroke-[2.5]" />
-                          <span>Video Lecture</span>
-                        </>
-                      )}
-                      {curriculumMode === "PRACTICE" && (
-                        <>
-                          <FileQuestion className="w-3.5 h-3.5 stroke-[2.5]" />
-                          <span>{practiceType === "MCQ" ? "Practice Quiz (MCQ)" : "Practice Lab"}</span>
-                        </>
-                      )}
-                      {curriculumMode === "TEST" && testType !== "VIDEO_TEST" && (
-                        <>
-                          <Award className="w-3.5 h-3.5 stroke-[2.5]" />
-                          <span>
-                            {testType === "CODING_TEST"
-                              ? "Evaluated Coding Test"
-                              : testType === "PROJECT"
-                              ? "Capstone Project"
-                              : "Subjective Test"}
-                          </span>
-                        </>
-                      )}
-                      {curriculumMode === "TEST" && testType === "VIDEO_TEST" && (
-                        <>
-                          <ClipboardList className="w-3.5 h-3.5 stroke-[2.5]" />
-                          <span>Assignments</span>
-                        </>
-                      )}
-                      {curriculumMode === "FOLDER" && (
-                        <>
-                          <FolderOpen className="w-3.5 h-3.5 stroke-[2.5]" />
-                          <span>Resource Folder</span>
-                        </>
-                      )}
-                    </span>
-                  </div>
-
+                <div className="flex items-center justify-end gap-4">
                   {/* Save Action & Status (placed where Archive used to be) */}
                   <div className="flex items-center gap-3">
                     {saveStatus === "saving" && (
@@ -1391,14 +1437,23 @@ export default function EditCoursePage() {
                 <div>
                   <input
                     type="text"
+                    maxLength={120}
                     value={lessonTitle}
-                    onChange={(e) => setLessonTitle(e.target.value)}
+                    onChange={(e) => {
+                      setLessonTitle(e.target.value);
+                      if (titleError) setTitleError(null);
+                    }}
                     placeholder="Lesson Title..."
                     className="w-full text-xl sm:text-2xl font-black bg-transparent border-0 border-b border-transparent hover:border-slate-200 dark:hover:border-slate-800 focus:border-sky-500 dark:focus:border-sky-400 focus:outline-none px-0 py-1 transition-colors text-slate-900 dark:text-white"
                   />
+                  {titleError && (
+                    <p data-testid="lesson-title-error" className="text-xs text-rose-500 font-semibold mt-1">
+                      {titleError}
+                    </p>
+                  )}
                 </div>
 
-                {/* Video Link / Local Encoder Upload & Estimated Duration (for Lectures; Assignments have it at the bottom above schedule) */}
+                {/* Video Link / Local Encoder Upload */}
                 {curriculumMode === "LECTURE" && (
                   (import.meta.env.VITE_ENABLE_VIDEO_UPLOAD === "true" ||
                     (typeof window !== "undefined" &&
@@ -1408,17 +1463,20 @@ export default function EditCoursePage() {
                   activeLessonId ? (
                     <Suspense fallback={<div className="text-xs text-slate-400 pt-2">Loading video controls...</div>}>
                       <LessonVideoUploadPanel
+                        key={activeLessonId}
                         lessonId={activeLessonId}
-                        isLessonSaved={!activeLessonId.startsWith("unsaved_") && !hasUnsavedChanges}
+                        isLessonSaved={!activeLessonId.startsWith("unsaved_")}
                         videoUrl={videoUrl}
                         onVideoUrlChange={setVideoUrl}
                         durationMinutes={durationMinutes}
                         onDurationChange={setDurationMinutes}
+                        onModeChange={setVideoMode}
+                        onProviderStatusChange={(provider) => setSavedVideoProvider(provider)}
                       />
                     </Suspense>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                      <div className="sm:col-span-2">
+                    <div className="pt-2">
+                      <div>
                         <label className="block text-[11px] font-semibold text-slate-400 mb-1">
                           Video URL (Optional: YouTube, Vimeo, or MP4 link)
                         </label>
@@ -1430,18 +1488,6 @@ export default function EditCoursePage() {
                           className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 font-mono"
                         />
                         <p className="text-[10px] text-slate-400 mt-1">Paste a video link</p>
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-semibold text-slate-400 mb-1">
-                          Duration (Minutes)
-                        </label>
-                        <input
-                          type="number"
-                          min={1}
-                          value={durationMinutes}
-                          onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                          className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/40 font-mono"
-                        />
                       </div>
                     </div>
                   )
@@ -1580,102 +1626,55 @@ export default function EditCoursePage() {
               {/* ──────────────── MODE: LECTURE ──────────────── */}
               {curriculumMode === "LECTURE" && (
                 <div className="space-y-6">
-                  {/* WYSIWYG Notes Editor */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-2">
-                      Lesson Notes & Explanation
-                    </label>
-                    <RichEditor
-                      initialValue={contentHtml || contentMarkdown}
-                      onChange={(html) => {
-                        setContentHtml(html);
-                        setContentMarkdown(html);
-                      }}
-                      placeholder="Write your study notes, breakdown of concepts, architecture points, and instructions..."
-                    />
-                  </div>
-
-                  {/* Code Box with Language Selector */}
-                  <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-[#070A11]/60 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                        Code Example (Optional)
-                      </span>
-                      <select
-                        value={codeLanguage}
-                        onChange={(e) => setCodeLanguage(e.target.value)}
-                        className="text-xs px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] font-mono text-slate-700 dark:text-slate-200"
-                      >
-                        <option value="typescript">TypeScript</option>
-                        <option value="python">Python</option>
-                        <option value="javascript">JavaScript</option>
-                        <option value="sql">SQL</option>
-                        <option value="bash">Bash</option>
-                        <option value="cpp">C++</option>
-                      </select>
+                  {/* Optional External Link (Part 7) */}
+                  <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-[#070A11]/60 space-y-3" data-testid="lecture-link-section">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <LinkIcon className="w-3.5 h-3.5 text-slate-400" />
+                      Link (Optional)
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <input
+                        type="text"
+                        value={externalLinkLabel}
+                        onChange={(e) => setExternalLinkLabel(e.target.value)}
+                        placeholder="Link label (e.g. Slides, GitHub Repo)"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
+                      />
+                      <input
+                        type="url"
+                        value={externalLinkUrl}
+                        onChange={(e) => {
+                          setExternalLinkUrl(e.target.value);
+                          if (linkError) setLinkError(null);
+                        }}
+                        placeholder="https://..."
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 font-mono"
+                      />
                     </div>
-                    <textarea
-                      rows={6}
-                      value={codeSnippet}
-                      onChange={(e) => setCodeSnippet(e.target.value)}
-                      placeholder={`// Paste sample ${codeLanguage} code here...`}
-                      className="w-full p-3 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-800 bg-[#070A11] text-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
-                    />
-                  </div>
-
-                  {/* Attachments Section */}
-                  <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0B1120] space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                        <Paperclip className="w-3.5 h-3.5 text-slate-400" />
-                        Files & Downloadable Resources
-                      </span>
-                      <button
-                        onClick={() => setShowAddAttachment(!showAddAttachment)}
-                        className="text-xs font-bold text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
-                      >
-                        + Add File Link
-                      </button>
-                    </div>
-
-                    {showAddAttachment && (
-                      <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] space-y-2">
-                        <input
-                          type="text"
-                          placeholder="File name (e.g. Module 1 Slides.pdf)"
-                          value={newAttachmentName}
-                          onChange={(e) => setNewAttachmentName(e.target.value)}
-                          className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120]"
-                        />
-                        <input
-                          type="url"
-                          placeholder="Public file URL (PDF, GitHub repo, Google Drive, ZIP)"
-                          value={newAttachmentUrl}
-                          onChange={(e) => setNewAttachmentUrl(e.target.value)}
-                          className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] font-mono"
-                        />
-                        <div className="flex justify-end gap-2 pt-1">
-                          <button
-                            onClick={() => setShowAddAttachment(false)}
-                            className="px-3 py-1 text-xs font-semibold text-slate-500 hover:text-slate-700"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={handleAddAttachment}
-                            className="px-3.5 py-1 text-xs font-bold text-slate-950 bg-sky-400 hover:bg-sky-300 rounded-lg shadow-xs cursor-pointer"
-                          >
-                            Attach File
-                          </button>
-                        </div>
-                      </div>
+                    {linkError && (
+                      <p className="text-xs text-rose-500 font-semibold">{linkError}</p>
                     )}
+                  </div>
 
-                    {attachments.length === 0 ? (
-                      <div className="text-xs text-slate-400 py-1">
-                        No supplementary files attached.
-                      </div>
-                    ) : (
+                  {/* Real Uploaded Lecture Resources (Part 6) */}
+                  {activeLessonId && (
+                    <Suspense fallback={<div className="text-xs text-slate-400">Loading resources...</div>}>
+                      <LectureResourcesPanel
+                        key={activeLessonId}
+                        lessonId={activeLessonId}
+                        isLessonSaved={!activeLessonId.startsWith("unsaved_")}
+                        initialResources={(activeLessonData as any)?.lessonResources || []}
+                        onResourcesChange={() => refetchActiveLesson()}
+                      />
+                    </Suspense>
+                  )}
+
+                  {/* Legacy link attachments (kept only if existing) */}
+                  {attachments.length > 0 && (
+                    <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0B1120] space-y-2">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        Legacy Resource Links ({attachments.length})
+                      </span>
                       <div className="space-y-1.5">
                         {attachments.map((att) => (
                           <div
@@ -1704,8 +1703,8 @@ export default function EditCoursePage() {
                           </div>
                         ))}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -2079,34 +2078,17 @@ export default function EditCoursePage() {
                     />
                   </div>
 
-                  {/* Assignment Video URL & Duration (directly above Availability & Time Lock) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                    <div className="sm:col-span-2">
-                      <label className="block text-[11px] font-semibold text-slate-400 mb-1">
-                        Video URL (Optional: YouTube, Vimeo, or MP4 link)
-                      </label>
-                      <input
-                        type="url"
-                        value={videoUrl}
-                        onChange={(e) => setVideoUrl(e.target.value)}
-                        placeholder="https://youtu.be/..."
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 font-mono"
+                  {activeLessonId && (
+                    <Suspense fallback={<div className="text-xs text-slate-400">Loading attachment controls...</div>}>
+                      <AssignmentAttachmentPanel
+                        key={activeLessonId}
+                        lessonId={activeLessonId}
+                        isLessonSaved={!activeLessonId.startsWith("unsaved_")}
+                        initialAttachment={(activeLessonData as any)?.assignmentAttachment || null}
+                        onAttachmentChange={() => refetchActiveLesson()}
                       />
-                      <p className="text-[10px] text-slate-400 mt-1">Paste a video link</p>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-400 mb-1">
-                        Duration (Minutes)
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        value={durationMinutes}
-                        onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/40 font-mono"
-                      />
-                    </div>
-                  </div>
+                    </Suspense>
+                  )}
                 </div>
               )}
 
@@ -2200,93 +2182,66 @@ export default function EditCoursePage() {
                 </div>
               )}
 
-              {/* Activity Availability & Timed Unlock Schedule (bottom of every activity form) */}
+              {/* Compact Lock Control (collapsed by default unless a lock is set) */}
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800/60" data-testid="availability-schedule-section">
-                <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-[#070A11]/60 border border-slate-200/80 dark:border-slate-800/80 space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center">
-                        {lessonUnlockAt ? <Lock className="w-3.5 h-3.5 text-amber-500" /> : <Unlock className="w-3.5 h-3.5 text-emerald-500" />}
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 flex-wrap">
-                          <span>Availability & Time Lock Schedule</span>
-                          {lessonUnlockAt ? (
-                            (() => {
-                              const unlockIso = fromIstDatetimeLocal(lessonUnlockAt);
-                              const isLocked = unlockIso && new Date(unlockIso).getTime() > Date.now();
-                              return isLocked ? (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                                  Scheduled: Locked until {formatIstDisplay(unlockIso)}
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                  Live & Unlocked (since {formatIstDisplay(unlockIso)})
-                                </span>
-                              );
-                            })()
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                              Always Unlocked
-                            </span>
-                          )}
-                        </h4>
-                        <p className="text-[11px] text-slate-400">
-                          Set an unlock date/time in Indian Standard Time (IST). Learners see this activity locked until the scheduled time passes, then it automatically unlocks.
-                        </p>
-                      </div>
-                    </div>
-                    {(lessonUnlockAt || lessonLockAt) && canManageCurriculum && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLessonUnlockAt("");
-                          setLessonLockAt("");
-                        }}
-                        className="text-[11px] font-semibold text-rose-500 hover:text-rose-600 self-start sm:self-auto cursor-pointer"
-                      >
-                        Clear Schedule
-                      </button>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    data-testid="lesson-lock-toggle"
+                    disabled={!canManageCurriculum}
+                    onClick={() => {
+                      if (showLockControls) {
+                        setShowLockControls(false);
+                        setLessonUnlockAt("");
+                        setLessonLockAt("");
+                      } else {
+                        setShowLockControls(true);
+                      }
+                    }}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer disabled:opacity-50 ${
+                      showLockControls || lessonUnlockAt || lessonLockAt
+                        ? "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300"
+                        : "bg-slate-50 dark:bg-[#070A11] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70"
+                    }`}
+                  >
+                    {showLockControls || lessonUnlockAt || lessonLockAt ? (
+                      <Lock className="w-3.5 h-3.5" />
+                    ) : (
+                      <Unlock className="w-3.5 h-3.5" />
                     )}
-                  </div>
+                    <span>Lock</span>
+                    {lessonUnlockAt && (
+                      <span className="text-[10px] font-medium opacity-80">
+                        · {formatIstDisplay(fromIstDatetimeLocal(lessonUnlockAt))}
+                      </span>
+                    )}
+                  </button>
+                </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {showLockControls && (
+                  <div className="mt-3 p-3 rounded-xl bg-slate-50/80 dark:bg-[#070A11]/60 border border-slate-200/80 dark:border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                          Unlock Date & Time (IST)
-                        </label>
-                        {lessonUnlockAt && (
-                          <span className="text-[10px] text-sky-500 font-medium">
-                            {formatIstDisplay(fromIstDatetimeLocal(lessonUnlockAt))}
-                          </span>
-                        )}
-                      </div>
+                      <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                        Unlock Date & Time (IST)
+                      </label>
                       <input
                         type="datetime-local"
                         disabled={!canManageCurriculum}
                         value={lessonUnlockAt}
                         onChange={(e) => setLessonUnlockAt(e.target.value)}
-                        className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
+                        className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
                       />
                     </div>
                     <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                          Auto-Lock Date & Time (IST, Optional)
-                        </label>
-                        {lessonLockAt && (
-                          <span className="text-[10px] text-sky-500 font-medium">
-                            {formatIstDisplay(fromIstDatetimeLocal(lessonLockAt))}
-                          </span>
-                        )}
-                      </div>
+                      <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                        Auto-Lock Date & Time (IST, Optional)
+                      </label>
                       <input
                         type="datetime-local"
                         disabled={!canManageCurriculum}
                         value={lessonLockAt}
                         onChange={(e) => setLessonLockAt(e.target.value)}
-                        className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
+                        className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
                       />
                     </div>
                     {(() => {
@@ -2296,7 +2251,7 @@ export default function EditCoursePage() {
                       );
                       if (dateError) {
                         return (
-                          <div className="sm:col-span-2 text-[11px] font-semibold text-rose-500 flex items-center gap-1.5 pt-0.5">
+                          <div className="sm:col-span-2 text-[11px] font-semibold text-rose-500 flex items-center gap-1.5">
                             <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                             <span>{dateError}</span>
                           </div>
@@ -2305,7 +2260,7 @@ export default function EditCoursePage() {
                       return null;
                     })()}
                   </div>
-                </div>
+                )}
               </div>
               </div>
             </div>
@@ -2512,6 +2467,7 @@ interface ChapterSectionProps {
   onDragStart?: (e: React.DragEvent) => void;
   onDragOver?: (e: React.DragEvent) => void;
   onDrop?: (e: React.DragEvent) => void;
+  onActiveLessonRenamed?: (lessonId: string, newTitle: string) => void;
 }
 
 function ChapterSection({
@@ -2536,6 +2492,7 @@ function ChapterSection({
   onDragStart,
   onDragOver,
   onDrop,
+  onActiveLessonRenamed,
 }: ChapterSectionProps) {
   const { data: moduleLessons = [], refetch: refetchLessons } = useGetAdminModuleLessonsQuery(moduleId, {
     refetchOnMountOrArgChange: true,
@@ -2553,6 +2510,8 @@ function ChapterSection({
   const [customLessonTitle, setCustomLessonTitle] = useState("");
   const [customFolderTargetId, setCustomFolderTargetId] = useState<string | undefined>(undefined);
   const [movingLessonId, setMovingLessonId] = useState<string | null>(null);
+  const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
+  const [tempLessonTitle, setTempLessonTitle] = useState("");
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
 
   // Module rename & scheduling state
@@ -2868,62 +2827,22 @@ function ChapterSection({
     }
   };
 
-  const getLessonBadge = (les: any) => {
-    if (les.isFolder) {
-      return {
-        label: "Folder",
-        bg: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20",
-        isFolder: true,
-      };
+  const handleInlineRenameLesson = async (lessonId: string) => {
+    const trimmed = tempLessonTitle.trim().slice(0, 120);
+    if (!trimmed) {
+      alert("Activity title cannot be empty.");
+      return;
     }
-    if (les.videoUrl) {
-      return {
-        label: "Video",
-        bg: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20",
-        isFolder: false,
-      };
+    try {
+      await updateLessonApi({ id: lessonId, body: { title: trimmed } }).unwrap();
+      if (activeLessonId === lessonId) {
+        onActiveLessonRenamed?.(lessonId, trimmed);
+      }
+      setEditingLessonId(null);
+      refetchLessons();
+    } catch (err: any) {
+      alert(err?.data?.message || err?.data?.error || "Failed to rename activity.");
     }
-    const text = `${les.title || ""} ${les.slug || ""} ${les.lessonId || ""}`.toLowerCase();
-    if (text.includes("quiz") || text.includes("mcq")) {
-      return {
-        label: "MCQ",
-        bg: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20",
-        isFolder: false,
-      };
-    }
-    if (text.includes("coding") || text.includes("code")) {
-      return {
-        label: "Coding",
-        bg: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20",
-        isFolder: false,
-      };
-    }
-    if (text.includes("viva") || text.includes("video")) {
-      return {
-        label: "Assignments",
-        bg: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20",
-        isFolder: false,
-      };
-    }
-    if (text.includes("subjective") || text.includes("theory")) {
-      return {
-        label: "Subjective",
-        bg: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20",
-        isFolder: false,
-      };
-    }
-    if (text.includes("project") || text.includes("lab") || text.includes("capstone")) {
-      return {
-        label: "Project",
-        bg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
-        isFolder: false,
-      };
-    }
-    return {
-      label: "Lesson",
-      bg: "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/60",
-      isFolder: false,
-    };
   };
 
   const otherModules = allModules.filter((m) => m.moduleId !== moduleId);
@@ -3343,7 +3262,6 @@ function ChapterSection({
             rootLessons.map((item: any) => {
               const isFolder = item.isFolder;
               const isSelected = activeLessonId === item.lessonId;
-              const badge = getLessonBadge(item);
               const displayTitle = item.title && item.title.trim().length > 0 ? item.title : item.lessonId;
               const childItems = isFolder ? (folderChildrenMap[item.lessonId] || []) : [];
               const folderExpanded = isFolder && isFolderOpen(item.lessonId);
@@ -3460,7 +3378,6 @@ function ChapterSection({
                         ) : (
                           childItems.map((cLes: any) => {
                             const isChildSelected = activeLessonId === cLes.lessonId;
-                            const cBadge = getLessonBadge(cLes);
                             const cDisplayTitle =
                               cLes.title && cLes.title.trim().length > 0 ? cLes.title : cLes.lessonId;
 
@@ -3507,11 +3424,6 @@ function ChapterSection({
                                         <span>{formatIstDisplay(cLes.unlockAt)}</span>
                                       </span>
                                     )}
-                                    <span
-                                      className={`text-[8px] font-mono uppercase px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap ${cBadge.bg}`}
-                                    >
-                                      {cBadge.label}
-                                    </span>
                                   </button>
                                 </div>
 
@@ -3569,6 +3481,40 @@ function ChapterSection({
                       <GripVertical className="w-3.5 h-3.5" />
                     </div>
 
+                    {editingLessonId === item.lessonId ? (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          handleInlineRenameLesson(item.lessonId);
+                        }}
+                        className="flex items-center gap-1 flex-1 min-w-0"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="text"
+                          maxLength={120}
+                          autoFocus
+                          value={tempLessonTitle}
+                          onChange={(e) => setTempLessonTitle(e.target.value)}
+                          className="px-2 py-0.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 flex-1 min-w-0"
+                        />
+                        <button
+                          type="submit"
+                          title="Save title"
+                          className="p-1 rounded bg-sky-500 text-white hover:bg-sky-400 cursor-pointer shrink-0"
+                        >
+                          <Check className="w-3 h-3 stroke-[2.5]" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingLessonId(null)}
+                          title="Cancel"
+                          className="p-1 rounded text-slate-400 hover:text-slate-600 cursor-pointer shrink-0"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </form>
+                    ) : (
                     <button
                       type="button"
                       onClick={() => onSelectLesson(item.lessonId)}
@@ -3591,20 +3537,32 @@ function ChapterSection({
                           <span>{formatIstDisplay(item.unlockAt)}</span>
                         </span>
                       )}
-                      <span
-                        className={`text-[9px] font-mono uppercase px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap ${badge.bg}`}
-                      >
-                        {badge.label}
-                      </span>
                     </button>
+                    )}
                   </div>
 
-                  {/* Actions: Move to Chapter Dropdown & Delete */}
+                  {/* Actions: Rename, Move to Chapter Dropdown & Delete */}
                   <div className="flex items-center gap-0.5 shrink-0 opacity-80 group-hover/item:opacity-100 transition-opacity">
+                    {canManageCurriculum && !item.lessonId.startsWith("unsaved_") && (
+                      <button
+                        type="button"
+                        data-testid="rename-activity-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingLessonId(item.lessonId);
+                          setTempLessonTitle(displayTitle);
+                        }}
+                        title="Rename activity"
+                        className="p-1 rounded text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                      >
+                        <Edit3 className="w-3 h-3 stroke-[2]" />
+                      </button>
+                    )}
                     {otherModules.length > 0 && (
                       <div className="relative">
                         <button
                           type="button"
+                          data-testid="move-activity-btn"
                           onClick={(e) => {
                             e.stopPropagation();
                             setMovingLessonId(movingLessonId === item.lessonId ? null : item.lessonId);

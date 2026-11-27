@@ -197,22 +197,6 @@ export default function LessonViewer({
       {/* Lesson Metadata Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-zinc-200/80 dark:border-zinc-800">
         <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <Badge variant="brand" size="sm">
-              {parsedContent.type === "QUIZ"
-                ? "Quiz"
-                : parsedContent.type === "ASSIGNMENT"
-                ? "Assignment"
-                : "Lesson"}
-            </Badge>
-            {lesson.durationMinutes && (
-              <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 flex items-center gap-1 font-mono">
-                <Clock className="w-3.5 h-3.5" />
-                {lesson.durationMinutes} minutes
-              </span>
-            )}
-          </div>
-
           <h1 className="text-xl sm:text-2xl font-extrabold text-zinc-900 dark:text-zinc-100 leading-tight">
             {lesson.title}
           </h1>

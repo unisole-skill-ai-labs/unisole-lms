@@ -311,11 +311,7 @@ export function getLiveSessionDetails(item: LessonItem): LiveSessionDetails {
  * Concise meta line for lesson rows.
  */
 export function getItemMeta(item: LessonItem, statusInfo: ItemStatusInfo): string {
-  const rawDur = item.duration || "15 min";
-  const duration = rawDur
-    .replace(/\s*Minutes?/i, " min")
-    .replace(/\s*Mins?/i, " min");
-  const parts: string[] = [duration];
+  const parts: string[] = [];
 
   const actType = getActivityType(item);
 
@@ -328,11 +324,7 @@ export function getItemMeta(item: LessonItem, statusInfo: ItemStatusInfo): strin
   } else if (actType === "lab") {
     if (statusInfo.submissionStateText) {
       parts.push(statusInfo.submissionStateText);
-    } else {
-      parts.push("Lab");
     }
-  } else if (actType === "live") {
-    parts.push("Live Workshop");
   }
 
   return parts.join(" · ");
@@ -388,7 +380,6 @@ export function getModuleStats(
   let labs = 0;
   let lives = 0;
   let liveItem: LessonItem | null = null;
-  let totalMinutes = 0;
 
   flowLessons.forEach((item) => {
     const actType = getActivityType(item);
@@ -398,13 +389,6 @@ export function getModuleStats(
     else if (actType === "live") {
       lives++;
       if (!liveItem) liveItem = item;
-    }
-
-    if (item.duration) {
-      const match = item.duration.match(/\d+/);
-      if (match) totalMinutes += parseInt(match[0], 10);
-    } else {
-      totalMinutes += 30;
     }
   });
 
@@ -416,11 +400,7 @@ export function getModuleStats(
 
   const metaSummary = metaParts.length > 0 ? metaParts.join(" · ") : `${totalActivities} activities`;
 
-  const estimatedHours = Math.round((totalMinutes / 60) * 10) / 10;
-  const estimatedTime =
-    estimatedHours >= 1
-      ? `~${Math.round(estimatedHours)} hrs`
-      : `~${totalMinutes} mins`;
+  const estimatedTime = "";
 
   const liveSession = liveItem ? getLiveSessionDetails(liveItem) : null;
 
