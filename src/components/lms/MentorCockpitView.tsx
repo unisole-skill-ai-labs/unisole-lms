@@ -617,12 +617,13 @@ export default function MentorCockpitView({
                       const isGraded = sub.status === "GRADED" || sub.status === "APPROVED";
                       const isPending =
                         sub.status === "SUBMITTED" || sub.status === "UNDER_REVIEW" || sub.status === "PENDING";
-                      const isQuiz =
-                        sub.title?.toLowerCase().includes("quiz") || sub.title?.toLowerCase().includes("mcq");
+                      const subType = (sub.type || "").toLowerCase();
+                      const isQuiz = subType === "quiz";
                       const isPractical =
-                        sub.title?.toLowerCase().includes("practical") ||
-                        sub.title?.toLowerCase().includes("code") ||
-                        sub.title?.toLowerCase().includes("react");
+                        subType === "coding_test" ||
+                        subType === "code" ||
+                        subType === "assignment" ||
+                        subType === "project";
 
                       return (
                         <div

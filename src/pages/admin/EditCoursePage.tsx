@@ -1,6 +1,7 @@
 import React, { Suspense, lazy, useState, useEffect, useRef, useMemo } from "react";
 
 const LessonVideoUploadPanel = lazy(() => import("../../components/admin/LessonVideoUploadPanel"));
+const AssignmentAttachmentPanel = lazy(() => import("../../components/admin/AssignmentAttachmentPanel"));
 import { useParams, Link, Navigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
@@ -68,6 +69,7 @@ import {
   useMoveAdminModuleLessonMutation,
   useGetAdminLessonByIdQuery,
   useUpdateAdminLessonMutation,
+  useSwitchLessonVideoToLinkMutation,
   useClearAdminCourseModulesMutation,
   useGetAdminStudentsQuery,
   useGetAdminMentorsQuery,
@@ -217,8 +219,11 @@ export default function EditCoursePage() {
   const [lessonType, setLessonType] = useState<LessonType>("READING");
   const [contentMarkdown, setContentMarkdown] = useState("");
   const [contentHtml, setContentHtml] = useState("");
-  const [durationMinutes, setDurationMinutes] = useState(15);
+  const [durationMinutes, setDurationMinutes] = useState<number | undefined>(undefined);
   const [videoUrl, setVideoUrl] = useState("");
+  const [videoMode, setVideoMode] = useState<"HLS" | "LINK">("HLS");
+  const [savedVideoProvider, setSavedVideoProvider] = useState<string | null>(null);
+  const [switchToLinkMutation] = useSwitchLessonVideoToLinkMutation();
 
   // Code Block State
   const [codeLanguage, setCodeLanguage] = useState("typescript");
@@ -304,11 +309,39 @@ export default function EditCoursePage() {
       setDurationMinutes(
         typeof dataToUse.durationMinutes === "number"
           ? dataToUse.durationMinutes
-          : parseInt(dataToUse.duration || "45", 10) || 45
+          : undefined
       );
       setVideoUrl(dataToUse.videoUrl || "");
+      setSavedVideoProvider((dataToUse as any).videoProvider || null);
       setLessonUnlockAt(toIstDatetimeLocal(dataToUse.unlockAt));
       setLessonLockAt(toIstDatetimeLocal(dataToUse.lockAt));
+
+      // Reset lesson-specific fields to defaults so stale state from a previous lesson never leaks
+      setContentMarkdown("");
+      setContentHtml("");
+      setCodeLanguage("typescript");
+      setCodeSnippet("");
+      setPassingScore(70);
+      setQuestions([
+        {
+          id: "q-1",
+          question: "",
+          options: ["", "", "", ""],
+          correctOptionIndex: 0,
+          explanation: "",
+        },
+      ]);
+      setAssignmentInstructions("");
+      setAllowedTypes(["URL", "GITHUB"]);
+      setMaxPoints(100);
+      setCodingStarterCode("");
+      setCodingLanguage("python");
+      setCodingTestCases([]);
+      setSubjectivePrompt("");
+      setSubjectiveRubric("");
+      setVideoPrompt("");
+      setVideoDurationLimitSec(180);
+      setAttachments([]);
 
       // Try to parse structured content from lesson
       if (dataToUse?.content && dataToUse.content.startsWith("{")) {
@@ -429,7 +462,7 @@ export default function EditCoursePage() {
       passingScorePercent: passingScore,
       questions,
     } : undefined,
-    assignment: isPrac && practiceType === "PROJECT" ? {
+    assignment: ((isPrac && practiceType === "PROJECT") || (isTst && testType === "PROJECT")) ? {
       instructions: assignmentInstructions,
       allowedTypes,
       maxPoints,
@@ -472,7 +505,19 @@ export default function EditCoursePage() {
   // Manual Save handler (no autosave)
   const handleManualSave = async () => {
     if (!activeLessonId || saveStatus === "saving") return;
+    const trimmedTitle = formData.title.trim().slice(0, 120);
+    if (!trimmedTitle) {
+      setSaveStatus("error");
+      showToast("Activity title cannot be empty.", "error");
+      return;
+    }
+    if (trimmedTitle !== lessonTitle) {
+      setLessonTitle(trimmedTitle);
+    }
     setSaveStatus("saving");
+
+    const effectiveContentMarkdown =
+      isTst && testType === "VIDEO_TEST" ? videoPrompt : formData.contentMarkdown;
 
     const payloadContent = JSON.stringify({
       type: formData.type,
@@ -480,8 +525,8 @@ export default function EditCoursePage() {
       curriculumMode: formData.curriculumMode,
       practiceType: formData.practiceType,
       testType: formData.testType,
-      contentMarkdown: formData.contentMarkdown,
-      contentHtml: formData.contentHtml,
+      contentMarkdown: effectiveContentMarkdown,
+      contentHtml: isTst && testType === "VIDEO_TEST" ? "" : formData.contentHtml,
       codeLanguage: formData.codeLanguage,
       codeSnippet: formData.codeSnippet,
       quiz: formData.quiz,
@@ -492,8 +537,8 @@ export default function EditCoursePage() {
       attachments: formData.attachments,
     });
 
-    const descriptionText = formData.contentMarkdown
-      ? formData.contentMarkdown.replace(/<[^>]*>/g, "").slice(0, 200)
+    const descriptionText = effectiveContentMarkdown
+      ? effectiveContentMarkdown.replace(/<[^>]*>/g, "").slice(0, 200)
       : "";
 
     try {
@@ -503,7 +548,7 @@ export default function EditCoursePage() {
 
         const created = await createAndAttachLesson({
           moduleId: pending.moduleId,
-          title: formData.title || pending.title,
+          title: trimmedTitle,
           slug: pending.slug,
           content: payloadContent,
           videoUrl: formData.videoUrl,
@@ -518,12 +563,22 @@ export default function EditCoursePage() {
         setActiveLessonId(created.id);
         setSaveStatus("saved");
         refetchModules();
-        showToast(`Saved "${formData.title || pending.title}".`);
+        showToast(`Saved "${trimmedTitle}".`);
       } else {
+        if (
+          curriculumMode === "LECTURE" &&
+          videoMode === "LINK" &&
+          formData.videoUrl.trim() !== "" &&
+          savedVideoProvider === "AZURE_HLS"
+        ) {
+          await switchToLinkMutation(activeLessonId).unwrap();
+          setSavedVideoProvider("YOUTUBE");
+        }
+
         await updateLessonMutation({
           id: activeLessonId,
           body: {
-            title: formData.title,
+            title: trimmedTitle,
             durationMinutes: formData.durationMinutes,
             videoUrl: formData.videoUrl,
             unlockAt: fromIstDatetimeLocal(formData.unlockAt),
@@ -835,7 +890,7 @@ export default function EditCoursePage() {
         break;
 
       case "PRACTICE_MCQ":
-        title = customTitle || "Practice Quiz (MCQ)";
+        title = customTitle || "Practice Quiz";
         payloadContent = {
           type: "QUIZ",
           category: "PRACTICE",
@@ -874,7 +929,7 @@ export default function EditCoursePage() {
         break;
 
       case "TEST_CODING":
-        title = customTitle || "Coding Assessment Test";
+        title = customTitle || "Coding Activity";
         payloadContent = {
           type: "CODING_TEST",
           category: "TEST",
@@ -894,15 +949,15 @@ export default function EditCoursePage() {
         break;
 
       case "TEST_VIVA":
-        title = customTitle || "Assignments";
+        title = customTitle || "Assignment";
         payloadContent = {
           type: "VIDEO_TEST",
           category: "TEST",
           curriculumMode: "TEST",
           testType: "VIDEO_TEST",
-          contentMarkdown: "Record a short video walkthrough explaining your architecture and codebase.",
+          contentMarkdown: "",
           videoTest: {
-            prompt: "Demonstrate working software and explain key design decisions.",
+            prompt: "",
             maxDurationSec: 180,
             maxScore: 100,
           },
@@ -965,7 +1020,7 @@ export default function EditCoursePage() {
       slug,
       content: JSON.stringify(payloadContent),
       videoUrl: videoUrl || "",
-      durationMinutes: 15,
+      durationMinutes: undefined,
       position: 9999,
       isUnsavedNew: true,
     };
@@ -1300,57 +1355,7 @@ export default function EditCoursePage() {
             <div className="max-w-4xl mx-auto w-full bg-white dark:bg-[#0B1120] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-6 sm:p-8 shadow-2xs space-y-6">
               {/* Lesson Details Header */}
               <div className="space-y-4 pb-6 border-b border-slate-100 dark:border-slate-800/60">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  {/* Item Type Badge Indicator */}
-                  <div className="flex items-center gap-2">
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border shadow-2xs ${
-                      curriculumMode === "LECTURE"
-                        ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
-                        : curriculumMode === "PRACTICE"
-                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                        : curriculumMode === "TEST"
-                        ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
-                        : "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20"
-                    }`}>
-                      {curriculumMode === "LECTURE" && (
-                        <>
-                          <PlayCircle className="w-3.5 h-3.5 stroke-[2.5]" />
-                          <span>Video Lecture</span>
-                        </>
-                      )}
-                      {curriculumMode === "PRACTICE" && (
-                        <>
-                          <FileQuestion className="w-3.5 h-3.5 stroke-[2.5]" />
-                          <span>{practiceType === "MCQ" ? "Practice Quiz (MCQ)" : "Practice Lab"}</span>
-                        </>
-                      )}
-                      {curriculumMode === "TEST" && testType !== "VIDEO_TEST" && (
-                        <>
-                          <Award className="w-3.5 h-3.5 stroke-[2.5]" />
-                          <span>
-                            {testType === "CODING_TEST"
-                              ? "Evaluated Coding Test"
-                              : testType === "PROJECT"
-                              ? "Capstone Project"
-                              : "Subjective Test"}
-                          </span>
-                        </>
-                      )}
-                      {curriculumMode === "TEST" && testType === "VIDEO_TEST" && (
-                        <>
-                          <ClipboardList className="w-3.5 h-3.5 stroke-[2.5]" />
-                          <span>Assignments</span>
-                        </>
-                      )}
-                      {curriculumMode === "FOLDER" && (
-                        <>
-                          <FolderOpen className="w-3.5 h-3.5 stroke-[2.5]" />
-                          <span>Resource Folder</span>
-                        </>
-                      )}
-                    </span>
-                  </div>
-
+                <div className="flex items-center justify-end gap-4">
                   {/* Save Action & Status (placed where Archive used to be) */}
                   <div className="flex items-center gap-3">
                     {saveStatus === "saving" && (
@@ -1391,6 +1396,7 @@ export default function EditCoursePage() {
                 <div>
                   <input
                     type="text"
+                    maxLength={120}
                     value={lessonTitle}
                     onChange={(e) => setLessonTitle(e.target.value)}
                     placeholder="Lesson Title..."
@@ -1414,11 +1420,13 @@ export default function EditCoursePage() {
                         onVideoUrlChange={setVideoUrl}
                         durationMinutes={durationMinutes}
                         onDurationChange={setDurationMinutes}
+                        onModeChange={setVideoMode}
+                        onProviderStatusChange={(provider) => setSavedVideoProvider(provider)}
                       />
                     </Suspense>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                      <div className="sm:col-span-2">
+                    <div className="pt-2">
+                      <div>
                         <label className="block text-[11px] font-semibold text-slate-400 mb-1">
                           Video URL (Optional: YouTube, Vimeo, or MP4 link)
                         </label>
@@ -1430,18 +1438,6 @@ export default function EditCoursePage() {
                           className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 font-mono"
                         />
                         <p className="text-[10px] text-slate-400 mt-1">Paste a video link</p>
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-semibold text-slate-400 mb-1">
-                          Duration (Minutes)
-                        </label>
-                        <input
-                          type="number"
-                          min={1}
-                          value={durationMinutes}
-                          onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                          className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/40 font-mono"
-                        />
                       </div>
                     </div>
                   )
@@ -2079,9 +2075,20 @@ export default function EditCoursePage() {
                     />
                   </div>
 
-                  {/* Assignment Video URL & Duration (directly above Availability & Time Lock) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                    <div className="sm:col-span-2">
+                  {activeLessonId && (
+                    <Suspense fallback={<div className="text-xs text-slate-400">Loading attachment controls...</div>}>
+                      <AssignmentAttachmentPanel
+                        lessonId={activeLessonId}
+                        isLessonSaved={!activeLessonId.startsWith("unsaved_") && !hasUnsavedChanges}
+                        initialAttachment={(activeLessonData as any)?.assignmentAttachment || null}
+                        onAttachmentChange={() => refetchActiveLesson()}
+                      />
+                    </Suspense>
+                  )}
+
+                  {/* Assignment Video URL (directly above Availability & Time Lock) */}
+                  <div className="pt-2">
+                    <div>
                       <label className="block text-[11px] font-semibold text-slate-400 mb-1">
                         Video URL (Optional: YouTube, Vimeo, or MP4 link)
                       </label>
@@ -2093,18 +2100,6 @@ export default function EditCoursePage() {
                         className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 font-mono"
                       />
                       <p className="text-[10px] text-slate-400 mt-1">Paste a video link</p>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-400 mb-1">
-                        Duration (Minutes)
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        value={durationMinutes}
-                        onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#070A11] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/40 font-mono"
-                      />
                     </div>
                   </div>
                 </div>
@@ -2553,6 +2548,8 @@ function ChapterSection({
   const [customLessonTitle, setCustomLessonTitle] = useState("");
   const [customFolderTargetId, setCustomFolderTargetId] = useState<string | undefined>(undefined);
   const [movingLessonId, setMovingLessonId] = useState<string | null>(null);
+  const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
+  const [tempLessonTitle, setTempLessonTitle] = useState("");
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
 
   // Module rename & scheduling state
@@ -2868,62 +2865,19 @@ function ChapterSection({
     }
   };
 
-  const getLessonBadge = (les: any) => {
-    if (les.isFolder) {
-      return {
-        label: "Folder",
-        bg: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20",
-        isFolder: true,
-      };
+  const handleInlineRenameLesson = async (lessonId: string) => {
+    const trimmed = tempLessonTitle.trim().slice(0, 120);
+    if (!trimmed) {
+      alert("Activity title cannot be empty.");
+      return;
     }
-    if (les.videoUrl) {
-      return {
-        label: "Video",
-        bg: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20",
-        isFolder: false,
-      };
+    try {
+      await updateLessonApi({ id: lessonId, title: trimmed }).unwrap();
+      setEditingLessonId(null);
+      refetchLessons();
+    } catch (err: any) {
+      alert(err?.data?.message || err?.data?.error || "Failed to rename activity.");
     }
-    const text = `${les.title || ""} ${les.slug || ""} ${les.lessonId || ""}`.toLowerCase();
-    if (text.includes("quiz") || text.includes("mcq")) {
-      return {
-        label: "MCQ",
-        bg: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20",
-        isFolder: false,
-      };
-    }
-    if (text.includes("coding") || text.includes("code")) {
-      return {
-        label: "Coding",
-        bg: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20",
-        isFolder: false,
-      };
-    }
-    if (text.includes("viva") || text.includes("video")) {
-      return {
-        label: "Assignments",
-        bg: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20",
-        isFolder: false,
-      };
-    }
-    if (text.includes("subjective") || text.includes("theory")) {
-      return {
-        label: "Subjective",
-        bg: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20",
-        isFolder: false,
-      };
-    }
-    if (text.includes("project") || text.includes("lab") || text.includes("capstone")) {
-      return {
-        label: "Project",
-        bg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
-        isFolder: false,
-      };
-    }
-    return {
-      label: "Lesson",
-      bg: "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/60",
-      isFolder: false,
-    };
   };
 
   const otherModules = allModules.filter((m) => m.moduleId !== moduleId);
@@ -3343,7 +3297,6 @@ function ChapterSection({
             rootLessons.map((item: any) => {
               const isFolder = item.isFolder;
               const isSelected = activeLessonId === item.lessonId;
-              const badge = getLessonBadge(item);
               const displayTitle = item.title && item.title.trim().length > 0 ? item.title : item.lessonId;
               const childItems = isFolder ? (folderChildrenMap[item.lessonId] || []) : [];
               const folderExpanded = isFolder && isFolderOpen(item.lessonId);
@@ -3460,7 +3413,6 @@ function ChapterSection({
                         ) : (
                           childItems.map((cLes: any) => {
                             const isChildSelected = activeLessonId === cLes.lessonId;
-                            const cBadge = getLessonBadge(cLes);
                             const cDisplayTitle =
                               cLes.title && cLes.title.trim().length > 0 ? cLes.title : cLes.lessonId;
 
@@ -3507,11 +3459,6 @@ function ChapterSection({
                                         <span>{formatIstDisplay(cLes.unlockAt)}</span>
                                       </span>
                                     )}
-                                    <span
-                                      className={`text-[8px] font-mono uppercase px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap ${cBadge.bg}`}
-                                    >
-                                      {cBadge.label}
-                                    </span>
                                   </button>
                                 </div>
 
@@ -3569,6 +3516,40 @@ function ChapterSection({
                       <GripVertical className="w-3.5 h-3.5" />
                     </div>
 
+                    {editingLessonId === item.lessonId ? (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          handleInlineRenameLesson(item.lessonId);
+                        }}
+                        className="flex items-center gap-1 flex-1 min-w-0"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="text"
+                          maxLength={120}
+                          autoFocus
+                          value={tempLessonTitle}
+                          onChange={(e) => setTempLessonTitle(e.target.value)}
+                          className="px-2 py-0.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 flex-1 min-w-0"
+                        />
+                        <button
+                          type="submit"
+                          title="Save title"
+                          className="p-1 rounded bg-sky-500 text-white hover:bg-sky-400 cursor-pointer shrink-0"
+                        >
+                          <Check className="w-3 h-3 stroke-[2.5]" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingLessonId(null)}
+                          title="Cancel"
+                          className="p-1 rounded text-slate-400 hover:text-slate-600 cursor-pointer shrink-0"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </form>
+                    ) : (
                     <button
                       type="button"
                       onClick={() => onSelectLesson(item.lessonId)}
@@ -3591,16 +3572,26 @@ function ChapterSection({
                           <span>{formatIstDisplay(item.unlockAt)}</span>
                         </span>
                       )}
-                      <span
-                        className={`text-[9px] font-mono uppercase px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap ${badge.bg}`}
-                      >
-                        {badge.label}
-                      </span>
                     </button>
+                    )}
                   </div>
 
-                  {/* Actions: Move to Chapter Dropdown & Delete */}
+                  {/* Actions: Rename, Move to Chapter Dropdown & Delete */}
                   <div className="flex items-center gap-0.5 shrink-0 opacity-80 group-hover/item:opacity-100 transition-opacity">
+                    {canManageCurriculum && !item.lessonId.startsWith("unsaved_") && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingLessonId(item.lessonId);
+                          setTempLessonTitle(displayTitle);
+                        }}
+                        title="Rename activity"
+                        className="p-1 rounded text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                      >
+                        <Edit3 className="w-3 h-3 stroke-[2]" />
+                      </button>
+                    )}
                     {otherModules.length > 0 && (
                       <div className="relative">
                         <button

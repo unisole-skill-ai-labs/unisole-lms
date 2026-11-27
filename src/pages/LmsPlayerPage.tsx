@@ -73,6 +73,8 @@ import MilestonesModal from "../components/lms/MilestonesModal";
 import NotFoundPage from "./NotFoundPage";
 import CodingTestRunner from "../components/lms/CodingTestRunner";
 import SubjectiveVideoTestRunner from "../components/lms/SubjectiveVideoTestRunner";
+import AssignmentAttachmentViewer from "../components/lms/AssignmentAttachmentViewer";
+import AssignmentSubmissionPanel from "../components/lms/AssignmentSubmissionPanel";
 import Button from "../components/ui/Button";
 import {
   getCurriculum,
@@ -231,9 +233,7 @@ export default function LmsPlayerPage() {
             const isFolder =
               curMode === "FOLDER" ||
               cType === "FOLDER" ||
-              parsedContent?.category === "FOLDER" ||
-              (l.title && l.title.toLowerCase().includes("folder")) ||
-              (l.title && l.title.includes("📁"));
+              parsedContent?.category === "FOLDER";
 
             const isLive =
               !isFolder &&
@@ -309,14 +309,16 @@ export default function LmsPlayerPage() {
 
             // Instructions / Description (avoid leaking raw JSON content string)
             const parsedInstructions =
-              l.instructions ||
-              parsedContent?.videoTest?.prompt ||
-              parsedContent?.subjectiveTest?.prompt ||
-              parsedContent?.assignment?.instructions ||
-              parsedContent?.instructions ||
-              l.description ||
-              parsedContent?.contentMarkdown ||
-              (typeof l.content === "string" && !l.content.trim().startsWith("{") ? l.content : "");
+              typeof parsedContent?.videoTest?.prompt === "string"
+                ? parsedContent.videoTest.prompt
+                : typeof parsedContent?.assignment?.instructions === "string"
+                ? parsedContent.assignment.instructions
+                : l.instructions ||
+                  parsedContent?.subjectiveTest?.prompt ||
+                  parsedContent?.instructions ||
+                  l.description ||
+                  parsedContent?.contentMarkdown ||
+                  (typeof l.content === "string" && !l.content.trim().startsWith("{") ? l.content : "");
 
             const codingConfig = l.codingTest || parsedContent?.codingTest;
             const subjectiveConfig = l.subjectiveTest || parsedContent?.subjectiveTest;
@@ -368,8 +370,8 @@ export default function LmsPlayerPage() {
 
             return {
               id: l.id || `item-${idx}-${lIdx}`,
-              title: l.title || `${idx + 1}.${lIdx + 1} Lesson`,
-              duration: l.durationMinutes ? `${l.durationMinutes} Mins` : `${lIdx * 3 + 12} Mins`,
+              title: l.title || `${idx + 1}.${lIdx + 1}`,
+              duration: "",
               type: resolvedType,
               category: resolvedCategory,
               unlockAt: l.unlockAt || null,
@@ -385,6 +387,7 @@ export default function LmsPlayerPage() {
               questions: parsedQuestions,
               instructions: parsedInstructions,
               attachments: parsedContent?.attachments || l.attachments || [],
+              assignmentAttachment: l.assignmentAttachment || null,
               maxScore,
               liveDate: l.liveDate || parsedContent?.liveDate,
               liveTime: l.liveTime || parsedContent?.liveTime,
@@ -2114,9 +2117,6 @@ export default function LmsPlayerPage() {
                                 <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-teal-600 dark:group-hover:text-teal-400 truncate">
                                   {cItem.title}
                                 </h4>
-                                <span className="text-[10px] text-slate-400">
-                                  {cItem.duration || "15 Mins"} · {cItem.category || "Lesson"}
-                                </span>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -2188,6 +2188,20 @@ export default function LmsPlayerPage() {
                 config={(selectedLesson as any).config}
                 isCompleted={completedLessonIds.includes(selectedLesson.id)}
                 onSubmit={handleSubjectiveVideoSubmit}
+                attachment={
+                  (selectedLesson as any).assignmentAttachment ? (
+                    <AssignmentAttachmentViewer
+                      lessonId={selectedLesson.id}
+                      attachment={(selectedLesson as any).assignmentAttachment}
+                    />
+                  ) : null
+                }
+                submissionSlot={
+                  ((selectedLesson as any)?.type === "video_test" ||
+                    (selectedLesson as any)?.category === "TEST") ? (
+                    <AssignmentSubmissionPanel assignmentId={selectedLesson.id} />
+                  ) : null
+                }
               />
             </div>
           </div>
@@ -2373,14 +2387,6 @@ export default function LmsPlayerPage() {
               </div>
 
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 uppercase tracking-wider">
-                    Reading & Study Material
-                  </span>
-                  <span className="text-[11px] text-slate-400 font-medium">
-                    {selectedLesson.duration || "15 Mins"}
-                  </span>
-                </div>
                 <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                   {cleanLessonTitle(selectedLesson.title)}
                 </h1>

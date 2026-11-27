@@ -173,8 +173,8 @@ export default function ModulePage() {
 
             return {
               id: String(l.id || `les-${lIdx}`),
-              title: l.title || `Lesson ${lIdx + 1}`,
-              duration: l.durationMinutes ? `${l.durationMinutes} Mins` : l.duration || "20 Mins",
+              title: l.title || `Activity ${lIdx + 1}`,
+              duration: "",
               type: resolvedType,
               category: curMode || (isVideo ? "LECTURE" : isQuiz || isCoding ? "PRACTICE" : "READING"),
               unlockAt: l.unlockAt || null,
@@ -488,19 +488,13 @@ export default function ModulePage() {
                             {cleanLessonTitle(lesson.title)}
                           </h3>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 font-medium">
-                          <span className="capitalize">{lesson.type.replace("_", " ")}</span>
-                          <span>•</span>
-                          <span>{lesson.duration}</span>
-                          {lesson.unlockAt && isLocked && (
-                            <>
-                              <span>•</span>
-                              <span className="text-amber-600 dark:text-amber-400 font-bold">
-                                Unlocks on {formatIstDisplay(lesson.unlockAt)}
-                              </span>
-                            </>
-                          )}
-                        </div>
+                        {lesson.unlockAt && isLocked && (
+                          <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+                            <span className="text-amber-600 dark:text-amber-400 font-bold">
+                              Unlocks on {formatIstDisplay(lesson.unlockAt)}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
 

@@ -9,6 +9,8 @@ interface SubjectiveVideoTestRunnerProps {
   config?: any;
   onSubmit: (data: { text?: string; videoUrl?: string }) => Promise<void> | void;
   isCompleted?: boolean;
+  attachment?: React.ReactNode;
+  submissionSlot?: React.ReactNode;
 }
 
 function validateHttpUrl(raw: string): { ok: true; url: string } | { ok: false; error: string } {
@@ -33,6 +35,8 @@ export default function SubjectiveVideoTestRunner({
   description,
   onSubmit,
   isCompleted,
+  attachment,
+  submissionSlot,
 }: SubjectiveVideoTestRunnerProps) {
   const isVideo = type === "VIDEO_TEST";
   const [responseContent, setResponseContent] = useState("");
@@ -107,7 +111,12 @@ export default function SubjectiveVideoTestRunner({
         )}
       </div>
 
+      {attachment}
+
       {/* Submission Form */}
+      {submissionSlot ? (
+        submissionSlot
+      ) : (
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
         {isVideo ? (
           <div className="space-y-2">
@@ -178,6 +187,7 @@ export default function SubjectiveVideoTestRunner({
           </button>
         </div>
       </form>
+      )}
     </div>
   );
 }
