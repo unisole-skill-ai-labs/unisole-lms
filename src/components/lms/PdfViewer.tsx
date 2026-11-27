@@ -15,6 +15,7 @@ interface PdfViewerProps {
   blobUrl: string | null;
   fileName?: string;
   onDownload?: () => void;
+  onRetry?: () => void;
   isLoadingExternal?: boolean;
   externalError?: string | null;
 }
@@ -104,6 +105,7 @@ export default function PdfViewer({
   blobUrl,
   fileName = "document.pdf",
   onDownload,
+  onRetry,
   isLoadingExternal = false,
   externalError = null,
 }: PdfViewerProps) {
@@ -373,16 +375,28 @@ export default function PdfViewer({
             <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 max-w-md">
               {effectiveError}
             </p>
-            {(blobUrl || onDownload) && (
-              <button
-                type="button"
-                onClick={triggerDownload}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download PDF</span>
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {onRetry && (
+                <button
+                  type="button"
+                  data-testid="pdf-retry-btn"
+                  onClick={onRetry}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 text-xs font-bold cursor-pointer"
+                >
+                  <span>Retry</span>
+                </button>
+              )}
+              {(blobUrl || onDownload) && (
+                <button
+                  type="button"
+                  onClick={triggerDownload}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download PDF</span>
+                </button>
+              )}
+            </div>
           </div>
         )}
 

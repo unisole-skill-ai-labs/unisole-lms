@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { FileText, Loader2, Paperclip, Trash2, AlertTriangle } from "lucide-react";
 import { API_BASE_URL } from "../../store/apiSlice";
 
@@ -35,11 +35,43 @@ export default function AssignmentAttachmentPanel({
   const [uploading, setUploading] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [missingWarning, setMissingWarning] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setAttachment(initialAttachment || null);
     setError(null);
+    setMissingWarning(null);
   }, [lessonId, initialAttachment]);
+
+  useEffect(() => {
+    if (!attachment || !isLessonSaved || lessonId.startsWith("unsaved_")) {
+      setMissingWarning(null);
+      return;
+    }
+    let cancelled = false;
+    const token = localStorage.getItem("unisole-app:token") || "";
+    fetch(`${API_BASE_URL}/api/lms/lessons/${lessonId}/attachment`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        Range: "bytes=0-0",
+      },
+    })
+      .then(async (res) => {
+        if (cancelled) return;
+        if (res.status === 404) {
+          setMissingWarning("Attachment file is missing from storage.");
+        } else if (res.status === 503) {
+          setMissingWarning("Google Drive storage is not configured in this environment.");
+        } else if (res.ok || res.status === 206) {
+          setMissingWarning(null);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [lessonId, attachment, isLessonSaved]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -148,8 +180,30 @@ export default function AssignmentAttachmentPanel({
         <p className="text-xs text-slate-400">No file attached.</p>
       )}
 
+      {missingWarning && (
+        <div
+          data-testid="admin-attachment-missing-warning"
+          className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-semibold"
+        >
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{missingWarning}</span>
+          </div>
+          <button
+            type="button"
+            data-testid="admin-reupload-attachment-btn"
+            disabled={uploading || removing}
+            onClick={() => fileInputRef.current?.click()}
+            className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold cursor-pointer shrink-0"
+          >
+            Re-upload
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center gap-3">
         <input
+          ref={fileInputRef}
           type="file"
           data-testid="assignment-attachment-input"
           accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown"

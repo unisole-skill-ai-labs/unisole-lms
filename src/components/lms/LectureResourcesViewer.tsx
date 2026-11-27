@@ -76,7 +76,16 @@ export default function LectureResourcesViewer({
       const resp = await fetch(`${API_BASE_URL}/api/lms/lessons/${lessonId}/resources/${res.id}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      if (!resp.ok) throw new Error(`Failed to load file (HTTP ${resp.status})`);
+      if (!resp.ok) {
+        const errJson = await resp.json().catch(() => ({}));
+        if (resp.status === 404) {
+          throw new Error(errJson?.error || "Attachment is no longer available.");
+        }
+        if (resp.status >= 500) {
+          throw new Error("Unable to load file right now. Please try again.");
+        }
+        throw new Error(errJson?.error || "Failed to load file.");
+      }
       if (isPdf) {
         const blob = await resp.blob();
         setPdfBlobUrl(URL.createObjectURL(blob));

@@ -23,6 +23,7 @@ export default function AssignmentAttachmentViewer({
   const [error, setError] = useState<string | null>(null);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [textContent, setTextContent] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   const ext = attachment.originalName.toLowerCase().split(".").pop() || "";
   const isPdf = attachment.mime === "application/pdf" || ext === "pdf";
@@ -44,7 +45,14 @@ export default function AssignmentAttachmentViewer({
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) {
-          throw new Error(`Failed to load attachment (HTTP ${res.status})`);
+          const errJson = await res.json().catch(() => ({}));
+          if (res.status === 404) {
+            throw new Error(errJson?.error || "Attachment is no longer available.");
+          }
+          if (res.status >= 500) {
+            throw new Error("Unable to load attachment right now. Please try again.");
+          }
+          throw new Error(errJson?.error || "Unable to load attachment.");
         }
         if (isPdf) {
           const blob = await res.blob();
@@ -58,7 +66,7 @@ export default function AssignmentAttachmentViewer({
         }
       } catch (err: any) {
         if (!active) return;
-        setError(err?.message || "Unable to load attachment");
+        setError(err?.message || "Unable to load attachment.");
       } finally {
         if (active) setLoading(false);
       }
@@ -71,7 +79,7 @@ export default function AssignmentAttachmentViewer({
         URL.revokeObjectURL(createdUrl);
       }
     };
-  }, [lessonId, attachment.originalName, attachment.mime, isPdf]);
+  }, [lessonId, attachment.originalName, attachment.mime, isPdf, retryCount]);
 
   return (
     <div
@@ -90,6 +98,7 @@ export default function AssignmentAttachmentViewer({
             fileName={attachment.originalName}
             isLoadingExternal={loading}
             externalError={error}
+            onRetry={() => setRetryCount((c) => c + 1)}
           />
         </div>
       ) : (
@@ -102,9 +111,22 @@ export default function AssignmentAttachmentViewer({
           )}
 
           {error && (
-            <div className="flex items-center gap-2 text-xs text-rose-500 font-semibold py-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
+            <div
+              data-testid="attachment-error-box"
+              className="flex items-center justify-between gap-2 text-xs text-rose-500 font-semibold py-2"
+            >
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{error}</span>
+              </div>
+              <button
+                type="button"
+                data-testid="attachment-retry-btn"
+                onClick={() => setRetryCount((c) => c + 1)}
+                className="px-2.5 py-1 rounded-lg border border-rose-500/30 hover:bg-rose-500/10 text-xs font-bold cursor-pointer"
+              >
+                Retry
+              </button>
             </div>
           )}
 
