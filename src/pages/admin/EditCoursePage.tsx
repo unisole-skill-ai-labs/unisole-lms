@@ -619,11 +619,13 @@ export default function EditCoursePage() {
           lockAt: fromIstDatetimeLocal(formData.lockAt),
         }).unwrap();
 
+        const realId = (created as any)?.id || (created as any)?.lessonId || activeLessonId;
         setPendingNewLessons((prev) => prev.filter((l) => l.id !== activeLessonId));
-        lastPopulatedKeyRef.current = created.id;
+        lastPopulatedKeyRef.current = realId;
+        needsBaselineSyncRef.current = realId;
         setSavedSnapshotJson(currentFormJson);
         setInitialNewSnapshotJson("");
-        setActiveLessonId(created.id);
+        setActiveLessonId(realId);
         setSaveStatus("saved");
         refetchModules();
         return true;
@@ -1463,7 +1465,7 @@ export default function EditCoursePage() {
                       <LessonVideoUploadPanel
                         key={activeLessonId}
                         lessonId={activeLessonId}
-                        isLessonSaved={!activeLessonId.startsWith("unsaved_") && !hasUnsavedChanges}
+                        isLessonSaved={!activeLessonId.startsWith("unsaved_")}
                         videoUrl={videoUrl}
                         onVideoUrlChange={setVideoUrl}
                         durationMinutes={durationMinutes}
@@ -1660,7 +1662,7 @@ export default function EditCoursePage() {
                       <LectureResourcesPanel
                         key={activeLessonId}
                         lessonId={activeLessonId}
-                        isLessonSaved={!activeLessonId.startsWith("unsaved_") && !hasUnsavedChanges}
+                        isLessonSaved={!activeLessonId.startsWith("unsaved_")}
                         initialResources={(activeLessonData as any)?.lessonResources || []}
                         onResourcesChange={() => refetchActiveLesson()}
                       />
@@ -2081,7 +2083,7 @@ export default function EditCoursePage() {
                       <AssignmentAttachmentPanel
                         key={activeLessonId}
                         lessonId={activeLessonId}
-                        isLessonSaved={!activeLessonId.startsWith("unsaved_") && !hasUnsavedChanges}
+                        isLessonSaved={!activeLessonId.startsWith("unsaved_")}
                         initialAttachment={(activeLessonData as any)?.assignmentAttachment || null}
                         onAttachmentChange={() => refetchActiveLesson()}
                       />
