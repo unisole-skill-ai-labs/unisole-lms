@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import {
   ChevronLeft,
   ChevronRight,
@@ -30,6 +31,7 @@ interface PdfPageCanvasProps {
 function PdfPageCanvas({ pdfDoc, pageNumber, scale, containerWidth }: PdfPageCanvasProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const renderTaskRef = useRef<any>(null);
   const [isVisible, setIsVisible] = useState(pageNumber <= 2);
   const [renderedKey, setRenderedKey] = useState<string>("");
 
@@ -62,20 +64,36 @@ function PdfPageCanvas({ pdfDoc, pageNumber, scale, containerWidth }: PdfPageCan
         const targetBaseWidth = Math.max(260, (containerWidth || 720) - 32);
         const responsiveScale = (targetBaseWidth / baseViewport.width) * scale;
         const viewport = page.getViewport({ scale: responsiveScale });
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const outputScale = window.devicePixelRatio || 1;
 
         const canvas = canvasRef.current;
         if (!canvas || cancelled) return;
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
-        canvas.width = Math.floor(viewport.width * dpr);
-        canvas.height = Math.floor(viewport.height * dpr);
+        if (renderTaskRef.current) {
+          try {
+            renderTaskRef.current.cancel();
+          } catch {
+            // ignore cancellation errors
+          }
+        }
+
+        canvas.width = Math.floor(viewport.width * outputScale);
+        canvas.height = Math.floor(viewport.height * outputScale);
         canvas.style.width = `${Math.floor(viewport.width)}px`;
         canvas.style.height = `${Math.floor(viewport.height)}px`;
 
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        await page.render({ canvasContext: ctx, viewport }).promise;
+        const transform =
+          outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : undefined;
+
+        const renderTask = page.render({
+          canvasContext: ctx,
+          transform,
+          viewport,
+        });
+        renderTaskRef.current = renderTask;
+        await renderTask.promise;
         if (!cancelled) setRenderedKey(renderKey);
       } catch {
         // Ignore cancelled/disposed render tasks
@@ -84,6 +102,13 @@ function PdfPageCanvas({ pdfDoc, pageNumber, scale, containerWidth }: PdfPageCan
 
     return () => {
       cancelled = true;
+      if (renderTaskRef.current) {
+        try {
+          renderTaskRef.current.cancel();
+        } catch {
+          // ignore
+        }
+      }
     };
   }, [isVisible, pdfDoc, pageNumber, scale, containerWidth, renderedKey]);
 
@@ -95,7 +120,7 @@ function PdfPageCanvas({ pdfDoc, pageNumber, scale, containerWidth }: PdfPageCan
     >
       <canvas
         ref={canvasRef}
-        className="bg-white shadow-md rounded border border-slate-200 dark:border-slate-700 max-w-full"
+        className="bg-white shadow-md rounded border border-slate-200 dark:border-slate-700 block"
       />
     </div>
   );
@@ -164,10 +189,7 @@ export default function PdfViewer({
     (async () => {
       try {
         const pdfjsLib: any = await import("pdfjs-dist");
-        pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-          "pdfjs-dist/build/pdf.worker.min.mjs",
-          import.meta.url
-        ).toString();
+        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
         activeTask = pdfjsLib.getDocument({ url: blobUrl });
         const doc = await activeTask.promise;
@@ -357,7 +379,7 @@ export default function PdfViewer({
       <div
         ref={scrollAreaRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-3 py-4 space-y-3"
+        className="flex-1 overflow-y-auto overflow-x-auto px-3 py-4 space-y-3"
       >
         {effectiveLoading && (
           <div className="h-full flex items-center justify-center gap-2 text-xs text-slate-500 dark:text-slate-400">
