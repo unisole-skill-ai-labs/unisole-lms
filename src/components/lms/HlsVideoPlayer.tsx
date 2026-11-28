@@ -210,13 +210,17 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
           let authRefreshed = false;
           hlsInstance.on(Hls.Events.ERROR, async (_event: any, data: any) => {
             if (cancelled) return;
-            const safeFragPath = data?.frag?.url ? String(data.frag.url).split("?")[0].split("/").slice(-2).join("/") : undefined;
-            const summary = `${data?.type || "ERR"}/${data?.details || "unknown"}${data?.response?.code ? ` (HTTP ${data.response.code})` : ""}${safeFragPath ? ` [${safeFragPath}]` : ""}`;
+            const rawUrl = data?.frag?.url || data?.url || data?.networkDetails?.responseURL || "";
+            const safeFragPath = rawUrl ? String(rawUrl).split("?")[0].split("/").slice(-3).join("/") : undefined;
+            const levelIdx = hlsInstance?.currentLevel ?? -1;
+            const levelHeight = levelIdx >= 0 ? hlsInstance?.levels?.[levelIdx]?.height : undefined;
+            const levelLabel = levelHeight ? `${levelHeight}p` : `level:${levelIdx}`;
+            const summary = `${data?.type || "ERR"}/${data?.details || "unknown"}${data?.response?.code ? ` (HTTP ${data.response.code})` : ""} [${levelLabel}]${safeFragPath ? ` [${safeFragPath}]` : ""}`;
             if (!data?.fatal) {
-              console.warn("[HLS non-fatal]", { lessonId, details: data?.details, frag: safeFragPath });
+              console.warn("[HLS non-fatal]", { lessonId, details: data?.details, level: levelLabel, frag: safeFragPath });
               return;
             }
-            console.error("[HLS fatal]", { lessonId, type: data?.type, details: data?.details, code: data?.response?.code, frag: safeFragPath });
+            console.error("[HLS fatal]", { lessonId, type: data?.type, details: data?.details, code: data?.response?.code, level: levelLabel, frag: safeFragPath });
             const httpStatus = data?.response?.code;
             if ((httpStatus === 401 || httpStatus === 403) && !authRefreshed) {
               authRefreshed = true;
