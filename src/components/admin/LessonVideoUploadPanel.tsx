@@ -47,6 +47,7 @@ const STATUS_STYLES: Record<string, { label: string; cls: string }> = {
   UPLOADING: { label: "Uploading", cls: "bg-amber-500/15 text-amber-600 dark:text-amber-300" },
   READY: { label: "Ready", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300" },
   FAILED: { label: "Failed", cls: "bg-rose-500/15 text-rose-600 dark:text-rose-300" },
+  NEEDS_REUPLOAD: { label: "Needs Re-upload", cls: "bg-rose-500/15 text-rose-600 dark:text-rose-300" },
 };
 
 function normalizeAndValidateHlsFiles(
@@ -361,12 +362,24 @@ export default function LessonVideoUploadPanel({
         return;
       }
       const masterText = await masterFile.text();
-      const variantPaths = masterText
-        .split(/\r?\n/)
-        .map((l) => l.trim().replace(/\\/g, "/"))
-        .filter((l) => l && !l.startsWith("#"));
+      const masterLines = masterText.split(/\r?\n/);
+      const variantPaths: string[] = [];
+      for (let i = 0; i < masterLines.length; i++) {
+        const line = masterLines[i].trim();
+        if (line.startsWith("#EXT-X-STREAM-INF:")) {
+          const codecsMatch = line.match(/CODECS="([^"]+)"/i);
+          if (codecsMatch && !codecsMatch[1].toLowerCase().includes("mp4a")) {
+            setHlsValidationError(
+              `A rendition in master.m3u8 has no audio declared in CODECS (${codecsMatch[1]}). Re-encode with the latest script: npm run video:reencode -- --in <video> --out <folder>`
+            );
+            return;
+          }
+        } else if (line && !line.startsWith("#")) {
+          variantPaths.push(line.replace(/\\/g, "/"));
+        }
+      }
       if (variantPaths.length === 0) {
-        setHlsValidationError("master.m3u8 contains no variant streams. Re-encode with: node tools/video-cli/encode-hls.mjs <video.mp4>");
+        setHlsValidationError("master.m3u8 contains no variant streams. Re-encode with the latest script: npm run video:reencode -- --in <video> --out <folder>");
         return;
       }
 
@@ -374,24 +387,35 @@ export default function LessonVideoUploadPanel({
       for (const vp of variantPaths) {
         const vFile = byPath.get(vp);
         if (!vFile || vFile.size === 0) {
-          setHlsValidationError(`Referenced playlist missing or empty: ${vp}. Re-encode with: node tools/video-cli/encode-hls.mjs <video.mp4>`);
+          setHlsValidationError(`Referenced playlist missing or empty: ${vp}. Re-encode with the latest script: npm run video:reencode -- --in <video> --out <folder>`);
           return;
         }
         const vText = await vFile.text();
         if (!vText.includes("#EXT-X-ENDLIST")) {
-          setHlsValidationError(`${vp} is missing #EXT-X-ENDLIST (incomplete encode). Re-encode with: node tools/video-cli/encode-hls.mjs <video.mp4>`);
+          setHlsValidationError(`${vp} is missing #EXT-X-ENDLIST (incomplete encode). Re-encode with the latest script: npm run video:reencode -- --in <video> --out <folder>`);
           return;
         }
         const vDir = vp.split("/")[0];
         let totalDur = 0;
+        let targetDuration = 6;
         const lines = vText.split(/\r?\n/);
         for (const rawLine of lines) {
           const line = rawLine.trim();
           if (!line) continue;
-          if (line.startsWith("#EXTINF:")) {
+          if (line.startsWith("#EXT-X-TARGETDURATION:")) {
+            targetDuration = Number(line.split(":")[1]);
+            if (!Number.isFinite(targetDuration) || targetDuration > 10) {
+              setHlsValidationError(`${vp} has TARGETDURATION=${targetDuration}s (> 10s). Re-encode with the latest script: npm run video:reencode -- --in <video> --out <folder>`);
+              return;
+            }
+          } else if (line.startsWith("#EXTINF:")) {
             const d = Number(line.slice("#EXTINF:".length).split(",")[0]);
             if (!Number.isFinite(d) || d <= 0) {
-              setHlsValidationError(`${vp} has invalid #EXTINF duration. Re-encode with: node tools/video-cli/encode-hls.mjs <video.mp4>`);
+              setHlsValidationError(`${vp} has invalid #EXTINF duration. Re-encode with the latest script: npm run video:reencode -- --in <video> --out <folder>`);
+              return;
+            }
+            if (d > targetDuration * 1.5 || d > 12) {
+              setHlsValidationError(`${vp} has segment duration ${d.toFixed(1)}s (exceeds 1.5x TARGETDURATION or 12s). Re-encode with the latest script: npm run video:reencode -- --in <video> --out <folder>`);
               return;
             }
             totalDur += d;
@@ -399,7 +423,7 @@ export default function LessonVideoUploadPanel({
             const segRel = `${vDir}/${line.replace(/\\/g, "/")}`;
             const segFile = byPath.get(segRel);
             if (!segFile || segFile.size === 0) {
-              setHlsValidationError(`Segment missing or empty: ${segRel}. Re-encode with: node tools/video-cli/encode-hls.mjs <video.mp4>`);
+              setHlsValidationError(`Segment missing or empty: ${segRel}. Re-encode with the latest script: npm run video:reencode -- --in <video> --out <folder>`);
               return;
             }
           }
@@ -459,10 +483,28 @@ export default function LessonVideoUploadPanel({
       };
       setHlsSession(session);
 
-      for (const entry of hlsFiles) {
-        if (hlsAbortRef.current) throw new Error("Upload cancelled");
-        await uploadSingleHlsFile(entry.relPath, entry.file, session.uploadUrls[entry.relPath]);
-      }
+      const entries = [...hlsFiles];
+      let nextIdx = 0;
+      const CONCURRENCY = 4;
+      const uploadWithRetry = async (entry: HlsFileEntry) => {
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          if (hlsAbortRef.current) throw new Error("Upload cancelled");
+          try {
+            await uploadSingleHlsFile(entry.relPath, entry.file, session.uploadUrls[entry.relPath]);
+            return;
+          } catch (err) {
+            if (attempt === 3 || hlsAbortRef.current) throw err;
+            await new Promise((r) => setTimeout(r, 500 * attempt));
+          }
+        }
+      };
+      const workers = Array.from({ length: Math.min(CONCURRENCY, entries.length) }, async () => {
+        while (nextIdx < entries.length) {
+          const item = entries[nextIdx++];
+          await uploadWithRetry(item);
+        }
+      });
+      await Promise.all(workers);
     } catch (err: any) {
       setHlsValidationError(err?.message || "HLS upload failed");
     } finally {
@@ -610,7 +652,7 @@ export default function LessonVideoUploadPanel({
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500" />
               )}
             </div>
-            {(statusKey === "READY" || statusKey === "FAILED") && (
+            {(statusKey === "READY" || statusKey === "FAILED" || statusKey === "NEEDS_REUPLOAD") && (
               <div className="flex items-center gap-2">
                 {statusData?.videoHlsPath && (
                   <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate max-w-xs">
@@ -643,6 +685,23 @@ export default function LessonVideoUploadPanel({
               </div>
             )}
           </div>
+
+          {statusKey === "NEEDS_REUPLOAD" && (
+            <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-300 text-xs font-semibold">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>Broken video: replace it. {statusData?.videoError ? `(${statusData.videoError})` : ""}</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleReplaceVideo}
+                disabled={isReplacing || isUploadingHls}
+                className="px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold cursor-pointer shrink-0"
+              >
+                Replace video
+              </button>
+            </div>
+          )}
 
           {!isLessonSaved && (
             <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-semibold">
