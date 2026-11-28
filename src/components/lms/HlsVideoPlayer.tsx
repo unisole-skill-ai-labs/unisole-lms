@@ -44,6 +44,7 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
   getVideoAccessRef.current = getVideoAccess;
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const [needsClickToPlay, setNeedsClickToPlay] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
   const [qualityOptions, setQualityOptions] = useState<QualityOption[]>([]);
@@ -205,9 +206,26 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
           hlsInstance.loadSource(manifestUrl);
           hlsInstance.attachMedia(videoEl);
           let networkRetries = 0;
-          let mediaRetries = 0;
-          let swappedCodec = false;
+          let mediaRecoverStep = 0; // 0: none, 1: recoverMediaError, 2: swapAudioCodec+recoverMediaError, 3: final recoverMediaError
           let authRefreshed = false;
+          let healthySinceMs = Date.now();
+          const loggedErrors = new Set<string>();
+
+          const onPlaying = () => {
+            if (Date.now() - healthySinceMs >= 30_000) {
+              networkRetries = 0;
+              mediaRecoverStep = 0;
+            }
+          };
+          videoEl.addEventListener("timeupdate", onPlaying);
+
+          hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+            if (cancelled) return;
+            videoEl.play().catch(() => {
+              if (!cancelled) setNeedsClickToPlay(true);
+            });
+          });
+
           hlsInstance.on(Hls.Events.ERROR, async (_event: any, data: any) => {
             if (cancelled) return;
             const rawUrl = data?.frag?.url || data?.url || data?.networkDetails?.responseURL || "";
@@ -216,11 +234,13 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
             const levelHeight = levelIdx >= 0 ? hlsInstance?.levels?.[levelIdx]?.height : undefined;
             const levelLabel = levelHeight ? `${levelHeight}p` : `level:${levelIdx}`;
             const summary = `${data?.type || "ERR"}/${data?.details || "unknown"}${data?.response?.code ? ` (HTTP ${data.response.code})` : ""} [${levelLabel}]${safeFragPath ? ` [${safeFragPath}]` : ""}`;
-            if (!data?.fatal) {
-              console.warn("[HLS non-fatal]", { lessonId, details: data?.details, level: levelLabel, frag: safeFragPath });
-              return;
+            const logKey = `${data?.type}:${data?.details}:${safeFragPath || ""}`;
+            if (!loggedErrors.has(logKey)) {
+              loggedErrors.add(logKey);
+              console.error("[HLS error]", { lessonId, type: data?.type, details: data?.details, fatal: Boolean(data?.fatal), code: data?.response?.code, level: levelLabel, frag: safeFragPath });
             }
-            console.error("[HLS fatal]", { lessonId, type: data?.type, details: data?.details, code: data?.response?.code, level: levelLabel, frag: safeFragPath });
+            if (!data?.fatal) return;
+
             const httpStatus = data?.response?.code;
             if ((httpStatus === 401 || httpStatus === 403) && !authRefreshed) {
               authRefreshed = true;
@@ -246,14 +266,20 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
               return;
             }
             if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-              if (mediaRetries < 1) {
-                mediaRetries += 1;
+              healthySinceMs = Date.now();
+              if (mediaRecoverStep === 0) {
+                mediaRecoverStep = 1;
                 hlsInstance.recoverMediaError();
                 return;
               }
-              if (!swappedCodec) {
-                swappedCodec = true;
+              if (mediaRecoverStep === 1) {
+                mediaRecoverStep = 2;
                 hlsInstance.swapAudioCodec();
+                hlsInstance.recoverMediaError();
+                return;
+              }
+              if (mediaRecoverStep === 2) {
+                mediaRecoverStep = 3;
                 hlsInstance.recoverMediaError();
                 return;
               }
@@ -406,9 +432,22 @@ export default function HlsVideoPlayer({ lessonId, title }: HlsVideoPlayerProps)
         controls
         playsInline
         controlsList="nodownload"
+        onPlay={() => setNeedsClickToPlay(false)}
         onContextMenu={(e) => e.preventDefault()}
         className="w-full h-full object-contain"
       />
+      {needsClickToPlay && !isLoading && !errorMsg && (
+        <button
+          type="button"
+          onClick={() => {
+            setNeedsClickToPlay(false);
+            videoRef.current?.play().catch(() => {});
+          }}
+          className="absolute inset-0 m-auto w-fit h-fit px-4 py-2 rounded-xl bg-sky-500/95 hover:bg-sky-400 text-slate-950 text-xs font-bold shadow-lg cursor-pointer z-20"
+        >
+          Click to play
+        </button>
+      )}
     </div>
   );
 }

@@ -362,12 +362,24 @@ export default function LessonVideoUploadPanel({
         return;
       }
       const masterText = await masterFile.text();
-      const variantPaths = masterText
-        .split(/\r?\n/)
-        .map((l) => l.trim().replace(/\\/g, "/"))
-        .filter((l) => l && !l.startsWith("#"));
+      const masterLines = masterText.split(/\r?\n/);
+      const variantPaths: string[] = [];
+      for (let i = 0; i < masterLines.length; i++) {
+        const line = masterLines[i].trim();
+        if (line.startsWith("#EXT-X-STREAM-INF:")) {
+          const codecsMatch = line.match(/CODECS="([^"]+)"/i);
+          if (codecsMatch && !codecsMatch[1].toLowerCase().includes("mp4a")) {
+            setHlsValidationError(
+              `A rendition in master.m3u8 has no audio declared in CODECS (${codecsMatch[1]}). Re-encode with the latest script: npm run video:reencode -- --in <video> --out <folder>`
+            );
+            return;
+          }
+        } else if (line && !line.startsWith("#")) {
+          variantPaths.push(line.replace(/\\/g, "/"));
+        }
+      }
       if (variantPaths.length === 0) {
-        setHlsValidationError("master.m3u8 contains no variant streams. Re-encode with: node tools/video-cli/encode-hls.mjs <video.mp4>");
+        setHlsValidationError("master.m3u8 contains no variant streams. Re-encode with the latest script: npm run video:reencode -- --in <video> --out <folder>");
         return;
       }
 
@@ -375,24 +387,35 @@ export default function LessonVideoUploadPanel({
       for (const vp of variantPaths) {
         const vFile = byPath.get(vp);
         if (!vFile || vFile.size === 0) {
-          setHlsValidationError(`Referenced playlist missing or empty: ${vp}. Re-encode with: node tools/video-cli/encode-hls.mjs <video.mp4>`);
+          setHlsValidationError(`Referenced playlist missing or empty: ${vp}. Re-encode with the latest script: npm run video:reencode -- --in <video> --out <folder>`);
           return;
         }
         const vText = await vFile.text();
         if (!vText.includes("#EXT-X-ENDLIST")) {
-          setHlsValidationError(`${vp} is missing #EXT-X-ENDLIST (incomplete encode). Re-encode with: node tools/video-cli/encode-hls.mjs <video.mp4>`);
+          setHlsValidationError(`${vp} is missing #EXT-X-ENDLIST (incomplete encode). Re-encode with the latest script: npm run video:reencode -- --in <video> --out <folder>`);
           return;
         }
         const vDir = vp.split("/")[0];
         let totalDur = 0;
+        let targetDuration = 6;
         const lines = vText.split(/\r?\n/);
         for (const rawLine of lines) {
           const line = rawLine.trim();
           if (!line) continue;
-          if (line.startsWith("#EXTINF:")) {
+          if (line.startsWith("#EXT-X-TARGETDURATION:")) {
+            targetDuration = Number(line.split(":")[1]);
+            if (!Number.isFinite(targetDuration) || targetDuration > 10) {
+              setHlsValidationError(`${vp} has TARGETDURATION=${targetDuration}s (> 10s). Re-encode with the latest script: npm run video:reencode -- --in <video> --out <folder>`);
+              return;
+            }
+          } else if (line.startsWith("#EXTINF:")) {
             const d = Number(line.slice("#EXTINF:".length).split(",")[0]);
             if (!Number.isFinite(d) || d <= 0) {
-              setHlsValidationError(`${vp} has invalid #EXTINF duration. Re-encode with: node tools/video-cli/encode-hls.mjs <video.mp4>`);
+              setHlsValidationError(`${vp} has invalid #EXTINF duration. Re-encode with the latest script: npm run video:reencode -- --in <video> --out <folder>`);
+              return;
+            }
+            if (d > targetDuration * 1.5 || d > 12) {
+              setHlsValidationError(`${vp} has segment duration ${d.toFixed(1)}s (exceeds 1.5x TARGETDURATION or 12s). Re-encode with the latest script: npm run video:reencode -- --in <video> --out <folder>`);
               return;
             }
             totalDur += d;
@@ -400,7 +423,7 @@ export default function LessonVideoUploadPanel({
             const segRel = `${vDir}/${line.replace(/\\/g, "/")}`;
             const segFile = byPath.get(segRel);
             if (!segFile || segFile.size === 0) {
-              setHlsValidationError(`Segment missing or empty: ${segRel}. Re-encode with: node tools/video-cli/encode-hls.mjs <video.mp4>`);
+              setHlsValidationError(`Segment missing or empty: ${segRel}. Re-encode with the latest script: npm run video:reencode -- --in <video> --out <folder>`);
               return;
             }
           }
